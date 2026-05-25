@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battlegrounds</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/animations.css" />
+</head>
+<body>
+
+<!-- ══ LANDING ══════════════════════════════════════════════ -->
+<div id="screen-landing" class="screen active">
+  <div class="landing-container">
+    <h1 class="game-title">⚔️ Battlegrounds</h1>
+    <p class="game-subtitle">Auto-battle voor 2–8 spelers</p>
+    <div class="form-card">
+      <div class="form-group">
+        <label for="input-name">Jouw naam</label>
+        <input type="text" id="input-name" placeholder="Voer je naam in..." maxlength="20" />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-create">🏰 Lobby maken</button>
+        <button class="btn btn-secondary" id="btn-join-open">🚪 Joinen</button>
+      </div>
+      <div id="join-form" class="hidden" style="margin-top:16px">
+        <div class="form-group">
+          <label for="input-room">Kamer code</label>
+          <input type="text" id="input-room" placeholder="XKQF" maxlength="4"
+                 style="text-transform:uppercase;letter-spacing:6px;font-size:1.6rem;text-align:center" />
+        </div>
+        <button class="btn btn-primary" id="btn-join-confirm" style="width:100%">Joinen →</button>
+      </div>
+    </div>
+    <div id="landing-error" class="error-msg hidden"></div>
+  </div>
+</div>
+
+<!-- ══ LOBBY ════════════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-container">
+    <h2>Wachtkamer</h2>
+    <div class="room-code-display"><span id="lobby-code">----</span></div>
+    <p class="lobby-hint">Deel deze code. Lege plekken worden AI bots.</p>
+    <div id="lobby-players" class="player-list"></div>
+    <div class="lobby-actions">
+      <button class="btn btn-primary" id="btn-start" style="display:none">▶ Start spel</button>
+      <p id="waiting-msg">Wacht op de host...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HERO SELECTIE ════════════════════════════════════════ -->
+<div id="screen-hero-select" class="screen">
+  <div class="hero-select-container">
+    <h2>Kies je held</h2>
+    <div class="timer-bar"><div id="hero-timer-fill" class="timer-fill"></div></div>
+    <div id="hero-cards" class="hero-cards-row"></div>
+  </div>
+</div>
+
+<!-- ══ GAME (SHOP FASE) ═════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+
+  <!-- Dunne HUD balk -->
+  <div class="game-hud">
+    <div class="hud-hero">
+      <span id="hud-hero-emoji">⚔️</span>
+      <span id="hud-hero-name">Held</span>
+    </div>
+    <div class="hud-stats">
+      <span class="hud-stat">Ronde <strong id="hud-round">1</strong></span>
+      <span class="hud-stat hp">❤️ <strong id="hud-hp">40</strong></span>
+      <span class="hud-stat tier">🍺 T<strong id="hud-tier">1</strong></span>
+      <span class="hud-stat gold">💰 <strong id="hud-gold">3</strong>/10</span>
+    </div>
+  </div>
+
+  <!-- Hoofd layout -->
+  <div class="game-layout">
+
+    <!-- Links: tegenstanders -->
+    <div class="opponents-sidebar" id="opponents-sidebar"></div>
+
+    <!-- Arena -->
+    <div class="arena">
+
+      <!-- Jouw board -->
+      <div class="board-area">
+        <div class="board-label">Jouw Board <span id="board-count">(0/7)</span></div>
+        <div class="board-slots" id="board-slots"></div>
+      </div>
+
+      <!-- Shop area -->
+      <div class="shop-area">
+        <div class="shop-row" id="shop-slots"></div>
+        <div class="shop-controls">
+          <button class="ctrl-btn upgrade" id="btn-upgrade">⬆️ <span id="upgrade-cost">5</span>💰</button>
+          <button class="ctrl-btn reroll"  id="btn-reroll">🔄 1💰</button>
+          <button class="ctrl-btn freeze"  id="btn-freeze">❄️ Bevries</button>
+          <div id="hero-power-area" class="hero-power-area hidden">
+            <button class="ctrl-btn hero-power" id="btn-hero-power">
+              <span id="hero-power-emoji">✨</span> <span id="hero-power-cost">2</span>💰
+            </button>
+          </div>
+          <button class="ctrl-btn ready" id="btn-ready">✅ Klaar!</button>
+        </div>
+        <div class="shop-meta">
+          <div class="shop-timer-bar"><div id="shop-timer-fill" class="timer-fill"></div></div>
+          <div id="ready-indicator" class="ready-indicator"></div>
+        </div>
+      </div>
+
+    </div><!-- /arena -->
+  </div><!-- /game-layout -->
+
+  <!-- Tooltip -->
+  <div id="minion-tooltip" class="minion-tooltip hidden"></div>
+  <!-- Sell zone -->
+  <div id="sell-zone" class="sell-zone hidden">🗑️ Verkoop (1💰)</div>
+</div>
+
+<!-- ══ COMBAT ════════════════════════════════════════════════ -->
+<div id="screen-combat" class="screen">
+  <div class="combat-arena-bg">
+
+    <div class="combat-header">
+      <h2>⚔️ <span id="combat-vs-name">vs ???</span></h2>
+      <div id="combat-result-banner" class="combat-result-banner hidden"></div>
+    </div>
+
+    <div class="combat-field">
+      <!-- Vijand (boven) -->
+      <div class="combat-side enemy">
+        <div class="combat-hp-row">
+          <span id="combat-enemy-label">Tegenstander</span>
+          <span class="combat-hp-val">❤️<span id="combat-enemy-hp">?</span></span>
+        </div>
+        <div class="combat-board" id="combat-enemy-board"></div>
+      </div>
+
+      <div class="combat-divider-line"></div>
+
+      <!-- Jij (onder) -->
+      <div class="combat-side player">
+        <div class="combat-board" id="combat-player-board"></div>
+        <div class="combat-hp-row">
+          <span>Jij</span>
+          <span class="combat-hp-val">❤️<span id="combat-player-hp">40</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="combat-log" id="combat-log"></div>
+  </div>
+</div>
+
+<!-- ══ GAME OVER ═════════════════════════════════════════════ -->
+<div id="screen-game-over" class="screen">
+  <div class="game-over-container">
+    <div id="game-over-icon" class="game-over-icon">🏆</div>
+    <h2 id="game-over-title">Game Over!</h2>
+    <p id="game-over-subtitle"></p>
+    <button class="btn btn-primary" id="btn-play-again">🔄 Opnieuw spelen</button>
+  </div>
+</div>
+
+<!-- ══ TRIPLE DISCOVER OVERLAY ═══════════════════════════════ -->
+<div id="triple-discover-overlay" class="discover-overlay hidden">
+  <div class="discover-modal">
+    <div class="discover-title">✨ Triple! Kies een gratis minion</div>
+    <div class="discover-subtitle">Wordt toegevoegd aan je winkel</div>
+    <div id="discover-cards" class="discover-cards"></div>
+  </div>
+</div>
+
+<!-- ══ GLOBAAL ═══════════════════════════════════════════════ -->
+<div id="elimination-toast"   class="elimination-toast hidden"></div>
+<div id="global-notification" class="global-notification hidden"></div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/js/portraits.js"></script>
+<script src="/static/js/dragdrop.js"></script>
+<script src="/static/js/combat_replay.js"></script>
+<script src="/static/js/game_ui.js"></script>
+<script src="/static/js/socket_client.js"></script>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

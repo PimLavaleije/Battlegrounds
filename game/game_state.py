@@ -1,0 +1,339 @@
+import random
+import time
+from game.player import Player
+from game.shop import ShopManager
+from game.combat import simulate_combat, calculate_damage
+from game.matchmaking import make_matchups
+from game.data.heroes import HEROES_LIST
+from game.minion import Minion
+
+
+AI_NAMES = [
+    "Rexxar", "Jaina", "Thrall", "Anduin", "Sylvanas",
+    "Malfurion", "Valeera", "Garrosh",
+]
+
+
+class GameState:
+    SHOP_TIMER = 45  # seconden
+    HERO_SELECT_TIMER = 30
+
+    def __init__(self, room_code: str):
+        self.room_code = room_code
+        self.players: dict[str, Player] = {}  # {sid: Player}
+        self.state = "lobby"  # lobby | hero_selection | round | game_over
+        self.round_num = 0
+        self.shop_manager = ShopManager()
+        self.ghost_boards: dict[str, list[dict]] = {}  # boards van uitgeschakelde spelers
+        self.round_start_time: float = 0
+        self.host_sid: str | None = None
+
+    # ── Spelers beheer ───────────────────────────────────────
+    def add_player(self, sid: str, name: str) -> Player:
+        p = Player(sid, name)
+        self.players[sid] = p
+        if self.host_sid is None:
+            self.host_sid = sid
+        return p
+
+    def remove_player(self, sid: str):
+        if sid in self.players:
+            del self.players[sid]
+        if self.host_sid == sid:
+            remaining = list(self.players.keys())
+            self.host_sid = remaining[0] if remaining else None
+
+    def fill_with_bots(self, target: int = 8):
+        current = len(self.players)
+        ai_names = list(AI_NAMES)
+        random.shuffle(ai_names)
+        for i in range(target - current):
+            fake_sid = f"bot_{i}_{random.randint(1000,9999)}"
+            name = ai_names[i % len(ai_names)]
+            p = Player(fake_sid, name, is_ai=True)
+            self.players[fake_sid] = p
+
+    # ── Hero selectie ────────────────────────────────────────
+    def start_hero_selection(self):
+        self.state = "hero_selection"
+        hero_pool = list(HEROES_LIST)
+        random.shuffle(hero_pool)
+        for p in self.players.values():
+            options = random.sample(hero_pool, min(3, len(hero_pool)))
+            p.hero_options = options
+            if p.is_ai:
+                p.hero = random.choice(options)
+
+    def select_hero(self, sid: str, hero_id: str) -> bool:
+        p = self.players.get(sid)
+        if not p:
+            return False
+        hero = next((h for h in p.hero_options if h["id"] == hero_id), None)
+        if hero:
+            p.hero = hero
+            # Lich King geeft dubbele deathrattle
+            if hero["id"] == "lich_king":
+                p.double_deathrattle = True
+            if hero["id"] == "brann_bronzebeard":
+                p.double_battlecry = True
+        return self._all_heroes_selected()
+
+    def _all_heroes_selected(self) -> bool:
+        return all(p.hero is not None for p in self.players.values())
+
+    # ── Ronde beheer ─────────────────────────────────────────
+    def start_round(self):
+        self.round_num += 1
+        self.state = "round"
+        self.round_start_time = time.time()
+
+        for p in self.players.values():
+            if not p.alive:
+                continue
+            p.start_turn(self.round_num)
+            if not p.frozen:
+                self.shop_manager.return_shop_to_pool(p.shop)
+                p.shop = self.shop_manager.generate_shop(p.tavern_tier, p.hero)
+            else:
+                p.frozen = False  # Bevroren shop blijft, maar unfreeze voor volgende ronde
+
+            if p.is_ai:
+                self._ai_take_turn(p)
+
+    def get_round_data_for(self, sid: str) -> dict:
+        p = self.players[sid]
+        return {
+            "round_num": self.round_num,
+            "player": p.to_dict(include_shop=True),
+            "opponents": [op.public_dict() for op in self.players.values() if op.sid != sid],
+            "timer": self.SHOP_TIMER,
+        }
+
+    # ── Shop acties ─────────────────────────────────────────
+    def buy_minion(self, sid: str, shop_index: int) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False, "message": "Speler niet gevonden."}
+        result = p.buy_minion(shop_index)
+        if result.get("triple"):
+            tier = result["triple"].get("discover_tier", p.tavern_tier)
+            result["triple"]["discover_options"] = self._discover_options(tier)
+        return result
+
+    def _discover_options(self, tier: int) -> list:
+        from game.data.minions import MINIONS
+        candidates = [m for m in MINIONS.values() if m["tier"] == tier]
+        if not candidates:
+            candidates = list(MINIONS.values())
+        chosen = random.sample(candidates, min(3, len(candidates)))
+        return [{
+            "id": m["id"], "name": m["name"], "tier": m["tier"],
+            "attack": m["attack"], "health": m["health"],
+            "tribe": m.get("tribe"), "description": m.get("description", ""),
+            "abilities": m.get("abilities", []),
+            "taunt": "taunt" in m.get("abilities", []),
+            "divine_shield": "divine_shield" in m.get("abilities", []),
+            "reborn": "reborn" in m.get("abilities", []),
+            "poisonous": "poisonous" in m.get("abilities", []),
+            "windfury": "windfury" in m.get("abilities", []),
+            "cleave": "cleave" in m.get("abilities", []),
+            "golden": False, "uid": id(m),
+        } for m in chosen]
+
+    def choose_discover(self, sid: str, minion_id: str) -> dict:
+        p = self.players.get(sid)
+        if not p:
+            return {"success": False}
+        p.add_discover_minion(minion_id)
+        return {"success": True, "player": p.to_dict(include_shop=True)}
+
+    def sell_minion(self, sid: str, board_index: int) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False, "message": "Speler niet gevonden."}
+        return p.sell_minion(board_index)
+
+    def reroll(self, sid: str) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False}
+        result = p.reroll()
+        if result["success"]:
+            self.shop_manager.return_shop_to_pool(p.shop)
+            p.shop = self.shop_manager.generate_shop(p.tavern_tier, p.hero)
+        return {**result, "shop": [m.to_dict() if m else None for m in p.shop]}
+
+    def freeze(self, sid: str) -> dict:
+        p = self.players.get(sid)
+        if not p:
+            return {"success": False}
+        return p.toggle_freeze()
+
+    def upgrade_tavern(self, sid: str) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False}
+        return p.upgrade_tavern()
+
+    def move_minion(self, sid: str, from_idx: int, to_idx: int) -> dict:
+        p = self.players.get(sid)
+        if not p:
+            return {"success": False}
+        return p.move_minion(from_idx, to_idx)
+
+    def use_hero_power(self, sid: str, target_index: int | None = None) -> dict:
+        p = self.players.get(sid)
+        if not p:
+            return {"success": False}
+        return p.use_hero_power(target_index)
+
+    def player_ready(self, sid: str) -> dict:
+        p = self.players.get(sid)
+        if p:
+            p.ready = True
+        alive = [pl for pl in self.players.values() if pl.alive]
+        all_ready = all(pl.ready or pl.is_ai for pl in alive)
+        return {"all_ready": all_ready}
+
+    # ── Combat ───────────────────────────────────────────────
+    def resolve_combat(self) -> dict[str, dict]:
+        alive_sids = [sid for sid, p in self.players.items() if p.alive and not p.is_ai]
+        matchups = make_matchups(alive_sids, self.ghost_boards)
+
+        results: dict[str, dict] = {}
+        processed_pairs: set[frozenset] = set()
+
+        # Verwerk ook AI spelers
+        all_alive = [sid for sid, p in self.players.items() if p.alive]
+        ai_sids = [sid for sid in all_alive if self.players[sid].is_ai]
+        for ai_sid in ai_sids:
+            opponents = [s for s in all_alive if s != ai_sid]
+            if opponents:
+                matchups[ai_sid] = random.choice(opponents)
+
+        for p_sid, opp_ref in matchups.items():
+            player = self.players.get(p_sid)
+            if not player or not player.alive:
+                continue
+
+            pair_key = frozenset([p_sid, opp_ref if not opp_ref.startswith("ghost:") else opp_ref])
+
+            # Haal tegenstander board op
+            if opp_ref.startswith("ghost:"):
+                ghost_key = opp_ref[6:]
+                enemy_dicts = self.ghost_boards.get(ghost_key, [])
+                enemy_board = [Minion.from_dict(d) for d in enemy_dicts]
+                opp_name = f"Ghost van {ghost_key}"
+                opp_tavern = 1
+            else:
+                opp = self.players.get(opp_ref)
+                if not opp:
+                    continue
+                enemy_board = [m.clone() for m in opp.board]
+                opp_name = opp.name
+                opp_tavern = opp.tavern_tier
+
+            # Simuleer gevecht
+            result = simulate_combat(player.board, enemy_board)
+
+            # Bereken schade
+            damage_to_player = 0
+            damage_to_opp = 0
+
+            if result["winner"] == "player":
+                survivor_minions = [Minion.from_dict(d) for d in result["surviving_minions"]]
+                damage_to_opp = calculate_damage(survivor_minions, opp_tavern)
+                if not opp_ref.startswith("ghost:"):
+                    opp_obj = self.players.get(opp_ref)
+                    if opp_obj:
+                        opp_obj.take_damage(damage_to_opp)
+            elif result["winner"] == "enemy":
+                survivor_minions = [Minion.from_dict(d) for d in result["surviving_minions"]]
+                damage_to_player = calculate_damage(survivor_minions, player.tavern_tier)
+                player.take_damage(damage_to_player)
+
+            your_result = result["winner"] if result["winner"] in ("tie",) else \
+                ("won" if result["winner"] == "player" else "lost")
+
+            results[p_sid] = {
+                "opponent_name": opp_name,
+                "your_result": your_result,
+                "damage_received": damage_to_player,
+                "damage_dealt": damage_to_opp,
+                "steps": result["steps"],
+                "player_board": [m.to_dict() for m in player.board],
+                "enemy_board": [m.to_dict() for m in enemy_board],
+                "surviving_minions": result["surviving_minions"],
+            }
+
+            # Spiegel resultaat voor tegenstander (als het een echte speler is)
+            if not opp_ref.startswith("ghost:") and opp_ref not in results:
+                mirror_steps = _mirror_steps(result["steps"])
+                results[opp_ref] = {
+                    "opponent_name": player.name,
+                    "your_result": "won" if your_result == "lost" else ("lost" if your_result == "won" else "tie"),
+                    "damage_received": damage_to_opp,
+                    "damage_dealt": damage_to_player,
+                    "steps": mirror_steps,
+                    "player_board": [m.to_dict() for m in enemy_board],
+                    "enemy_board": [m.to_dict() for m in player.board],
+                    "surviving_minions": result["surviving_minions"] if result["winner"] == "enemy" else [],
+                }
+
+        # Sla ghost boards op van uitgeschakelde spelers
+        for sid, p in self.players.items():
+            if not p.alive and p.board:
+                self.ghost_boards[p.name] = [m.to_dict() for m in p.board]
+
+        return results
+
+    def get_eliminations(self) -> list[str]:
+        return [p.name for p in self.players.values() if not p.alive]
+
+    def is_game_over(self) -> bool:
+        alive = [p for p in self.players.values() if p.alive]
+        return len(alive) <= 1
+
+    def get_winner(self) -> str | None:
+        alive = [p for p in self.players.values() if p.alive]
+        return alive[0].name if len(alive) == 1 else None
+
+    def get_all_players_public(self) -> list[dict]:
+        return [p.public_dict() for p in self.players.values()]
+
+    # ── AI logica ────────────────────────────────────────────
+    def _ai_take_turn(self, p: Player):
+        # Probeer tavern te upgraden als genoeg goud
+        if p.gold >= p.upgrade_cost + 3 and p.tavern_tier < 6:
+            p.upgrade_tavern()
+
+        # Koop zolang mogelijk
+        for _ in range(10):
+            shop_minions = [(i, m) for i, m in enumerate(p.shop) if m is not None]
+            if not shop_minions or not p.can_buy():
+                break
+            idx, _ = random.choice(shop_minions)
+            result = p.buy_minion(idx)
+            if not result["success"]:
+                break
+
+        p.ready = True
+
+
+def _mirror_steps(steps: list[dict]) -> list[dict]:
+    """Spiegelt combat steps: player ↔ enemy voor de andere speler."""
+    import copy
+    mirrored = []
+    for step in copy.deepcopy(steps):
+        if step.get("type") == "attack":
+            if step["attacker_side"] == "player":
+                step["attacker_side"] = "enemy"
+            else:
+                step["attacker_side"] = "player"
+        elif step.get("type") == "death":
+            if step.get("side") == "player":
+                step["side"] = "enemy"
+            else:
+                step["side"] = "player"
+        mirrored.append(step)
+    return mirrored
