@@ -109,6 +109,7 @@ class Player:
         minion = self.board.pop(board_index)
         self.gold = min(self.gold + 1, self.MAX_GOLD)
         self._remove_from_triple(minion)
+        self._recalculate_board_passives()
         sell_passive = self._trigger_sell_passive(minion)
         return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
 
@@ -191,6 +192,7 @@ class Player:
             self.board.insert(board_index, minion)
         else:
             self.board.append(minion)
+        self._recalculate_board_passives()
         return {"success": True}
 
     def sell_from_hand(self, hand_index: int) -> dict:
@@ -199,7 +201,8 @@ class Player:
         minion = self.hand.pop(hand_index)
         self.gold = min(self.gold + 1, self.MAX_GOLD)
         self._remove_from_triple(minion)
-        return {"success": True, "gold": self.gold, "sold": minion.to_dict()}
+        sell_passive = self._trigger_sell_passive(minion)
+        return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
 
     # ── Battlecry logica ────────────────────────────────────
     def _apply_battlecry(self, minion: Minion) -> dict | None:
@@ -215,7 +218,7 @@ class Player:
 
         if effect == "buff_tribe":
             tribe = bc.get("tribe")
-            targets = [m for m in self.board if m.tribe == tribe and m is not minion]
+            targets = [m for m in self.board if tribe in m.types and m is not minion]
             if bc.get("all"):
                 for target in targets:
                     target.attack += bc.get("attack", 0)
@@ -241,7 +244,7 @@ class Player:
                 continue
             ptype = m.passive.get("type")
 
-            if ptype == "on_demon_bought" and bought.tribe == "Demon":
+            if ptype == "on_demon_bought" and "Demon" in bought.types:
                 m.attack += m.passive.get("attack", 2)
                 m.health += m.passive.get("health", 1)
                 m.max_health += m.passive.get("health", 1)
@@ -251,23 +254,23 @@ class Player:
                     self.alive = False
                 events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health, "self_damage": dmg})
 
-            elif ptype == "on_mech_bought" and bought.tribe == "Mech":
+            elif ptype == "on_mech_bought" and "Mech" in bought.types:
                 m.attack += m.passive.get("attack", 2)
                 m.divine_shield = True
                 if "divine_shield" not in m.abilities:
                     m.abilities.append("divine_shield")
                 events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
 
-            elif ptype == "on_battlecry_self" and bought.battlecry:
+            elif ptype == "on_battlecry_self" and (bought.battlecry or "battlecry" in bought.abilities):
                 m.attack += m.passive.get("attack", 1)
                 m.health += m.passive.get("health", 1)
                 m.max_health += m.passive.get("health", 1)
                 events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
 
-            elif ptype == "on_battlecry_tribe" and bought.battlecry:
+            elif ptype == "on_battlecry_tribe" and (bought.battlecry or "battlecry" in bought.abilities):
                 tribe = m.passive.get("tribe")
                 for ally in self.board:
-                    if ally.tribe == tribe:
+                    if tribe in ally.types:
                         ally.attack += m.passive.get("attack", 1)
                         ally.health += m.passive.get("health", 1)
                         ally.max_health += m.passive.get("health", 1)
@@ -291,6 +294,13 @@ class Player:
                 self.shop.append(token)
             return {"added_to_shop": token.to_dict()}
         return None
+
+    def _recalculate_board_passives(self):
+        """Herbereken board-brede passieve effecten (bijv. Brann op board = double battlecry)."""
+        self.double_battlecry = (
+            any(m.id == "brann_bronzebeard" for m in self.board)
+            or self.hero is not None and self.hero.get("ability", {}).get("effect") == "double_battlecry"
+        )
 
     def _give_random_keyword(self, minion: Minion):
         keywords = ["taunt", "divine_shield", "reborn", "windfury"]

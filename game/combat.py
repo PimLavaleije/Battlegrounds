@@ -237,17 +237,22 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                 continue
             ptype = m.passive.get("type")
 
-            if ptype == "beast_dies_buff" and dead_minion.tribe == "Beast":
+            if ptype == "beast_dies_buff" and "Beast" in dead_minion.types:
                 m.attack += m.passive.get("attack", 0)
                 m.health += m.passive.get("health", 0)
                 death_step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
-            elif ptype == "mech_dies_buff" and dead_minion.tribe == "Mech":
+            elif ptype == "mech_dies_buff" and "Mech" in dead_minion.types:
                 m.attack += m.passive.get("attack", 0)
                 m.health += m.passive.get("health", 0)
                 death_step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
-            elif ptype == "demon_dies_damage" and dead_minion.tribe == "Demon":
+            elif ptype == "dragon_dies_buff" and "Dragon" in dead_minion.types:
+                m.attack += m.passive.get("attack", 0)
+                m.health += m.passive.get("health", 0)
+                death_step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+            elif ptype == "demon_dies_damage" and "Demon" in dead_minion.types:
                 # Deal schade aan willekeurige vijand
                 alive_enemies = [e for e in enemy_board if not e.dead]
                 if alive_enemies:
@@ -258,9 +263,9 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
         # Deathrattle
         if dead_minion.deathrattle:
             dr = dead_minion.deathrattle
-            # Baron Rivendare check
-            has_baron = any(m.id == "baron_rivendare" and not m.dead for m in friendly_board)
-            triggers = 2 if has_baron else 1
+            # Titus Rivendare check
+            has_titus = any(m.id == "titus_rivendare" and not m.dead for m in friendly_board)
+            triggers = 2 if has_titus else 1
 
             for _ in range(triggers):
                 _apply_deathrattle(dead_minion, dr, friendly_board, enemy_board, death_step)
@@ -311,6 +316,13 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
             target.attack += dead.attack
             step["events"].append({"type": "buff", "uid": target.uid, "attack": target.attack, "health": target.health})
 
+    elif dtype == "give_attack_two_random":
+        alive = [m for m in friendly_board if not m.dead and m is not dead]
+        chosen = random.sample(alive, min(2, len(alive)))
+        for target in chosen:
+            target.attack += dead.attack
+            step["events"].append({"type": "buff", "uid": target.uid, "attack": target.attack, "health": target.health})
+
     elif dtype == "deal_damage_all":
         amount = dr.get("amount", 1)
         for m in friendly_board + enemy_board:
@@ -335,10 +347,22 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         for m in friendly_board:
             if m.dead or m is dead:
                 continue
-            if tribe is None or m.tribe == tribe:
+            if tribe is None or tribe in m.types:
                 m.attack += atk_buff
                 m.health += hp_buff
                 step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+    elif dtype == "buff_tribe_one":
+        tribe = dr.get("tribe")
+        atk_buff = dr.get("attack", 0)
+        hp_buff = dr.get("health", 0)
+        eligible = [m for m in friendly_board if not m.dead and m is not dead
+                    and (tribe is None or tribe in m.types)]
+        if eligible:
+            target = random.choice(eligible)
+            target.attack += atk_buff
+            target.health += hp_buff
+            step["events"].append({"type": "buff", "uid": target.uid, "attack": target.attack, "health": target.health})
 
     elif dtype == "buff_tribe_attack":
         tribe = dr.get("tribe")
@@ -346,7 +370,7 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         for m in friendly_board:
             if m.dead or m is dead:
                 continue
-            if tribe is None or m.tribe == tribe:
+            if tribe is None or tribe in m.types:
                 m.attack += atk_buff
                 step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
@@ -377,6 +401,13 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                 m.health += amount
                 step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
+    elif dtype == "summon_with_self_attack" and len(friendly_board) < 7:
+        from game.minion import Minion as M
+        token = M.from_id(dr["token"])
+        token.attack = dead.attack
+        friendly_board.append(token)
+        step["events"].append({"type": "summon", "token": token.to_dict()})
+
     elif dtype == "summon_random_deathrattle":
         dr_minions = [mid for mid, data in MINIONS.items() if data.get("deathrattle")]
         count = dr.get("count", 2)
@@ -402,15 +433,37 @@ def _trigger_self_damaged_passive(damaged: Minion, board: list[Minion], step: di
 
 
 def _apply_combat_auras(board: list[Minion]):
-    """Past start-of-combat aura's toe (Humming Bird e.d.)."""
+    """Past start-of-combat aura's toe (Humming Bird, Amber Guardian e.d.)."""
     for m in board:
         if not m.passive:
             continue
         ptype = m.passive.get("type")
         if ptype == "beast_aura":
             for ally in board:
-                if ally is not m and ally.tribe == "Beast":
+                if ally is not m and "Beast" in ally.types:
                     ally.attack += m.passive.get("attack", 0)
+
+        elif ptype == "start_of_combat_buff_tribe":
+            tribe = m.passive.get("tribe")
+            eligible = [ally for ally in board if ally is not m and tribe in ally.types]
+            if eligible:
+                target = random.choice(eligible)
+                target.attack += m.passive.get("attack", 0)
+                target.health += m.passive.get("health", 0)
+                if m.passive.get("divine_shield"):
+                    target.divine_shield = True
+
+        elif ptype == "start_of_combat_buff_tribe_all":
+            tribe = m.passive.get("tribe")
+            atk = m.passive.get("attack", 0)
+            hp = m.passive.get("health", 0)
+            exclude_self = m.passive.get("exclude_self", False)
+            for ally in board:
+                if exclude_self and ally is m:
+                    continue
+                if tribe is None or tribe in ally.types:
+                    ally.attack += atk
+                    ally.health += hp
 
 
 def _trigger_pack_leader(new_minion: Minion, friendly_board: list, step: dict):
@@ -425,7 +478,7 @@ def _trigger_shield_pop_passives(popped: Minion, friendly_board: list, step: dic
             continue
         ptype = m.passive.get("type")
 
-        if ptype == "dragon_shield_pop" and popped.tribe == "Dragon":
+        if ptype == "dragon_shield_pop" and "Dragon" in popped.types:
             m.attack += m.passive.get("attack", 3)
             m.health += m.passive.get("health", 3)
             m.max_health += m.passive.get("health", 3)

@@ -391,7 +391,7 @@ html, body {
 }
 .board-slots {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
@@ -400,15 +400,15 @@ html, body {
 
 /* Leeg slot op het board */
 .board-empty-slot {
-  width: 90px;
-  height: 104px;
+  width: 140px;
+  height: 187px;
   border: 2px dashed rgba(180,140,60,0.2);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(180,140,60,0.2);
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   flex-shrink: 0;
   transition: border-color 0.2s, background 0.2s;
 }
@@ -429,10 +429,10 @@ html, body {
 
 .shop-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
   align-items: flex-end;
-  min-height: 172px;
+  min-height: 200px;
   padding: 0 4px;
 }
 
@@ -447,12 +447,12 @@ html, body {
 /* Hand kaarten rij */
 .hand-slots {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
   align-items: flex-end;
-  padding: 12px 4px 6px;
+  padding: 12px 4px 8px;
   overflow-x: auto;
-  min-height: 60px;
+  min-height: 80px;
   scrollbar-width: thin;
   scrollbar-color: rgba(180,140,60,0.3) transparent;
 }
@@ -467,16 +467,9 @@ html, body {
   font-style: italic;
 }
 
-/* Hand cards zijn iets kleiner dan shop-cards */
-.hand-slots .shop-card-full {
-  width: 95px;
-}
-.hand-slots .shop-card-full-fb {
-  width: 95px;
-  height: 128px;
-}
+/* Hand cards zelfde stijl als shop-cards */
 .hand-slots .shop-card-full:hover {
-  transform: translateY(-14px) scale(1.1);
+  transform: translateY(-16px) scale(1.08);
 }
 
 /* Shop kaart — oval portret, iets kleiner dan board-kaart */
@@ -583,18 +576,35 @@ html, body {
 /* ── Volledige wiki card render in de winkel ──────────────── */
 .shop-card-full {
   position: relative;
-  width: 118px;
+  width: 140px;
   cursor: pointer;
   flex-shrink: 0;
   transition: transform 0.2s ease, filter 0.2s;
+  border-radius: 8px;
 }
 .shop-card-full:hover {
-  transform: translateY(-12px) scale(1.08);
+  transform: translateY(-14px) scale(1.06);
   filter: brightness(1.15);
   z-index: 20;
 }
 .shop-card-full.golden {
-  filter: drop-shadow(0 0 10px rgba(245,197,24,0.9)) brightness(1.08);
+  filter: drop-shadow(0 0 12px rgba(245,197,24,0.9)) brightness(1.08);
+}
+.shop-card-full.drag-over {
+  outline: 2px dashed var(--gold);
+  outline-offset: 2px;
+  opacity: 0.75;
+}
+.shop-card-full.taunt-outline {
+  outline: 3px solid #e0b830;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.shop-card-full.divine-outline {
+  outline: 3px solid rgba(255,255,180,0.95);
+  outline-offset: 2px;
+  box-shadow: 0 0 18px rgba(255,255,150,0.7);
+  animation: divine-pulse 1.8s ease-in-out infinite;
 }
 
 .shop-card-full-img {
@@ -602,12 +612,13 @@ html, body {
   height: auto;
   display: block;
   pointer-events: none;
+  border-radius: 8px;
 }
 
 /* Fallback als afbeelding niet laadt */
 .shop-card-full-fb {
-  width: 118px;
-  height: 158px;
+  width: 140px;
+  height: 187px;
   background: linear-gradient(160deg, #1a1030, #0e0820);
   border: 2px solid #3a3060;
   border-radius: 50% 50% 45% 45% / 42% 42% 56% 56%;
@@ -615,34 +626,34 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: space-around;
-  padding: 22px 10px 14px;
+  padding: 26px 12px 16px;
 }
-.sfb-emoji { font-size: 2.6rem; line-height: 1; }
+.sfb-emoji { font-size: 3rem; line-height: 1; }
 .sfb-name {
-  font-size: 0.65rem; font-weight: 700;
+  font-size: 0.7rem; font-weight: 700;
   text-align: center; color: var(--text);
-  padding: 0 6px; line-height: 1.3;
+  padding: 0 8px; line-height: 1.3;
 }
-.sfb-stats { display: flex; gap: 14px; }
+.sfb-stats { display: flex; gap: 16px; }
 .sfb-atk {
-  width: 26px; height: 26px; border-radius: 50%;
+  width: 30px; height: 30px; border-radius: 50%;
   background: radial-gradient(circle at 35% 28%, #ffe884, #d48808, #6a3a00);
   border: 2px solid #3a1800; color: #1a0800;
-  font-weight: 900; font-size: 0.8rem;
+  font-weight: 900; font-size: 0.9rem;
   display: flex; align-items: center; justify-content: center;
 }
 .sfb-hp {
-  width: 26px; height: 26px; border-radius: 50%;
+  width: 30px; height: 30px; border-radius: 50%;
   background: radial-gradient(circle at 35% 28%, #ff8888, #c41818, #6a0000);
   border: 2px solid #3a0000; color: #fff;
-  font-weight: 900; font-size: 0.8rem;
+  font-weight: 900; font-size: 0.9rem;
   display: flex; align-items: center; justify-content: center;
 }
 
 /* Leeg winkel-slot (nieuwe stijl) */
 .shop-empty-full {
-  width: 118px;
-  height: 158px;
+  width: 140px;
+  height: 187px;
   border: 2px dashed rgba(120,90,30,0.15);
   border-radius: 8px;
   flex-shrink: 0;

@@ -3,6 +3,7 @@ const State = {
   playerName: "", roomCode: "", isHost: false, mySid: null,
   player: null, opponents: [], roundNum: 0,
   shopTimer: null, heroTimer: null,
+  inCombat: false,
 };
 
 // ── Scherm beheer ────────────────────────────────────────────

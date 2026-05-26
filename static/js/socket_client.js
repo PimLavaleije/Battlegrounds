@@ -59,6 +59,7 @@ socket.on("hero_selected", data => {
 
 // ── Ronde start ──────────────────────────────────────────────
 socket.on("round_start", data => {
+  State.inCombat = false;
   // Reset ready knop
   const readyBtn = document.getElementById("btn-ready");
   readyBtn.disabled = false;
@@ -97,6 +98,7 @@ socket.on("ready_update", data => {
 
 // ── Combat ───────────────────────────────────────────────────
 socket.on("combat_starting", () => {
+  State.inCombat = true;
   showNotification("⚔️ Gevecht begint!", 2000);
 });
 

@@ -31,7 +31,7 @@ const GameUI = {
       return;
     }
     hand.forEach((minion, idx) => {
-      const card = buildShopCard(minion);
+      const card = buildShopCard(minion, { showCost: false });
       card.dataset.handIndex = idx;
 
       // Klik = speel naar board
@@ -68,26 +68,41 @@ const GameUI = {
     for (let i = 0; i < 7; i++) {
       if (board && board[i]) {
         const minion = board[i];
-        const card = buildOvalCard(minion, "board");
+        const card = buildShopCard(minion, { showCost: false });
         card.dataset.boardIndex = i;
 
-        // Drag & drop
-        card.draggable = true;
-        card.addEventListener("dragstart", e => {
-          e.dataTransfer.setData("board_index", i);
-          document.getElementById("sell-zone").classList.remove("hidden");
-        });
-        card.addEventListener("dragend", () => {
-          document.getElementById("sell-zone").classList.add("hidden");
-        });
+        if (!State.inCombat) {
+          // Drag starten (voor verkopen of herschikken)
+          card.draggable = true;
+          card.addEventListener("dragstart", e => {
+            e.dataTransfer.setData("board_index", i);
+            document.getElementById("sell-zone").classList.remove("hidden");
+          });
+          card.addEventListener("dragend", () => {
+            document.getElementById("sell-zone").classList.add("hidden");
+          });
 
-        // Rechtsklik = verkopen
-        card.addEventListener("contextmenu", e => {
-          e.preventDefault();
-          if (confirm(`Verkoop ${minion.name} voor 1💰?`)) {
-            SocketClient.sellMinion(i);
-          }
-        });
+          // Drop op een gevulde slot = herschikken
+          card.addEventListener("dragover", e => {
+            e.preventDefault();
+            card.classList.add("drag-over");
+          });
+          card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
+          card.addEventListener("drop", e => {
+            e.preventDefault();
+            card.classList.remove("drag-over");
+            const from = parseInt(e.dataTransfer.getData("board_index"));
+            if (!isNaN(from) && from !== i) SocketClient.moveMinion(from, i);
+          });
+
+          // Rechtsklik = verkopen
+          card.addEventListener("contextmenu", e => {
+            e.preventDefault();
+            if (confirm(`Verkoop ${minion.name} voor 1💰?`)) {
+              SocketClient.sellMinion(i);
+            }
+          });
+        }
 
         card.addEventListener("mouseenter", e => showTooltip(minion, e));
         card.addEventListener("mouseleave", hideTooltip);
@@ -99,17 +114,19 @@ const GameUI = {
         empty.dataset.slotIndex = i;
         empty.textContent = "+";
 
-        empty.addEventListener("dragover", e => {
-          e.preventDefault();
-          empty.classList.add("drag-over");
-        });
-        empty.addEventListener("dragleave", () => empty.classList.remove("drag-over"));
-        empty.addEventListener("drop", e => {
-          e.preventDefault();
-          empty.classList.remove("drag-over");
-          const from = parseInt(e.dataTransfer.getData("board_index"));
-          if (!isNaN(from) && from !== i) SocketClient.moveMinion(from, i);
-        });
+        if (!State.inCombat) {
+          empty.addEventListener("dragover", e => {
+            e.preventDefault();
+            empty.classList.add("drag-over");
+          });
+          empty.addEventListener("dragleave", () => empty.classList.remove("drag-over"));
+          empty.addEventListener("drop", e => {
+            e.preventDefault();
+            empty.classList.remove("drag-over");
+            const from = parseInt(e.dataTransfer.getData("board_index"));
+            if (!isNaN(from) && from !== i) SocketClient.moveMinion(from, i);
+          });
+        }
         container.appendChild(empty);
       }
     }
@@ -180,19 +197,24 @@ function buildCombatCard(minion) {
 }
 
 // ── Volledige kaart voor winkel (wiki card render) ────────────
-function buildShopCard(minion) {
+function buildShopCard(minion, opts = {}) {
+  const { showCost = true } = opts;
   const wrapper = document.createElement("div");
   wrapper.className = "shop-card-full";
   wrapper.dataset.uid = minion.uid;
-  if (minion.golden) wrapper.classList.add("golden");
+  if (minion.golden)        wrapper.classList.add("golden");
+  if (minion.taunt)         wrapper.classList.add("taunt-outline");
+  if (minion.divine_shield) wrapper.classList.add("divine-outline");
 
   const imgUrl   = getCardImageUrl(minion.id);
   const portrait = getPortrait(minion.id);
 
-  const cost = document.createElement("div");
-  cost.className = "shop-card-cost";
-  cost.textContent = "3💰";
-  wrapper.appendChild(cost);
+  if (showCost) {
+    const cost = document.createElement("div");
+    cost.className = "shop-card-cost";
+    cost.textContent = "3💰";
+    wrapper.appendChild(cost);
+  }
 
   if (imgUrl) {
     const img = document.createElement("img");
@@ -200,6 +222,7 @@ function buildShopCard(minion) {
     img.src = imgUrl;
     img.alt = minion.name;
     img.loading = "lazy";
+    img.draggable = false;
     const fb = document.createElement("div");
     fb.className = "shop-card-full-fb";
     fb.style.display = "none";

@@ -2,40 +2,54 @@ import copy
 from game.data.minions import ALL_MINIONS, TOKENS
 
 
+def _safe_stat(value, default=0):
+    """Return an int-like stat value. Spreadsheet blanks/None become 0 so gameplay code does not crash."""
+    if value is None:
+        return default
+    return value
+
+
 class Minion:
     def __init__(self, data: dict):
         self.id = data["id"]
         self.name = data["name"]
         self.tier = data["tier"]
         self.tribe = data.get("tribe")
+        self.types = list(data.get("types", []))
+        if not self.types and self.tribe:
+            self.types = [t.strip() for t in self.tribe.split("/")]
         self.token = data.get("token", False)
 
-        self.base_attack = data["attack"]
-        self.base_health = data["health"]
-        self.attack = data["attack"]
-        self.health = data["health"]
-        self.max_health = data["health"]
+        # Some generated spreadsheet rows can have missing stats, for example Egg of the Endtimes.
+        # The game engine expects numeric stats, so normalize missing values to 0.
+        self.base_attack = _safe_stat(data.get("attack"), 0)
+        self.base_health = _safe_stat(data.get("health"), 0)
+        self.attack = _safe_stat(data.get("attack"), 0)
+        self.health = _safe_stat(data.get("health"), 0)
+        self.max_health = _safe_stat(data.get("health"), 0)
 
         self.abilities = list(data.get("abilities", []))
         self.taunt = "taunt" in self.abilities
         self.divine_shield = "divine_shield" in self.abilities
         self.reborn = "reborn" in self.abilities
-        self.poisonous = "poisonous" in self.abilities
+        self.poisonous = "poisonous" in self.abilities or "venomous" in self.abilities
+        self.venomous = "venomous" in self.abilities
         self.windfury = "windfury" in self.abilities
         self.cleave = "cleave" in self.abilities
         self.zapp = "zapp_targeting" in self.abilities
         self.megawindfury = "megawindfury" in self.abilities
 
-        self.deathrattle = data.get("deathrattle")
-        self.battlecry = data.get("battlecry")
-        self.passive = data.get("passive")
-        self.end_of_turn = data.get("end_of_turn")
+        self.deathrattle = copy.deepcopy(data.get("deathrattle"))
+        self.battlecry = copy.deepcopy(data.get("battlecry"))
+        self.passive = copy.deepcopy(data.get("passive"))
+        self.end_of_turn = copy.deepcopy(data.get("end_of_turn"))
 
         self.description = data.get("description", "")
-        self.golden = False
-        self.dead = False
-        self.reborn_used = False
-        self.uid = id(self)  # uniek id voor frontend tracking
+        self.golden_description = data.get("golden_description", "")
+        self.golden = data.get("golden", False)
+        self.dead = data.get("dead", False)
+        self.reborn_used = data.get("reborn_used", False)
+        self.uid = data.get("uid", id(self))  # uniek id voor frontend tracking
 
     # ── Schade & leven ──────────────────────────────────────
     def take_damage(self, amount: int) -> dict:
@@ -60,16 +74,23 @@ class Minion:
         self.attack = self.base_attack * 2
         self.health = self.base_health * 2
         self.max_health = self.base_health * 2
+
+        # Use the real golden text from the data file when available.
+        if self.golden_description:
+            self.description = self.golden_description
+
         # Windfury → mega-windfury (4 aanvallen)
         if self.windfury:
             self.megawindfury = True
-        # Verdubbel numerieke waarden in deathrattle-effecten
+            if "megawindfury" not in self.abilities:
+                self.abilities.append("megawindfury")
+
+        # Verdubbel numerieke waarden in deathrattle-effecten voor legacy structured effects.
         if self.deathrattle:
             self.deathrattle = self._double_effect_values(self.deathrattle)
 
     @staticmethod
     def _double_effect_values(effect: dict) -> dict:
-        import copy
         d = copy.deepcopy(effect)
         dtype = d.get("type")
         # Summon-types omzetten naar summon_count met verdubbeld aantal
@@ -81,7 +102,7 @@ class Minion:
             d["count"] = 4
         else:
             for key in ("attack", "health", "amount", "count"):
-                if key in d:
+                if key in d and d[key] is not None:
                     d[key] *= 2
         return d
 
@@ -93,6 +114,7 @@ class Minion:
             "name": self.name,
             "tier": self.tier,
             "tribe": self.tribe,
+            "types": self.types,
             "attack": self.attack,
             "health": self.health,
             "max_health": self.max_health,
@@ -102,6 +124,7 @@ class Minion:
             "divine_shield": self.divine_shield,
             "reborn": self.reborn,
             "poisonous": self.poisonous,
+            "venomous": self.venomous,
             "windfury": self.windfury,
             "megawindfury": self.megawindfury,
             "cleave": self.cleave,
@@ -109,7 +132,12 @@ class Minion:
             "abilities": self.abilities,
             "deathrattle": self.deathrattle,
             "battlecry": self.battlecry,
+            "passive": self.passive,
+            "end_of_turn": self.end_of_turn,
             "description": self.description,
+            "golden_description": self.golden_description,
+            "dead": self.dead,
+            "reborn_used": self.reborn_used,
         }
 
     @staticmethod
@@ -124,17 +152,24 @@ class Minion:
         """Herstel een Minion van een geserialiseerde dict (voor combat kopieën)."""
         data = copy.deepcopy(ALL_MINIONS.get(d["id"], d))
         m = Minion(data)
-        m.attack = d["attack"]
-        m.health = d["health"]
-        m.max_health = d.get("max_health", d["health"])
+        m.attack = _safe_stat(d.get("attack"), m.attack)
+        m.health = _safe_stat(d.get("health"), m.health)
+        m.max_health = _safe_stat(d.get("max_health", d.get("health")), m.max_health)
         m.golden = d.get("golden", False)
+        m.description = d.get("description", m.description)
+        m.golden_description = d.get("golden_description", m.golden_description)
+        m.types = list(d.get("types", m.types))
         m.divine_shield = d.get("divine_shield", "divine_shield" in data.get("abilities", []))
         m.taunt = d.get("taunt", "taunt" in data.get("abilities", []))
         m.reborn = d.get("reborn", "reborn" in data.get("abilities", []))
-        m.poisonous = d.get("poisonous", "poisonous" in data.get("abilities", []))
+        m.poisonous = d.get("poisonous", "poisonous" in data.get("abilities", []) or "venomous" in data.get("abilities", []))
+        m.venomous = d.get("venomous", "venomous" in data.get("abilities", []))
         m.windfury = d.get("windfury", "windfury" in data.get("abilities", []))
         m.megawindfury = d.get("megawindfury", "megawindfury" in data.get("abilities", []))
         m.cleave = d.get("cleave", "cleave" in data.get("abilities", []))
+        m.zapp = d.get("zapp", "zapp_targeting" in data.get("abilities", []))
+        m.dead = d.get("dead", False)
+        m.reborn_used = d.get("reborn_used", False)
         m.uid = d.get("uid", id(m))
         return m
 
