@@ -38,14 +38,8 @@ class Player:
         self._apply_start_of_round_hero()
 
     def _apply_start_of_round_hero(self):
-        if not self.hero:
-            return
-        ab = self.hero.get("ability", {})
-        if ab.get("type") == "start_of_round" and ab.get("effect") == "buff_all":
-            for m in self.board:
-                m.attack += ab.get("attack", 0)
-                m.health += ab.get("health", 0)
-                m.max_health += ab.get("health", 0)
+        # Passive start-of-round effects go here as they are implemented.
+        pass
 
     # ── Hero ability ────────────────────────────────────────
     def use_hero_power(self, target_index: int | None = None) -> dict:
@@ -61,13 +55,7 @@ class Player:
         effect = ab.get("effect")
         self.gold -= cost
 
-        if effect == "buff_random_health" and self.board:
-            target = random.choice(self.board)
-            amount = ab.get("amount", 4)
-            target.health += amount
-            target.max_health += amount
-            return {"success": True, "effect": "buff_health", "target": target.to_dict(), "amount": amount}
-
+        # George the Fallen: give a target minion Divine Shield
         if effect == "give_divine_shield" and self.board and target_index is not None:
             if 0 <= target_index < len(self.board):
                 self.board[target_index].divine_shield = True
@@ -102,9 +90,7 @@ class Player:
             if self.double_battlecry and battlecry_result:
                 self._apply_battlecry(minion)
 
-        # Yogg hero: willekeurig keyword
-        if self.hero and self.hero.get("ability", {}).get("effect") == "give_random_keyword":
-            self._give_random_keyword(minion)
+        # Yogg-Saron is now a passive (puzzle_box) — no longer triggers on buy
 
         # Shop-event passives (wrath_weaver, deflect_o_bot, blazing_skyfin, kalecgos)
         passive_events = self._trigger_buy_passives(minion)

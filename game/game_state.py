@@ -71,10 +71,9 @@ class GameState:
         hero = next((h for h in p.hero_options if h["id"] == hero_id), None)
         if hero:
             p.hero = hero
-            # Lich King geeft dubbele deathrattle
-            if hero["id"] == "lich_king":
+            if hero["id"] == "the_lich_king":
                 p.double_deathrattle = True
-            if hero["id"] == "brann_bronzebeard":
+            if hero["id"] == "dinotamer_brann":
                 p.double_battlecry = True
         return self._all_heroes_selected()
 
