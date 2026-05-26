@@ -25,6 +25,7 @@ class Player:
         self.triple_tracker: dict[str, list[Minion]] = {}
         self.double_battlecry = False  # Brann
         self.double_deathrattle = False  # Baron / Lich King
+        self.hand: list[Minion] = []
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -76,7 +77,7 @@ class Player:
 
     # ── Shop acties ─────────────────────────────────────────
     def can_buy(self) -> bool:
-        return self.gold >= 3 and len(self.board) < self.MAX_BOARD
+        return self.gold >= 3 and len(self.hand) < 10
 
     def buy_minion(self, shop_index: int) -> dict:
         if shop_index < 0 or shop_index >= len(self.shop):
@@ -89,7 +90,7 @@ class Player:
 
         self.shop[shop_index] = None
         self.gold -= 3
-        self.board.append(minion)
+        self.hand.append(minion)
 
         # Triple check
         triple_result = self._track_triple(minion)
@@ -164,10 +165,12 @@ class Player:
         if len(self.triple_tracker[key]) >= 3:
             copies = self.triple_tracker[key][:3]
             self.triple_tracker[key] = self.triple_tracker[key][3:]
-            # Verwijder de 3 kopieën van het board
+            # Verwijder de 3 kopieën van board én hand
             for c in copies:
                 if c in self.board:
                     self.board.remove(c)
+                elif c in self.hand:
+                    self.hand.remove(c)
             # Golden versie: basis×2 + alle geaccumuleerde buffs van de 3 kopieën
             golden = Minion.from_id(minion.id)
             golden.make_golden()
@@ -176,24 +179,41 @@ class Player:
             golden.attack     += extra_atk
             golden.health     += extra_hp
             golden.max_health += extra_hp
-            self.board.append(golden)
+            self.hand.append(golden)  # golden gaat naar hand
             discover_tier = min(self.tavern_tier + 1, 6)
             return {"triple": True, "golden": golden.to_dict(), "discover_tier": discover_tier}
         return None
 
     def add_discover_minion(self, minion_id: str) -> dict:
         minion = Minion.from_id(minion_id)
-        for i, slot in enumerate(self.shop):
-            if slot is None:
-                self.shop[i] = minion
-                return {"success": True}
-        self.shop.append(minion)
+        self.hand.append(minion)
         return {"success": True}
 
     def _remove_from_triple(self, minion: Minion):
         key = minion.id
         if key in self.triple_tracker and minion in self.triple_tracker[key]:
             self.triple_tracker[key].remove(minion)
+
+    # ── Hand acties ─────────────────────────────────────────────
+    def play_from_hand(self, hand_index: int, board_index: int = -1) -> dict:
+        if hand_index < 0 or hand_index >= len(self.hand):
+            return {"success": False, "message": "Ongeldige hand-index."}
+        if len(self.board) >= self.MAX_BOARD:
+            return {"success": False, "message": "Board is vol (max 7)."}
+        minion = self.hand.pop(hand_index)
+        if 0 <= board_index < len(self.board):
+            self.board.insert(board_index, minion)
+        else:
+            self.board.append(minion)
+        return {"success": True}
+
+    def sell_from_hand(self, hand_index: int) -> dict:
+        if hand_index < 0 or hand_index >= len(self.hand):
+            return {"success": False, "message": "Ongeldige hand-index."}
+        minion = self.hand.pop(hand_index)
+        self.gold = min(self.gold + 1, self.MAX_GOLD)
+        self._remove_from_triple(minion)
+        return {"success": True, "gold": self.gold, "sold": minion.to_dict()}
 
     # ── Battlecry logica ────────────────────────────────────
     def _apply_battlecry(self, minion: Minion) -> dict | None:
@@ -310,6 +330,7 @@ class Player:
             "upgrade_cost": self.upgrade_cost,
             "gold": self.gold,
             "board": [m.to_dict() for m in self.board],
+            "hand": [m.to_dict() for m in self.hand],
             "frozen": self.frozen,
             "hero": self.hero,
             "ready": self.ready,

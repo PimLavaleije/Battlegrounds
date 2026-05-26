@@ -133,6 +133,7 @@ function renderGame(data) {
   renderOpponentsSidebar(data.opponents);
   GameUI.renderShop(data.player.shop);
   GameUI.renderBoard(data.player.board);
+  GameUI.renderHand(data.player.hand || []);
   startShopTimer(data.timer || 45);
   setupHeroPower(data.player.hero);
 }
@@ -212,6 +213,7 @@ function onPlayerUpdate(player) {
   updateHUD(player, State.roundNum);
   GameUI.renderShop(player.shop);
   GameUI.renderBoard(player.board);
+  GameUI.renderHand(player.hand || []);
 }
 function onFreezeUpdate(frozen) {
   const btn = document.getElementById("btn-freeze");

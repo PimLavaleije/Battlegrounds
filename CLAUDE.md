@@ -118,3 +118,133 @@ templates/
 Remote: `https://github.com/PimLavaleije/Battlegrounds.git`
 Branch: `master`
 Na wijzigingen: `git add`, `git commit`, `git push origin master`
+
+# Objective
+
+You are auditing Hearthstone Battlegrounds Season 13 mechanics.
+
+Your task is to:
+
+1. Verify mechanics against official sources.
+2. Detect contradictions.
+3. Flag patch-dependent behavior.
+4. Identify edge cases and undocumented interactions.
+5. Never hallucinate uncertain mechanics.
+6. Prefer accuracy over completeness.
+
+You are not allowed to invent undocumented mechanics.
+
+If evidence is insufficient:
+- Say UNKNOWN
+- Explain why
+- Suggest a reproducible in-game test.
+
+---
+
+# Confidence Policy
+
+Every mechanic must receive one of the following labels:
+
+- TRUE
+- FALSE
+- PARTIAL
+- UNKNOWN
+- PATCH_DEPENDENT
+
+Definitions:
+
+### TRUE
+Mechanic confirmed by official wording, in-game behavior, or reproducible testing.
+
+### FALSE
+Mechanic contradicted by official wording or reproducible testing.
+
+### PARTIAL
+Mechanic is correct but missing conditions, caveats, or edge cases.
+
+### UNKNOWN
+Insufficient evidence.
+
+### PATCH_DEPENDENT
+Behavior changed between patches or is unclear for Season 13.
+
+Never present speculation as certainty.
+
+---
+
+# Source Priority
+
+Use sources in this order:
+
+1. Blizzard official patch notes
+2. Blizzard developer posts
+3. Official in-game card text
+4. Reproducible in-game testing
+5. Community testing
+6. Datamining
+
+Official wording overrides community assumptions.
+
+Do not treat Reddit claims as facts unless corroborated.
+
+---
+
+# Required Verification Process
+
+For every mechanic:
+
+1. Identify exact mechanic.
+2. Check official wording.
+3. Check Season 13 relevance.
+4. Check Solos vs Duos.
+5. Check Tavern Tier restrictions.
+6. Check hero-specific exceptions.
+7. Check edge cases:
+   - board full
+   - hand full
+   - simultaneous triggers
+   - duplicate effects
+   - golden minions
+   - multiple copies
+   - generated cards
+   - tribe availability
+8. Determine confidence level.
+
+---
+
+# Required Output Format
+
+For every mechanic use:
+
+## Mechanic
+[mechanic name]
+
+### Verdict
+TRUE / FALSE / PARTIAL / UNKNOWN / PATCH_DEPENDENT
+
+### Explanation
+[reasoning]
+
+### Evidence
+[source]
+
+### Patch
+[patch if relevant]
+
+### Solos/Duos
+[behavior]
+
+### Edge Cases
+[list]
+
+### Confidence
+High / Medium / Low
+
+---
+
+# Critical Rule
+
+Never hallucinate undocumented Hearthstone Battlegrounds mechanics.
+
+If uncertain:
+Say UNKNOWN.

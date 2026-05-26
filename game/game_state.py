@@ -175,6 +175,18 @@ class GameState:
             return {"success": False}
         return p.upgrade_tavern()
 
+    def play_from_hand(self, sid: str, hand_index: int, board_index: int = -1) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False}
+        return p.play_from_hand(hand_index, board_index)
+
+    def sell_from_hand(self, sid: str, hand_index: int) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False}
+        return p.sell_from_hand(hand_index)
+
     def move_minion(self, sid: str, from_idx: int, to_idx: int) -> dict:
         p = self.players.get(sid)
         if not p:
@@ -316,6 +328,10 @@ class GameState:
             result = p.buy_minion(idx)
             if not result["success"]:
                 break
+
+        # Speel alle hand-kaarten naar het board
+        while p.hand and len(p.board) < p.MAX_BOARD:
+            p.play_from_hand(0)
 
         p.ready = True
 

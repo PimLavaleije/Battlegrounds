@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:5000\" -UseBasicParsing -TimeoutSec 5)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:5000\" -TimeoutSec 5 -ErrorAction SilentlyContinue)",
+      "PowerShell(if \\($?\\) { \"Server OK\" } else { \"Server not responding\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:5000\" -UseBasicParsing -TimeoutSec 5; \"HTTP $\\($r.StatusCode\\) - OK\" } catch { \"Fout: $_\" })",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/)"
+    ]
+  }
+}

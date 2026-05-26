@@ -147,6 +147,35 @@ def on_upgrade_tavern(data):
         emit("error", {"message": result.get("message", "Kan niet upgraden.")})
 
 
+@socketio.on("play_from_hand")
+def on_play_from_hand(data):
+    room_code = manager.get_player_room(request.sid)
+    if not room_code:
+        return
+    result = manager.play_from_hand(
+        request.sid, room_code,
+        data.get("hand_index", 0), data.get("board_index", -1)
+    )
+    if result["success"]:
+        emit("player_update", result["player"])
+    else:
+        emit("error", {"message": result.get("message", "Kan niet spelen.")})
+
+
+@socketio.on("sell_from_hand")
+def on_sell_from_hand(data):
+    room_code = manager.get_player_room(request.sid)
+    if not room_code:
+        return
+    result = manager.sell_from_hand(
+        request.sid, room_code, data.get("hand_index", 0)
+    )
+    if result["success"]:
+        emit("player_update", result["player"])
+    else:
+        emit("error", {"message": result.get("message", "Kan niet verkopen.")})
+
+
 @socketio.on("move_minion")
 def on_move_minion(data):
     room_code = manager.get_player_room(request.sid)

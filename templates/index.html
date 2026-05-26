@@ -85,15 +85,20 @@
     <!-- Arena -->
     <div class="arena">
 
-      <!-- Jouw board -->
+      <!-- Winkel kaarten (bovenin) -->
+      <div class="shop-card-row">
+        <div class="shop-row" id="shop-slots"></div>
+      </div>
+
+      <!-- Jouw board (midden) -->
       <div class="board-area">
         <div class="board-label">Jouw Board <span id="board-count">(0/7)</span></div>
         <div class="board-slots" id="board-slots"></div>
       </div>
 
-      <!-- Shop area -->
-      <div class="shop-area">
-        <div class="shop-row" id="shop-slots"></div>
+      <!-- Hand / acties (onderin) -->
+      <div class="hand-area">
+        <div class="hand-slots" id="hand-slots"></div>
         <div class="shop-controls">
           <button class="ctrl-btn upgrade" id="btn-upgrade">⬆️ <span id="upgrade-cost">5</span>💰</button>
           <button class="ctrl-btn reroll"  id="btn-reroll">🔄 1💰</button>

@@ -8,25 +8,55 @@ const GameUI = {
     shopSlots.forEach((minion, idx) => {
       if (!minion) {
         const empty = document.createElement("div");
-        empty.className = "shop-empty";
-        empty.textContent = "—";
+        empty.className = "shop-empty-full";
         container.appendChild(empty);
       } else {
-        const card = buildOvalCard(minion, "shop");
+        const card = buildShopCard(minion);
         card.dataset.shopIndex = idx;
-
-        // Kostprijs label
-        const cost = document.createElement("div");
-        cost.className = "shop-card-cost";
-        cost.textContent = "3💰";
-        card.appendChild(cost);
-
         card.addEventListener("click", () => SocketClient.buyMinion(idx));
         card.addEventListener("mouseenter", e => showTooltip(minion, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);
         container.appendChild(card);
       }
+    });
+  },
+
+  renderHand(hand) {
+    const container = document.getElementById("hand-slots");
+    if (!container) return;
+    container.innerHTML = "";
+    if (!hand || hand.length === 0) {
+      container.innerHTML = '<div class="hand-empty-msg">Koop minions — klik om op board te zetten</div>';
+      return;
+    }
+    hand.forEach((minion, idx) => {
+      const card = buildShopCard(minion);
+      card.dataset.handIndex = idx;
+
+      // Klik = speel naar board
+      card.addEventListener("click", () => SocketClient.playFromHand(idx));
+
+      // Drag = kan naar sell-zone gesleept worden
+      card.draggable = true;
+      card.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("hand_index", idx);
+        document.getElementById("sell-zone").classList.remove("hidden");
+      });
+      card.addEventListener("dragend", () => {
+        document.getElementById("sell-zone").classList.add("hidden");
+      });
+
+      // Rechtsklik = verkoop
+      card.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        if (confirm(`Verkoop ${minion.name} voor 1💰?`)) SocketClient.sellFromHand(idx);
+      });
+
+      card.addEventListener("mouseenter", e => showTooltip(minion, e));
+      card.addEventListener("mouseleave", hideTooltip);
+      card.addEventListener("mousemove", moveTooltip);
+      container.appendChild(card);
     });
   },
 
@@ -149,6 +179,56 @@ function buildCombatCard(minion) {
   return wrapper;
 }
 
+// ── Volledige kaart voor winkel (wiki card render) ────────────
+function buildShopCard(minion) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "shop-card-full";
+  wrapper.dataset.uid = minion.uid;
+  if (minion.golden) wrapper.classList.add("golden");
+
+  const imgUrl   = getCardImageUrl(minion.id);
+  const portrait = getPortrait(minion.id);
+
+  const cost = document.createElement("div");
+  cost.className = "shop-card-cost";
+  cost.textContent = "3💰";
+  wrapper.appendChild(cost);
+
+  if (imgUrl) {
+    const img = document.createElement("img");
+    img.className = "shop-card-full-img";
+    img.src = imgUrl;
+    img.alt = minion.name;
+    img.loading = "lazy";
+    const fb = document.createElement("div");
+    fb.className = "shop-card-full-fb";
+    fb.style.display = "none";
+    fb.innerHTML = `
+      <div class="sfb-emoji">${portrait.emoji}</div>
+      <div class="sfb-name">${escapeHtml(minion.name)}</div>
+      <div class="sfb-stats">
+        <div class="sfb-atk">${minion.attack}</div>
+        <div class="sfb-hp">${minion.health}</div>
+      </div>`;
+    img.onerror = () => { img.style.display = "none"; fb.style.display = "flex"; };
+    wrapper.appendChild(img);
+    wrapper.appendChild(fb);
+  } else {
+    const fb = document.createElement("div");
+    fb.className = "shop-card-full-fb";
+    fb.innerHTML = `
+      <div class="sfb-emoji">${portrait.emoji}</div>
+      <div class="sfb-name">${escapeHtml(minion.name)}</div>
+      <div class="sfb-stats">
+        <div class="sfb-atk">${minion.attack}</div>
+        <div class="sfb-hp">${minion.health}</div>
+      </div>`;
+    wrapper.appendChild(fb);
+  }
+
+  return wrapper;
+}
+
 // ── Tooltip ──────────────────────────────────────────────────
 function showTooltip(minion, e) {
   const tip = document.getElementById("minion-tooltip");
@@ -197,7 +277,9 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     sz.classList.remove("drag-over");
     sz.classList.add("hidden");
-    const idx = parseInt(e.dataTransfer.getData("board_index"));
-    if (!isNaN(idx)) SocketClient.sellMinion(idx);
+    const boardIdx = parseInt(e.dataTransfer.getData("board_index"));
+    const handIdx  = parseInt(e.dataTransfer.getData("hand_index"));
+    if (!isNaN(boardIdx) && e.dataTransfer.getData("board_index") !== "") SocketClient.sellMinion(boardIdx);
+    else if (!isNaN(handIdx) && e.dataTransfer.getData("hand_index") !== "") SocketClient.sellFromHand(handIdx);
   });
 });

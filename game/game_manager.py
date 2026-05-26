@@ -120,6 +120,26 @@ class GameManager:
             result["player"] = p.to_dict(include_shop=True)
         return result
 
+    def play_from_hand(self, sid: str, room_code: str, hand_index: int, board_index: int = -1) -> dict:
+        game = self.rooms.get(room_code)
+        if not game:
+            return {"success": False}
+        result = game.play_from_hand(sid, hand_index, board_index)
+        if result["success"]:
+            p = game.players[sid]
+            result["player"] = p.to_dict(include_shop=True)
+        return result
+
+    def sell_from_hand(self, sid: str, room_code: str, hand_index: int) -> dict:
+        game = self.rooms.get(room_code)
+        if not game:
+            return {"success": False}
+        result = game.sell_from_hand(sid, hand_index)
+        if result["success"]:
+            p = game.players[sid]
+            result["player"] = p.to_dict(include_shop=True)
+        return result
+
     def move_minion(self, sid: str, room_code: str, from_idx: int, to_idx: int) -> dict:
         game = self.rooms.get(room_code)
         if not game:

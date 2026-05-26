@@ -12,6 +12,8 @@ const SocketClient = {
   freeze()                   { socket.emit("freeze",         {}); },
   upgradeTavern()            { socket.emit("upgrade_tavern", {}); },
   moveMinion(from, to)       { socket.emit("move_minion",    { from_index: from, to_index: to }); },
+  playFromHand(handIdx, boardIdx) { socket.emit("play_from_hand", { hand_index: handIdx, board_index: boardIdx ?? -1 }); },
+  sellFromHand(handIdx)      { socket.emit("sell_from_hand", { hand_index: handIdx }); },
   useHeroPower(targetIdx)    { socket.emit("use_hero_power", { target_index: targetIdx ?? null }); },
   playerReady()              { socket.emit("player_ready",   {}); },
   chooseDiscover(minionId)   { socket.emit("choose_discover", { minion_id: minionId }); },
