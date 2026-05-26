@@ -141,10 +141,22 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
     step["target_damage"] = result_t["damage"]
     step["target_shield_broken"] = result_t.get("shield_broken", False)
 
+    # Hardy Orca: als doelwit schade ontvangt, buff alle andere vrienden op verdedigend bord
+    defender_board_ref = e_board if current_side == 0 else p_board
+    if not result_t.get("shielded") and result_t.get("damage", 0) > 0:
+        if target.passive and target.passive.get("type") == "on_self_damaged":
+            _trigger_self_damaged_passive(target, defender_board_ref, step)
+
     # Tegenslag
     result_a = attacker.take_damage(target.attack if not target.poisonous else 9999)
     step["attacker_damage"] = result_a["damage"]
     step["attacker_shield_broken"] = result_a.get("shield_broken", False)
+
+    # Hardy Orca: als aanvaller zelf schade ontvangt
+    attacker_board_ref = p_board if current_side == 0 else e_board
+    if not result_a.get("shielded") and result_a.get("damage", 0) > 0:
+        if attacker.passive and attacker.passive.get("type") == "on_self_damaged":
+            _trigger_self_damaged_passive(attacker, attacker_board_ref, step)
 
     # Bolvar / Drakonid: schild doorbroken passief
     defender_board = e_board if current_side == 0 else p_board
@@ -247,7 +259,9 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
             dead_minion.reborn_used = True
             if len(friendly_board) < 7:
                 reborn_copy = dead_minion.clone()
-                reborn_copy.health = 1
+                # Sinrunner Blanchy herrijst met volle HP
+                full_hp = dead_minion.passive and dead_minion.passive.get("type") == "full_health_reborn"
+                reborn_copy.health = reborn_copy.max_health if full_hp else 1
                 reborn_copy.dead = False
                 reborn_copy.reborn = False
                 friendly_board.append(reborn_copy)
@@ -363,6 +377,17 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
             new_m = M.from_id(chosen_id)
             friendly_board.append(new_m)
             step["events"].append({"type": "summon", "token": new_m.to_dict()})
+
+
+def _trigger_self_damaged_passive(damaged: Minion, board: list[Minion], step: dict):
+    """Hardy Orca: als deze minion schade ontvangt → alle andere vrienden +1/+1."""
+    buff_atk = damaged.passive.get("attack", 1)
+    buff_hp = damaged.passive.get("health", 1)
+    for ally in board:
+        if ally is not damaged and not ally.dead:
+            ally.attack += buff_atk
+            ally.health += buff_hp
+            step["events"].append({"type": "buff", "uid": ally.uid, "attack": ally.attack, "health": ally.health})
 
 
 def _apply_combat_auras(board: list[Minion]):

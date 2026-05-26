@@ -105,11 +105,15 @@ class Player:
         if self.hero and self.hero.get("ability", {}).get("effect") == "give_random_keyword":
             self._give_random_keyword(minion)
 
+        # Shop-event passives (wrath_weaver, deflect_o_bot, blazing_skyfin, kalecgos)
+        passive_events = self._trigger_buy_passives(minion)
+
         return {
             "success": True,
             "minion": minion.to_dict(),
             "triple": triple_result,
             "battlecry": battlecry_result,
+            "passive_events": passive_events,
         }
 
     def sell_minion(self, board_index: int) -> dict:
@@ -117,9 +121,9 @@ class Player:
             return {"success": False, "message": "Ongeldige board-index."}
         minion = self.board.pop(board_index)
         self.gold = min(self.gold + 1, self.MAX_GOLD)
-        # Verwijder uit triple tracker
         self._remove_from_triple(minion)
-        return {"success": True, "gold": self.gold, "sold": minion.to_dict()}
+        sell_passive = self._trigger_sell_passive(minion)
+        return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
 
     def reroll(self) -> dict:
         if self.gold < 1:
@@ -217,6 +221,64 @@ class Player:
                 if bc.get("add_taunt"):
                     target.taunt = True
                 return {"buffed": target.to_dict()}
+        return None
+
+    def _trigger_buy_passives(self, bought: Minion) -> list[dict]:
+        events = []
+        for m in self.board:
+            if not m.passive:
+                continue
+            ptype = m.passive.get("type")
+
+            if ptype == "on_demon_bought" and bought.tribe == "Demon":
+                m.attack += m.passive.get("attack", 2)
+                m.health += m.passive.get("health", 1)
+                m.max_health += m.passive.get("health", 1)
+                dmg = m.passive.get("self_damage", 1)
+                self.hp = max(0, self.hp - dmg)
+                if self.hp == 0:
+                    self.alive = False
+                events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health, "self_damage": dmg})
+
+            elif ptype == "on_mech_bought" and bought.tribe == "Mech":
+                m.attack += m.passive.get("attack", 2)
+                m.divine_shield = True
+                if "divine_shield" not in m.abilities:
+                    m.abilities.append("divine_shield")
+                events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+            elif ptype == "on_battlecry_self" and bought.battlecry:
+                m.attack += m.passive.get("attack", 1)
+                m.health += m.passive.get("health", 1)
+                m.max_health += m.passive.get("health", 1)
+                events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+            elif ptype == "on_battlecry_tribe" and bought.battlecry:
+                tribe = m.passive.get("tribe")
+                for ally in self.board:
+                    if ally.tribe == tribe:
+                        ally.attack += m.passive.get("attack", 1)
+                        ally.health += m.passive.get("health", 1)
+                        ally.max_health += m.passive.get("health", 1)
+                        events.append({"type": "buy_passive", "uid": ally.uid, "attack": ally.attack, "health": ally.health})
+        return events
+
+    def _trigger_sell_passive(self, sold: Minion) -> dict | None:
+        if not sold.passive:
+            return None
+        ptype = sold.passive.get("type")
+        if ptype == "on_sell_self":
+            token_id = sold.passive.get("token")
+            if not token_id:
+                return None
+            token = Minion.from_id(token_id)
+            for i, slot in enumerate(self.shop):
+                if slot is None:
+                    self.shop[i] = token
+                    break
+            else:
+                self.shop.append(token)
+            return {"added_to_shop": token.to_dict()}
         return None
 
     def _give_random_keyword(self, minion: Minion):

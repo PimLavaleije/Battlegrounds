@@ -64,6 +64,7 @@ const PORTRAITS = {
   sewer_rat_token:     { emoji: "🐀", cardId: null, bg: "#1a4a1a,#0d2d0d" },
   eternal_knight:      { emoji: "⚔️", cardId: null, bg: "#2a0d3a,#15061d" },
   sky_pirate:          { emoji: "🏴‍☠️", cardId: null, bg: "#1a3a3a,#0d1d1d" },
+  water_droplet:       { emoji: "💧", cardId: null, bg: "#0d1a3a,#060d1d" },
 };
 
 function getPortrait(minionId) {

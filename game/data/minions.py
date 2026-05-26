@@ -51,6 +51,11 @@ TOKENS = {
         "attack": 1, "health": 1, "tribe": "Pirate",
         "abilities": [], "token": True, "description": "Valt onmiddellijk aan.",
     },
+    "water_droplet": {
+        "id": "water_droplet", "name": "Waterdruppel", "tier": 1,
+        "attack": 2, "health": 2, "tribe": "Elemental",
+        "abilities": [], "token": True, "description": "Geroepen door Sellemental.",
+    },
 }
 
 # Main minion pool (shop-able)
@@ -60,6 +65,7 @@ MINIONS = {
         "id": "wrath_weaver", "name": "Wrath Weaver", "tier": 1,
         "attack": 1, "health": 4, "tribe": "Demon",
         "abilities": [],
+        "passive": {"type": "on_demon_bought", "attack": 2, "health": 1, "self_damage": 1},
         "description": "Na Demon gespeeld: doe 1 schade aan jezelf, +2/+1.",
     },
     "crackling_cyclone": {
@@ -108,12 +114,14 @@ MINIONS = {
         "id": "sellemental", "name": "Sellemental", "tier": 2,
         "attack": 3, "health": 3, "tribe": "Elemental",
         "abilities": [],
-        "description": "Als je dit verkoopt: Voeg een 3/3 Elemental toe aan je winkel.",
+        "passive": {"type": "on_sell_self", "token": "water_droplet"},
+        "description": "Als je dit verkoopt: Voeg een 2/2 Waterdruppel toe aan je winkel.",
     },
     "blazing_skyfin": {
         "id": "blazing_skyfin", "name": "Blazing Skyfin", "tier": 2,
         "attack": 2, "health": 4, "tribe": "Dragon",
         "abilities": [],
+        "passive": {"type": "on_battlecry_self", "attack": 1, "health": 1},
         "description": "Na een Slagkreet: +1/+1.",
     },
     "scarlet_skull": {
@@ -157,6 +165,7 @@ MINIONS = {
         "id": "deflect_o_bot", "name": "Deflect-o-Bot", "tier": 3,
         "attack": 3, "health": 2, "tribe": "Mech",
         "abilities": ["divine_shield"],
+        "passive": {"type": "on_mech_bought", "attack": 2},
         "description": "Goddelijk Schild. Elke keer dat je een Mech koopt: +2 Aanval en Goddelijk Schild.",
     },
     "annoy_o_module": {
@@ -181,6 +190,7 @@ MINIONS = {
         "id": "hardy_orca", "name": "Hardy Orca", "tier": 3,
         "attack": 1, "health": 6, "tribe": "Beast",
         "abilities": ["taunt"],
+        "passive": {"type": "on_self_damaged", "attack": 1, "health": 1},
         "description": "Taunt. Als dit schade ontvangt: andere vrienden +1/+1.",
     },
     "cadaver_caretaker": {
@@ -284,12 +294,14 @@ MINIONS = {
         "id": "kalecgos", "name": "Kalecgos, Arcane Aspect", "tier": 5,
         "attack": 4, "health": 12, "tribe": "Dragon",
         "abilities": [],
+        "passive": {"type": "on_battlecry_tribe", "tribe": "Dragon", "attack": 1, "health": 1},
         "description": "Na een Slagkreet: Jouw Draken +1/+1.",
     },
     "sinrunner_blanchy": {
         "id": "sinrunner_blanchy", "name": "Sinrunner Blanchy", "tier": 5,
         "attack": 8, "health": 8, "tribe": "Undead",
         "abilities": ["reborn"],
+        "passive": {"type": "full_health_reborn"},
         "description": "Herboren. In gevecht: Herboren met vol Leven.",
     },
 
