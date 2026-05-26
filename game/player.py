@@ -65,16 +65,20 @@ class Player:
 
     # ── Shop acties ─────────────────────────────────────────
     def can_buy(self) -> bool:
-        return self.gold >= 3 and len(self.hand) < 10
+        return self.gold >= 3
 
     def buy_minion(self, shop_index: int) -> dict:
         if shop_index < 0 or shop_index >= len(self.shop):
             return {"success": False, "message": "Ongeldige winkel-index."}
-        minion = self.shop[shop_index]
-        if minion is None:
+        item = self.shop[shop_index]
+        if item is None:
             return {"success": False, "message": "Geen minion op die plek."}
+        # Spell dict in shop — redirect to spell handler
+        if isinstance(item, dict):
+            return self._cast_spell_from_shop(shop_index)
+        minion = item
         if not self.can_buy():
-            return {"success": False, "message": "Kan niet kopen: vol board of te weinig goud."}
+            return {"success": False, "message": "Niet genoeg goud."}
 
         self.shop[shop_index] = None
         self.gold -= 3
@@ -83,14 +87,7 @@ class Player:
         # Triple check
         triple_result = self._track_triple(minion)
 
-        # Battlecry
-        battlecry_result = None
-        if minion.battlecry:
-            battlecry_result = self._apply_battlecry(minion)
-            if self.double_battlecry and battlecry_result:
-                self._apply_battlecry(minion)
-
-        # Yogg-Saron is now a passive (puzzle_box) — no longer triggers on buy
+        # Battlecry fires in play_from_hand, not on buy
 
         # Shop-event passives (wrath_weaver, deflect_o_bot, blazing_skyfin, kalecgos)
         passive_events = self._trigger_buy_passives(minion)
@@ -99,7 +96,7 @@ class Player:
             "success": True,
             "minion": minion.to_dict(),
             "triple": triple_result,
-            "battlecry": battlecry_result,
+            "battlecry": None,
             "passive_events": passive_events,
         }
 
@@ -186,14 +183,131 @@ class Player:
         if hand_index < 0 or hand_index >= len(self.hand):
             return {"success": False, "message": "Ongeldige hand-index."}
         if len(self.board) >= self.MAX_BOARD:
-            return {"success": False, "message": "Board is vol (max 7)."}
+            return {"success": False, "message": "Board is vol (max 7). Verkoop een minion om ruimte te maken."}
         minion = self.hand.pop(hand_index)
         if 0 <= board_index < len(self.board):
             self.board.insert(board_index, minion)
         else:
             self.board.append(minion)
         self._recalculate_board_passives()
-        return {"success": True}
+
+        # Battlecry fires when played to board (not on buy)
+        battlecry_result = None
+        if minion.battlecry:
+            battlecry_result = self._apply_battlecry(minion)
+            if self.double_battlecry and battlecry_result:
+                self._apply_battlecry(minion)
+
+        return {"success": True, "battlecry": battlecry_result}
+
+    # ── Spreuken ─────────────────────────────────────────────────
+    def _cast_spell_from_shop(self, shop_index: int) -> dict:
+        spell = self.shop[shop_index]
+        cost = spell.get("cost", 3)
+        if self.gold < cost:
+            return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
+        self.shop[shop_index] = None
+        self.gold -= cost
+        effect = self._apply_spell(spell)
+        return {"success": True, "spell": spell, "spell_effect": effect}
+
+    def _apply_spell(self, spell: dict) -> dict:
+        sid = spell["id"]
+        if sid == "tavern_coin":
+            self.gold = min(self.gold + 1, self.MAX_GOLD)
+        elif sid == "wealthy_bounty":
+            self.gold = min(self.gold + 2, self.MAX_GOLD)
+        elif sid == "shiny_ring":
+            for m in self.board:
+                m.attack += 1; m.health += 1; m.max_health += 1
+        elif sid == "azerite_empowerment":
+            for _ in range(2):
+                for m in self.board:
+                    m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid == "sanctify":
+            for m in self.board:
+                if m.divine_shield:
+                    m.attack += 7
+        elif sid == "queens_command":
+            for m in self.board:
+                m.attack += 3; m.health += 3; m.max_health += 3
+                if "Naga" in m.types:
+                    m.attack += 3; m.health += 3; m.max_health += 3
+        elif sid == "wave_of_gold":
+            for m in self.board:
+                m.attack += 3; m.health += 2; m.max_health += 2
+                if m.golden:
+                    m.attack += 3; m.health += 2; m.max_health += 2
+        elif sid == "might_of_stormwind":
+            import random as _r
+            targets = _r.sample(self.board, min(4, len(self.board)))
+            for t in targets:
+                t.attack += 1; t.health += 2; t.max_health += 2
+        elif sid == "healthy_bounty":
+            import random as _r
+            targets = _r.sample(self.board, min(3, len(self.board)))
+            for t in targets:
+                t.health += 4; t.max_health += 4
+        elif sid == "hostile_bounty":
+            import random as _r
+            targets = _r.sample(self.board, min(3, len(self.board)))
+            for t in targets:
+                t.attack += 4
+        elif sid == "selfish_bounty":
+            if self.board:
+                m = self.board[0]
+                m.attack += 6; m.health += 6; m.max_health += 6
+        elif sid == "pointy_arrow":
+            if self.board:
+                self.board[0].attack += 4
+        elif sid == "tavern_dish_banana":
+            if self.board:
+                t = self.board[0]
+                t.attack += 2; t.health += 2; t.max_health += 2
+        elif sid == "fortify":
+            if self.board:
+                t = self.board[0]
+                t.health += 3; t.max_health += 3; t.taunt = True
+                if "taunt" not in t.abilities:
+                    t.abilities.append("taunt")
+        elif sid == "defenders_rites":
+            if self.board:
+                t = self.board[0]
+                t.attack += 6; t.health += 6; t.max_health += 6
+                t.taunt = True
+                if "taunt" not in t.abilities:
+                    t.abilities.append("taunt")
+        elif sid == "tricky_trousers":
+            if self.board:
+                t = self.board[0]
+                t.attack += 1; t.health += 2; t.max_health += 2
+                t.taunt = not t.taunt
+                if t.taunt and "taunt" not in t.abilities:
+                    t.abilities.append("taunt")
+                elif not t.taunt and "taunt" in t.abilities:
+                    t.abilities.remove("taunt")
+        elif sid == "perfect_vision":
+            if self.board:
+                t = self.board[0]
+                t.attack = 20; t.health = 20; t.max_health = 20
+        elif sid == "deepwater_clan":
+            if self.board:
+                t = self.board[0]
+                t.attack += 2; t.health += 2; t.max_health += 2
+            for m in self.board:
+                if "Murloc" in m.types:
+                    m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid == "misplaced_tea_set":
+            seen = set()
+            for m in self.board:
+                tribe = m.types[0] if m.types else None
+                if tribe and tribe not in seen:
+                    seen.add(tribe)
+                    m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid == "brood_of_nozdormu":
+            if self.board:
+                self.board[0].attack *= 2
+        return {"spell": sid}
 
     def sell_from_hand(self, hand_index: int) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
@@ -333,7 +447,10 @@ class Player:
             "alive": self.alive,
         }
         if include_shop:
-            d["shop"] = [m.to_dict() if m else None for m in self.shop]
+            d["shop"] = [
+                (m if isinstance(m, dict) else m.to_dict()) if m else None
+                for m in self.shop
+            ]
         return d
 
     def public_dict(self) -> dict:

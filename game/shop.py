@@ -1,6 +1,7 @@
 import random
 from game.minion import Minion
 from game.data.minions import MINIONS, POOL_SIZE, SHOP_SIZE, get_minions_for_tier
+from game.data.spells import SPELLS_BY_TIER
 
 
 class ShopManager:
@@ -26,7 +27,7 @@ class ShopManager:
 
     def return_shop_to_pool(self, shop: list):
         for slot in shop:
-            if slot is not None:
+            if slot is not None and not isinstance(slot, dict):
                 self.return_to_pool(slot)
 
     # ── Shop generatie ───────────────────────────────────────
@@ -65,5 +66,14 @@ class ShopManager:
                     mechs = [m for m in mechs if m != chosen_id or self.pool.get(m, 0) > 0]
             else:
                 shop.append(None)
+
+        # Add 1 spell slot for tavern tier 2+
+        if tavern_tier >= 2:
+            tier_spells = []
+            for t in range(1, min(tavern_tier, 6) + 1):
+                tier_spells.extend(SPELLS_BY_TIER.get(t, []))
+            if tier_spells:
+                spell = random.choice(tier_spells)
+                shop.append({**spell, "type": "spell", "cost": 3})
 
         return shop

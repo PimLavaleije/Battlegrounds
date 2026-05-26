@@ -5,16 +5,24 @@ const GameUI = {
     const container = document.getElementById("shop-slots");
     container.innerHTML = "";
     if (!shopSlots) return;
-    shopSlots.forEach((minion, idx) => {
-      if (!minion) {
+    shopSlots.forEach((item, idx) => {
+      if (!item) {
         const empty = document.createElement("div");
         empty.className = "shop-empty-full";
         container.appendChild(empty);
-      } else {
-        const card = buildShopCard(minion);
+      } else if (item.type === "spell") {
+        const card = buildSpellCard(item);
         card.dataset.shopIndex = idx;
         card.addEventListener("click", () => SocketClient.buyMinion(idx));
-        card.addEventListener("mouseenter", e => showTooltip(minion, e));
+        card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
+        card.addEventListener("mouseleave", hideTooltip);
+        card.addEventListener("mousemove", moveTooltip);
+        container.appendChild(card);
+      } else {
+        const card = buildShopCard(item);
+        card.dataset.shopIndex = idx;
+        card.addEventListener("click", () => SocketClient.buyMinion(idx));
+        card.addEventListener("mouseenter", e => showTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);
         container.appendChild(card);
@@ -250,6 +258,40 @@ function buildShopCard(minion, opts = {}) {
   }
 
   return wrapper;
+}
+
+// ── Spreuk kaart ─────────────────────────────────────────────
+function buildSpellCard(spell) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "spell-card-full";
+  wrapper.dataset.uid = spell.id;
+
+  const cost = document.createElement("div");
+  cost.className = "shop-card-cost";
+  cost.textContent = `${spell.cost || 3}💰`;
+  wrapper.appendChild(cost);
+
+  const portrait = SPELL_PORTRAITS[spell.id] || { emoji: "✨" };
+  const fb = document.createElement("div");
+  fb.className = "spell-card-fb";
+  fb.innerHTML = `
+    <div class="sfb-emoji">${portrait.emoji}</div>
+    <div class="sfb-name">${escapeHtml(spell.name)}</div>
+    <div class="spell-tier-badge">T${spell.tier}</div>`;
+  wrapper.appendChild(fb);
+
+  return wrapper;
+}
+
+function showSpellTooltip(spell, e) {
+  const tip = document.getElementById("minion-tooltip");
+  tip.innerHTML = `
+    <div class="tip-name">✨ ${escapeHtml(spell.name)}</div>
+    <div class="tip-tribe">Spreuk · Tier ${spell.tier}</div>
+    ${spell.description ? `<div class="tip-desc">${escapeHtml(spell.description)}</div>` : ""}
+  `;
+  tip.classList.remove("hidden");
+  moveTooltip(e);
 }
 
 // ── Tooltip ──────────────────────────────────────────────────

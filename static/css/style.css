@@ -659,6 +659,45 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Spell card in shop */
+.spell-card-full {
+  position: relative;
+  width: 140px;
+  height: 187px;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #1a0a3a, #0d051d);
+  border: 2px solid #7b4fa0;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 0 8px rgba(140, 80, 200, 0.3);
+}
+.spell-card-full:hover {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 0 16px rgba(180, 100, 255, 0.6);
+  border-color: #b07fe0;
+}
+.spell-card-fb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  text-align: center;
+}
+.spell-card-fb .sfb-emoji { font-size: 2rem; }
+.spell-card-fb .sfb-name  { font-size: 0.7rem; font-weight: 700; color: #e8d0ff; line-height: 1.2; }
+.spell-tier-badge {
+  font-size: 0.6rem;
+  background: rgba(120,60,180,0.5);
+  color: #d0a0ff;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
 /* Shop controls rij */
 .shop-controls {
   display: flex;
