@@ -22,6 +22,9 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
     if len(e_board) > len(p_board):
         current_side = 1
 
+    _apply_combat_auras(p_board)
+    _apply_combat_auras(e_board)
+
     while p_board and e_board and safety < 150:
         safety += 1
 
@@ -290,6 +293,65 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                 m.take_damage(amount)
         step["events"].append({"type": "aoe_damage", "amount": amount})
 
+    elif dtype == "summon_count":
+        count = dr.get("count", 1)
+        for _ in range(count):
+            if len(friendly_board) >= 7:
+                break
+            from game.minion import Minion as M
+            token = M.from_id(dr["token"])
+            friendly_board.append(token)
+            step["events"].append({"type": "summon", "token": token.to_dict()})
+
+    elif dtype == "buff_tribe":
+        tribe = dr.get("tribe")
+        atk_buff = dr.get("attack", 0)
+        hp_buff = dr.get("health", 0)
+        for m in friendly_board:
+            if m.dead or m is dead:
+                continue
+            if tribe is None or m.tribe == tribe:
+                m.attack += atk_buff
+                m.health += hp_buff
+                step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+    elif dtype == "buff_tribe_attack":
+        tribe = dr.get("tribe")
+        atk_buff = dr.get("attack", 0)
+        for m in friendly_board:
+            if m.dead or m is dead:
+                continue
+            if tribe is None or m.tribe == tribe:
+                m.attack += atk_buff
+                step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+    elif dtype == "buff_adjacent":
+        atk_buff = dr.get("attack", 0)
+        hp_buff = dr.get("health", 0)
+        add_taunt = dr.get("add_taunt", False)
+        dead_idx = None
+        for i, m in enumerate(friendly_board):
+            if m is dead:
+                dead_idx = i
+                break
+        if dead_idx is not None:
+            for adj_idx in [dead_idx - 1, dead_idx + 1]:
+                if 0 <= adj_idx < len(friendly_board):
+                    m = friendly_board[adj_idx]
+                    if not m.dead:
+                        m.attack += atk_buff
+                        m.health += hp_buff
+                        if add_taunt:
+                            m.taunt = True
+                        step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+    elif dtype == "buff_all_health":
+        amount = dr.get("amount", 1)
+        for m in friendly_board:
+            if not m.dead and m is not dead:
+                m.health += amount
+                step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
     elif dtype == "summon_random_deathrattle":
         dr_minions = [mid for mid, data in MINIONS.items() if data.get("deathrattle")]
         count = dr.get("count", 2)
@@ -303,13 +365,20 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
             step["events"].append({"type": "summon", "token": new_m.to_dict()})
 
 
+def _apply_combat_auras(board: list[Minion]):
+    """Past start-of-combat aura's toe (Humming Bird e.d.)."""
+    for m in board:
+        if not m.passive:
+            continue
+        ptype = m.passive.get("type")
+        if ptype == "beast_aura":
+            for ally in board:
+                if ally is not m and ally.tribe == "Beast":
+                    ally.attack += m.passive.get("attack", 0)
+
+
 def _trigger_pack_leader(new_minion: Minion, friendly_board: list, step: dict):
-    if new_minion.tribe != "Beast":
-        return
-    for m in friendly_board:
-        if m.id == "pack_leader" and not m.dead:
-            new_minion.attack += 3
-            step["events"].append({"type": "pack_leader_buff", "uid": new_minion.uid})
+    pass
 
 
 def _trigger_shield_pop_passives(popped: Minion, friendly_board: list, step: dict):

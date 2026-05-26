@@ -6,264 +6,343 @@ SHOP_SIZE = {1: 3, 2: 4, 3: 4, 4: 5, 5: 5, 6: 6}
 
 # Token minions (not in shop pool)
 TOKENS = {
-    "tabbycat": {
-        "id": "tabbycat", "name": "Tabbycat", "tier": 1,
-        "attack": 1, "health": 1, "tribe": "Beast",
-        "abilities": [], "token": True, "description": "Een klein katje."
+    "skeleton": {
+        "id": "skeleton", "name": "Skelet", "tier": 1,
+        "attack": 1, "health": 1, "tribe": "Undead",
+        "abilities": [], "token": True, "description": "Klein Undead skelet.",
     },
-    "murloc_scout": {
-        "id": "murloc_scout", "name": "Murloc Scout", "tier": 1,
-        "attack": 1, "health": 1, "tribe": "Murloc",
-        "abilities": [], "token": True, "description": "Mrgglll!"
+    "whelp": {
+        "id": "whelp", "name": "Drakenwelp", "tier": 1,
+        "attack": 3, "health": 3, "tribe": "Dragon",
+        "abilities": [], "token": True, "description": "Een jonge draak.",
     },
-    "joe_bot": {
-        "id": "joe_bot", "name": "Jo-E Bot", "tier": 1,
+    "microbot": {
+        "id": "microbot", "name": "Microbot", "tier": 1,
         "attack": 1, "health": 1, "tribe": "Mech",
-        "abilities": [], "token": True, "description": "Een vrolijke robot."
+        "abilities": [], "token": True, "description": "Een minuscule robot.",
     },
-    "big_bad_wolf": {
-        "id": "big_bad_wolf", "name": "Big Bad Wolf", "tier": 2,
+    "cubling": {
+        "id": "cubling", "name": "Cubling", "tier": 1,
+        "attack": 0, "health": 1, "tribe": "Beast",
+        "abilities": ["taunt"], "token": True, "description": "Klein kubusbeest met Taunt.",
+    },
+    "turtle": {
+        "id": "turtle", "name": "Schildpad", "tier": 2,
+        "attack": 2, "health": 3, "tribe": "Beast",
+        "abilities": ["taunt"], "token": True, "description": "Een schildpad met Taunt.",
+    },
+    "quilboar_runt": {
+        "id": "quilboar_runt", "name": "Quilboar Jong", "tier": 1,
+        "attack": 1, "health": 1, "tribe": "Quilboar",
+        "abilities": ["taunt"], "token": True, "description": "Een jong Quilboar met Taunt.",
+    },
+    "sewer_rat_token": {
+        "id": "sewer_rat_token", "name": "Rioolrat", "tier": 2,
         "attack": 3, "health": 2, "tribe": "Beast",
-        "abilities": [], "token": True, "description": "Hoe beter om je mee op te eten."
+        "abilities": [], "token": True, "description": "Een rat uit het riool.",
     },
-    "damaged_golem": {
-        "id": "damaged_golem", "name": "Beschadigde Golem", "tier": 2,
-        "attack": 2, "health": 1, "tribe": "Mech",
-        "abilities": [], "token": True, "description": "Bijna kapot maar nog gevaarlijk."
+    "eternal_knight": {
+        "id": "eternal_knight", "name": "Eeuwige Ridder", "tier": 2,
+        "attack": 4, "health": 2, "tribe": "Undead",
+        "abilities": [], "token": True, "description": "Een eeuwige strijder.",
     },
-    "spider": {
-        "id": "spider", "name": "Spider", "tier": 3,
-        "attack": 1, "health": 1, "tribe": "Beast",
-        "abilities": [], "token": True, "description": "Een kleine spin."
-    },
-    "guard_bot": {
-        "id": "guard_bot", "name": "Guard Bot", "tier": 4,
-        "attack": 2, "health": 3, "tribe": "Mech",
-        "abilities": ["taunt"], "token": True, "description": "Beschermt zijn vrienden."
+    "sky_pirate": {
+        "id": "sky_pirate", "name": "Luchtpiraat", "tier": 1,
+        "attack": 1, "health": 1, "tribe": "Pirate",
+        "abilities": [], "token": True, "description": "Valt onmiddellijk aan.",
     },
 }
 
 # Main minion pool (shop-able)
 MINIONS = {
     # ── TIER 1 ──────────────────────────────────────────────
-    "alleycat": {
-        "id": "alleycat", "name": "Alleycat", "tier": 1,
-        "attack": 1, "health": 1, "tribe": "Beast",
-        "abilities": ["battlecry"],
-        "battlecry": {"type": "summon", "token": "tabbycat"},
-        "description": "Slagkreet: Roep een 1/1 Tabbycat op.",
+    "wrath_weaver": {
+        "id": "wrath_weaver", "name": "Wrath Weaver", "tier": 1,
+        "attack": 1, "health": 4, "tribe": "Demon",
+        "abilities": [],
+        "description": "Na Demon gespeeld: doe 1 schade aan jezelf, +2/+1.",
     },
-    "murloc_tidehunter": {
-        "id": "murloc_tidehunter", "name": "Murloc Tidehunter", "tier": 1,
-        "attack": 2, "health": 1, "tribe": "Murloc",
-        "abilities": ["battlecry"],
-        "battlecry": {"type": "summon", "token": "murloc_scout"},
-        "description": "Slagkreet: Roep een 1/1 Murloc Scout op.",
+    "crackling_cyclone": {
+        "id": "crackling_cyclone", "name": "Crackling Cyclone", "tier": 1,
+        "attack": 2, "health": 1, "tribe": "Elemental",
+        "abilities": ["divine_shield", "windfury"],
+        "description": "Goddelijk Schild. Windtoom.",
     },
-    "fiendish_servant": {
-        "id": "fiendish_servant", "name": "Fiendish Servant", "tier": 1,
-        "attack": 2, "health": 1, "tribe": "Demon",
+    "harmless_bonehead": {
+        "id": "harmless_bonehead", "name": "Harmless Bonehead", "tier": 1,
+        "attack": 1, "health": 1, "tribe": "Undead",
         "abilities": ["deathrattle"],
-        "deathrattle": {"type": "give_attack_random"},
-        "description": "Sterf: Geef mijn aanval aan een willekeurige vriend.",
+        "deathrattle": {"type": "summon_two", "token": "skeleton"},
+        "description": "Sterf: Roep twee 1/1 Skeletten op.",
     },
-    "vulgar_homunculus": {
-        "id": "vulgar_homunculus", "name": "Vulgar Homunculus", "tier": 1,
-        "attack": 2, "health": 4, "tribe": "Demon",
-        "abilities": ["taunt"],
-        "description": "Taunt.",
+    "risen_rider": {
+        "id": "risen_rider", "name": "Risen Rider", "tier": 1,
+        "attack": 2, "health": 1, "tribe": "Undead",
+        "abilities": ["taunt", "reborn"],
+        "description": "Taunt. Herboren.",
     },
-    "righteous_protector": {
-        "id": "righteous_protector", "name": "Righteous Protector", "tier": 1,
-        "attack": 1, "health": 1, "tribe": None,
-        "abilities": ["taunt", "divine_shield"],
-        "description": "Taunt. Goddelijk Schild.",
+    "twilight_hatchling": {
+        "id": "twilight_hatchling", "name": "Twilight Hatchling", "tier": 1,
+        "attack": 1, "health": 1, "tribe": "Dragon",
+        "abilities": ["deathrattle"],
+        "deathrattle": {"type": "summon", "token": "whelp"},
+        "description": "Sterf: Roep een 3/3 Drakenwelp op.",
     },
-    "mecharoo": {
-        "id": "mecharoo", "name": "Mecharoo", "tier": 1,
+    "cord_puller": {
+        "id": "cord_puller", "name": "Cord Puller", "tier": 1,
         "attack": 1, "health": 1, "tribe": "Mech",
+        "abilities": ["divine_shield", "deathrattle"],
+        "deathrattle": {"type": "summon", "token": "microbot"},
+        "description": "Goddelijk Schild. Sterf: Roep een 1/1 Microbot op.",
+    },
+    "manasaber": {
+        "id": "manasaber", "name": "Manasaber", "tier": 1,
+        "attack": 4, "health": 1, "tribe": "Beast",
         "abilities": ["deathrattle"],
-        "deathrattle": {"type": "summon", "token": "joe_bot"},
-        "description": "Sterf: Roep een 1/1 Jo-E Bot op.",
+        "deathrattle": {"type": "summon_two", "token": "cubling"},
+        "description": "Sterf: Roep twee 0/1 Cublings met Taunt op.",
     },
 
     # ── TIER 2 ──────────────────────────────────────────────
-    "scavenging_hyena": {
-        "id": "scavenging_hyena", "name": "Scavenging Hyena", "tier": 2,
-        "attack": 2, "health": 1, "tribe": "Beast",
-        "abilities": ["passive_beast_dies"],
-        "passive": {"type": "beast_dies_buff", "attack": 2, "health": 1},
-        "description": "Als een vriend-Beast sterft: +2 Aanval, +1 Leven.",
+    "sellemental": {
+        "id": "sellemental", "name": "Sellemental", "tier": 2,
+        "attack": 3, "health": 3, "tribe": "Elemental",
+        "abilities": [],
+        "description": "Als je dit verkoopt: Voeg een 3/3 Elemental toe aan je winkel.",
     },
-    "kindly_grandmother": {
-        "id": "kindly_grandmother", "name": "Kindly Grandmother", "tier": 2,
-        "attack": 1, "health": 1, "tribe": "Beast",
+    "blazing_skyfin": {
+        "id": "blazing_skyfin", "name": "Blazing Skyfin", "tier": 2,
+        "attack": 2, "health": 4, "tribe": "Dragon",
+        "abilities": [],
+        "description": "Na een Slagkreet: +1/+1.",
+    },
+    "scarlet_skull": {
+        "id": "scarlet_skull", "name": "Scarlet Skull", "tier": 2,
+        "attack": 2, "health": 1, "tribe": "Undead",
+        "abilities": ["reborn", "deathrattle"],
+        "deathrattle": {"type": "buff_tribe", "tribe": "Undead", "attack": 1, "health": 2, "all": True},
+        "description": "Herboren. Sterf: Geef jouw Undead +1/+2.",
+    },
+    "humming_bird": {
+        "id": "humming_bird", "name": "Humming Bird", "tier": 2,
+        "attack": 1, "health": 4, "tribe": "Beast",
+        "abilities": ["passive_beast_aura"],
+        "passive": {"type": "beast_aura", "attack": 1},
+        "description": "Gevecht start: Jouw Beesten krijgen +1 Aanval.",
+    },
+    "sewer_rat": {
+        "id": "sewer_rat", "name": "Sewer Rat", "tier": 2,
+        "attack": 3, "health": 2, "tribe": "Beast",
         "abilities": ["deathrattle"],
-        "deathrattle": {"type": "summon", "token": "big_bad_wolf"},
-        "description": "Sterf: Roep een 3/2 Big Bad Wolf op.",
+        "deathrattle": {"type": "summon", "token": "turtle"},
+        "description": "Sterf: Roep een 2/3 Schildpad met Taunt op.",
     },
-    "unstable_ghoul": {
-        "id": "unstable_ghoul", "name": "Unstable Ghoul", "tier": 2,
-        "attack": 1, "health": 3, "tribe": "Undead",
-        "abilities": ["taunt", "deathrattle"],
-        "deathrattle": {"type": "deal_damage_all", "amount": 1},
-        "description": "Taunt. Sterf: Doe 1 schade aan alle minions.",
-    },
-    "harvest_golem": {
-        "id": "harvest_golem", "name": "Harvest Golem", "tier": 2,
-        "attack": 2, "health": 3, "tribe": "Mech",
-        "abilities": ["deathrattle"],
-        "deathrattle": {"type": "summon", "token": "damaged_golem"},
-        "description": "Sterf: Roep een 2/1 Beschadigde Golem op.",
-    },
-    "pack_leader": {
-        "id": "pack_leader", "name": "Pack Leader", "tier": 2,
-        "attack": 3, "health": 3, "tribe": "Beast",
-        "abilities": ["passive_beast_summoned"],
-        "passive": {"type": "beast_summoned_buff", "attack": 3},
-        "description": "Als een vriend-Beast wordt opgeroepen: +3 Aanval.",
-    },
-    "rockpool_hunter": {
-        "id": "rockpool_hunter", "name": "Rockpool Hunter", "tier": 2,
-        "attack": 2, "health": 3, "tribe": "Murloc",
+    "nerubian_deathswarmer": {
+        "id": "nerubian_deathswarmer", "name": "Nerubian Deathswarmer", "tier": 2,
+        "attack": 1, "health": 4, "tribe": "Undead",
         "abilities": ["battlecry"],
-        "battlecry": {"type": "buff_tribe", "tribe": "Murloc", "attack": 1, "health": 1},
-        "description": "Slagkreet: Geef een vriend-Murloc +1/+1.",
+        "battlecry": {"type": "buff_tribe", "tribe": "Undead", "attack": 1, "health": 0, "all": True},
+        "description": "Slagkreet: Jouw Undead krijgen +1 Aanval voor het hele spel.",
+    },
+    "glowgullet_warlord": {
+        "id": "glowgullet_warlord", "name": "Glowgullet Warlord", "tier": 2,
+        "attack": 2, "health": 2, "tribe": "Quilboar",
+        "abilities": ["deathrattle"],
+        "deathrattle": {"type": "summon_two", "token": "quilboar_runt"},
+        "description": "Sterf: Roep twee 1/1 Quilboar met Taunt op.",
     },
 
     # ── TIER 3 ──────────────────────────────────────────────
-    "infested_wolf": {
-        "id": "infested_wolf", "name": "Infested Wolf", "tier": 3,
-        "attack": 3, "health": 3, "tribe": "Beast",
-        "abilities": ["deathrattle"],
-        "deathrattle": {"type": "summon_two", "token": "spider"},
-        "description": "Sterf: Roep twee 1/1 Spiders op.",
+    "deflect_o_bot": {
+        "id": "deflect_o_bot", "name": "Deflect-o-Bot", "tier": 3,
+        "attack": 3, "health": 2, "tribe": "Mech",
+        "abilities": ["divine_shield"],
+        "description": "Goddelijk Schild. Elke keer dat je een Mech koopt: +2 Aanval en Goddelijk Schild.",
     },
-    "soul_juggler": {
-        "id": "soul_juggler", "name": "Soul Juggler", "tier": 3,
-        "attack": 3, "health": 3, "tribe": "Demon",
-        "abilities": ["passive_demon_dies"],
-        "passive": {"type": "demon_dies_damage", "amount": 3},
-        "description": "Als een vriend-Demon sterft: Doe 3 schade aan een willekeurige vijand.",
-    },
-    "bronze_warden": {
-        "id": "bronze_warden", "name": "Bronze Warden", "tier": 3,
-        "attack": 2, "health": 1, "tribe": "Dragon",
-        "abilities": ["divine_shield", "reborn"],
-        "description": "Goddelijk Schild. Herboren.",
-    },
-    "arm_of_empire": {
-        "id": "arm_of_empire", "name": "Arm of the Empire", "tier": 3,
-        "attack": 2, "health": 5, "tribe": None,
-        "abilities": ["taunt"],
-        "description": "Taunt.",
-    },
-    "twilight_emissary": {
-        "id": "twilight_emissary", "name": "Twilight Emissary", "tier": 3,
-        "attack": 4, "health": 4, "tribe": "Dragon",
-        "abilities": ["taunt"],
-        "description": "Taunt.",
-    },
-    "houndmaster": {
-        "id": "houndmaster", "name": "Houndmaster", "tier": 3,
-        "attack": 4, "health": 3, "tribe": None,
-        "abilities": ["battlecry"],
-        "battlecry": {"type": "buff_tribe", "tribe": "Beast", "attack": 2, "health": 2, "add_taunt": True},
-        "description": "Slagkreet: Geef een vriend-Beast +2/+2 en Taunt.",
-    },
-
-    # ── TIER 4 ──────────────────────────────────────────────
     "annoy_o_module": {
-        "id": "annoy_o_module", "name": "Annoy-o-Module", "tier": 4,
+        "id": "annoy_o_module", "name": "Annoy-o-Module", "tier": 3,
         "attack": 2, "health": 4, "tribe": "Mech",
         "abilities": ["divine_shield", "taunt"],
         "description": "Goddelijk Schild. Taunt.",
     },
-    "cave_hydra": {
-        "id": "cave_hydra", "name": "Cave Hydra", "tier": 4,
-        "attack": 2, "health": 4, "tribe": "Beast",
-        "abilities": ["cleave"],
-        "description": "Cleave (raakt ook aangrenzende vijanden).",
-    },
-    "drakonid_enforcer": {
-        "id": "drakonid_enforcer", "name": "Drakonid Enforcer", "tier": 4,
-        "attack": 3, "health": 6, "tribe": "Dragon",
-        "abilities": ["passive_divine_shield_pop"],
-        "passive": {"type": "dragon_shield_pop", "attack": 3, "health": 3},
-        "description": "+3/+3 wanneer een vriend-Dragon's Goddelijk Schild wordt doorbroken.",
-    },
-    "bolvar_fireblood": {
-        "id": "bolvar_fireblood", "name": "Bolvar, Fireblood", "tier": 4,
-        "attack": 1, "health": 7, "tribe": None,
-        "abilities": ["divine_shield", "passive_divine_shield_pop"],
-        "passive": {"type": "any_shield_pop", "attack": 3},
-        "description": "Goddelijk Schild. +3 Aanval wanneer een vriend-Goddelijk Schild doorbroken wordt.",
-    },
-    "security_rover": {
-        "id": "security_rover", "name": "Security Rover", "tier": 4,
-        "attack": 2, "health": 6, "tribe": "Mech",
-        "abilities": ["deathrattle"],
-        "deathrattle": {"type": "summon_two", "token": "guard_bot"},
-        "description": "Sterf: Roep twee 2/3 Guard Bots met Taunt op.",
-    },
-
-    # ── TIER 5 ──────────────────────────────────────────────
-    "baron_rivendare": {
-        "id": "baron_rivendare", "name": "Baron Rivendare", "tier": 5,
-        "attack": 1, "health": 7, "tribe": None,
-        "abilities": ["passive_double_deathrattle"],
-        "description": "Jouw Sterf-effecten activeren twee keer.",
-    },
-    "junkbot": {
-        "id": "junkbot", "name": "Junkbot", "tier": 5,
-        "attack": 1, "health": 5, "tribe": "Mech",
-        "abilities": ["passive_mech_dies"],
-        "passive": {"type": "mech_dies_buff", "attack": 2, "health": 2},
-        "description": "Als een vriend-Mech sterft: +2/+2.",
-    },
-    "brann_bronzebeard": {
-        "id": "brann_bronzebeard", "name": "Brann Bronzebeard", "tier": 5,
-        "attack": 2, "health": 4, "tribe": None,
-        "abilities": ["passive_double_battlecry"],
-        "description": "Jouw Slagkreten activeren twee keer.",
-    },
-    "lightfang_enforcer": {
-        "id": "lightfang_enforcer", "name": "Lightfang Enforcer", "tier": 5,
-        "attack": 2, "health": 2, "tribe": None,
-        "abilities": [],
-        "end_of_turn": {"type": "buff_one_per_tribe", "attack": 2, "health": 1},
-        "description": "Einde beurt: Geef één minion van elk tribe-type +2/+1.",
-    },
-
-    # ── TIER 6 ──────────────────────────────────────────────
-    "maexxna": {
-        "id": "maexxna", "name": "Maexxna", "tier": 6,
-        "attack": 2, "health": 8, "tribe": "Beast",
+    "deadly_spore": {
+        "id": "deadly_spore", "name": "Deadly Spore", "tier": 3,
+        "attack": 1, "health": 1, "tribe": None,
         "abilities": ["poisonous"],
         "description": "Giftig (dood elke minion die schade ontvangt).",
     },
-    "zapp_slywick": {
-        "id": "zapp_slywick", "name": "Zapp Slywick", "tier": 6,
-        "attack": 7, "health": 10, "tribe": None,
-        "abilities": ["zapp_targeting"],
-        "description": "Valt altijd de vijand met de laagste aanval aan.",
+    "floating_watcher": {
+        "id": "floating_watcher", "name": "Floating Watcher", "tier": 3,
+        "attack": 4, "health": 4, "tribe": "Demon",
+        "abilities": [],
+        "description": "Na onbeschermde schade aan je held: +2/+2.",
     },
-    "ghastcoiler": {
-        "id": "ghastcoiler", "name": "Ghastcoiler", "tier": 6,
-        "attack": 7, "health": 7, "tribe": "Undead",
+    "hardy_orca": {
+        "id": "hardy_orca", "name": "Hardy Orca", "tier": 3,
+        "attack": 1, "health": 6, "tribe": "Beast",
+        "abilities": ["taunt"],
+        "description": "Taunt. Als dit schade ontvangt: andere vrienden +1/+1.",
+    },
+    "cadaver_caretaker": {
+        "id": "cadaver_caretaker", "name": "Cadaver Caretaker", "tier": 3,
+        "attack": 3, "health": 3, "tribe": "Undead",
         "abilities": ["deathrattle"],
-        "deathrattle": {"type": "summon_random_deathrattle", "count": 2},
-        "description": "Sterf: Roep 2 willekeurige Sterf-minions op.",
+        "deathrattle": {"type": "summon_count", "token": "skeleton", "count": 3},
+        "description": "Sterf: Roep drie 1/1 Skeletten op.",
     },
-    "amalgadon": {
-        "id": "amalgadon", "name": "Amalgadon", "tier": 6,
-        "attack": 6, "health": 6, "tribe": None,
-        "abilities": ["amalgadon_passive"],
-        "description": "Krijgt alle keywords van tribes op jouw board.",
+    "mama_mrrglton": {
+        "id": "mama_mrrglton", "name": "Mama Mrrglton", "tier": 3,
+        "attack": 5, "health": 3, "tribe": "Murloc",
+        "abilities": ["battlecry"],
+        "battlecry": {"type": "buff_tribe", "tribe": "Murloc", "attack": 3, "health": 0, "all": True},
+        "description": "Slagkreet: Geef jouw andere Murlocs +3 Aanval.",
+    },
+
+    # ── TIER 4 ──────────────────────────────────────────────
+    "tunnel_blaster": {
+        "id": "tunnel_blaster", "name": "Tunnel Blaster", "tier": 4,
+        "attack": 3, "health": 7, "tribe": None,
+        "abilities": ["taunt", "deathrattle"],
+        "deathrattle": {"type": "deal_damage_all", "amount": 3},
+        "description": "Taunt. Sterf: Doe 3 schade aan alle minions.",
+    },
+    "determined_defender": {
+        "id": "determined_defender", "name": "Determined Defender", "tier": 4,
+        "attack": 5, "health": 5, "tribe": None,
+        "abilities": ["taunt", "deathrattle"],
+        "deathrattle": {"type": "buff_adjacent", "attack": 5, "health": 5, "add_taunt": True},
+        "description": "Taunt. Sterf: Geef aangrenzende vrienden +5/+5 en Taunt.",
+    },
+    "king_bagurgle": {
+        "id": "king_bagurgle", "name": "King Bagurgle", "tier": 4,
+        "attack": 4, "health": 4, "tribe": "Murloc",
+        "abilities": ["battlecry"],
+        "battlecry": {"type": "buff_tribe", "tribe": "Murloc", "attack": 2, "health": 3, "all": True},
+        "description": "Slagkreet: Geef jouw andere Murlocs +2/+3.",
+    },
+    "plaguerunner": {
+        "id": "plaguerunner", "name": "Plaguerunner", "tier": 4,
+        "attack": 4, "health": 2, "tribe": "Undead",
+        "abilities": ["deathrattle"],
+        "deathrattle": {"type": "buff_tribe", "tribe": "Undead", "attack": 2, "health": 0, "all": True},
+        "description": "Sterf: Geef jouw Undead +2 Aanval.",
+    },
+    "imposing_percussionist": {
+        "id": "imposing_percussionist", "name": "Imposing Percussionist", "tier": 4,
+        "attack": 4, "health": 4, "tribe": "Demon",
+        "abilities": ["battlecry"],
+        "battlecry": {"type": "buff_tribe", "tribe": "Demon", "attack": 2, "health": 2},
+        "description": "Slagkreet: Geef een vriend-Demon +2/+2.",
+    },
+    "banana_slamma": {
+        "id": "banana_slamma", "name": "Banana Slamma", "tier": 4,
+        "attack": 3, "health": 6, "tribe": "Beast",
+        "abilities": [],
+        "description": "Als een vriend-Beest wordt opgeroepen: verdubbel zijn stats.",
+    },
+    "monstrous_macaw": {
+        "id": "monstrous_macaw", "name": "Monstrous Macaw", "tier": 4,
+        "attack": 5, "health": 4, "tribe": "Beast",
+        "abilities": [],
+        "description": "Rally: Activeer het meest-linkse Sterf-effect.",
+    },
+
+    # ── TIER 5 ──────────────────────────────────────────────
+    "bile_spitter": {
+        "id": "bile_spitter", "name": "Bile Spitter", "tier": 5,
+        "attack": 1, "health": 10, "tribe": "Murloc",
+        "abilities": ["poisonous"],
+        "description": "Giftig. Rally: een ander Murloc krijgt ook Giftig.",
+    },
+    "sewer_lord": {
+        "id": "sewer_lord", "name": "Sewer Lord", "tier": 5,
+        "attack": 4, "health": 6, "tribe": "Beast",
+        "abilities": ["deathrattle"],
+        "deathrattle": {"type": "summon_two", "token": "sewer_rat_token"},
+        "description": "Sterf: Roep twee 3/2 Rioolratten op.",
+    },
+    "tichondrius": {
+        "id": "tichondrius", "name": "Tichondrius", "tier": 5,
+        "attack": 3, "health": 6, "tribe": "Demon",
+        "abilities": [],
+        "description": "Na schade aan je held: Demonen +2/+1.",
+    },
+    "divine_sparkbot": {
+        "id": "divine_sparkbot", "name": "Divine Sparkbot", "tier": 5,
+        "attack": 4, "health": 2, "tribe": "Mech",
+        "abilities": ["divine_shield", "taunt"],
+        "description": "Goddelijk Schild. Taunt.",
+    },
+    "spiked_savior": {
+        "id": "spiked_savior", "name": "Spiked Savior", "tier": 5,
+        "attack": 8, "health": 2, "tribe": "Beast",
+        "abilities": ["taunt", "reborn", "deathrattle"],
+        "deathrattle": {"type": "buff_all_health", "amount": 1},
+        "description": "Taunt. Herboren. Sterf: Geef alle vrienden +1 Leven.",
+    },
+    "kalecgos": {
+        "id": "kalecgos", "name": "Kalecgos, Arcane Aspect", "tier": 5,
+        "attack": 4, "health": 12, "tribe": "Dragon",
+        "abilities": [],
+        "description": "Na een Slagkreet: Jouw Draken +1/+1.",
+    },
+    "sinrunner_blanchy": {
+        "id": "sinrunner_blanchy", "name": "Sinrunner Blanchy", "tier": 5,
+        "attack": 8, "health": 8, "tribe": "Undead",
+        "abilities": ["reborn"],
+        "description": "Herboren. In gevecht: Herboren met vol Leven.",
+    },
+
+    # ── TIER 6 ──────────────────────────────────────────────
+    "goldrinn": {
+        "id": "goldrinn", "name": "Goldrinn, de Grote Wolf", "tier": 6,
+        "attack": 8, "health": 8, "tribe": "Beast",
+        "abilities": ["deathrattle"],
+        "deathrattle": {"type": "buff_tribe_attack", "tribe": "Beast", "attack": 6},
+        "description": "Sterf: Geef jouw Beesten +6 Aanval.",
+    },
+    "elemental_of_surprise": {
+        "id": "elemental_of_surprise", "name": "Elemental of Surprise", "tier": 6,
+        "attack": 8, "health": 8, "tribe": "Elemental",
+        "abilities": ["divine_shield"],
+        "description": "Goddelijk Schild.",
+    },
+    "eternal_summoner": {
+        "id": "eternal_summoner", "name": "Eternal Summoner", "tier": 6,
+        "attack": 8, "health": 1, "tribe": "Undead",
+        "abilities": ["reborn", "deathrattle"],
+        "deathrattle": {"type": "summon", "token": "eternal_knight"},
+        "description": "Herboren. Sterf: Roep een 4/2 Eeuwige Ridder op.",
+    },
+    "ship_jumper": {
+        "id": "ship_jumper", "name": "Ship Jumper", "tier": 6,
+        "attack": 6, "health": 6, "tribe": "Pirate",
+        "abilities": ["deathrattle"],
+        "deathrattle": {"type": "summon", "token": "sky_pirate"},
+        "description": "Sterf: Roep een 1/1 Luchtpiraat op met jouw Aanval.",
+    },
+    "nightbane_ignited": {
+        "id": "nightbane_ignited", "name": "Nightbane, Ignited", "tier": 6,
+        "attack": 16, "health": 8, "tribe": "Dragon",
+        "abilities": ["taunt"],
+        "description": "Taunt. Sterf: Geef 2 vrienden dit minion's Aanval.",
+    },
+    "moonsteel_juggernaut": {
+        "id": "moonsteel_juggernaut", "name": "Moonsteel Juggernaut", "tier": 6,
+        "attack": 8, "health": 8, "tribe": "Mech",
+        "abilities": [],
+        "description": "Einde beurt: Krijg een 6/6 Magnetic Satellite.",
+    },
+    "rabid_panther": {
+        "id": "rabid_panther", "name": "Rabid Panther", "tier": 6,
+        "attack": 4, "health": 8, "tribe": "Beast",
+        "abilities": [],
+        "description": "Na een vriend-Beest: Beesten +3/+3 en 1 schade.",
     },
 }
 
 ALL_MINIONS = {**TOKENS, **MINIONS}
+
 
 def get_minions_for_tier(tavern_tier):
     """Geeft alle minions terug die beschikbaar zijn voor dit tavern tier."""

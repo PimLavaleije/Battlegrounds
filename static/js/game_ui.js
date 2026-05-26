@@ -87,35 +87,33 @@ const GameUI = {
   },
 };
 
-// ── Bouw een ovale Hearthstone-stijl kaart ───────────────────
+// ── Bouw een kaart op basis van de echte BG kaartafbeelding ──
 function buildOvalCard(minion, context) {
   const isShop = context === "shop";
   const wrapper = document.createElement("div");
   wrapper.className = isShop ? "shop-card" : "minion-card";
   wrapper.dataset.uid = minion.uid;
 
-  // Extra klassen
-  if (minion.golden)       wrapper.classList.add("golden");
-  if (minion.taunt)        wrapper.classList.add("taunt-ring");
-  if (minion.divine_shield)wrapper.classList.add("divine-glow");
+  if (minion.golden)        wrapper.classList.add("golden");
+  if (minion.taunt)         wrapper.classList.add("taunt-ring");
+  if (minion.divine_shield) wrapper.classList.add("divine-glow");
   if (minion.health <= 1 && !isShop) wrapper.classList.add("low-hp");
 
-  // Portret data
   const portrait = getPortrait(minion.id);
-  const bgGrad   = getPortraitBg(minion.id, minion.tribe);
+  const imgUrl   = getCardImageUrl(minion.id);
+  const imgHtml  = imgUrl
+    ? `<img class="card-full-img" src="${imgUrl}" alt="${escapeHtml(minion.name)}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : "";
 
   wrapper.innerHTML = `
-    <div class="mc-frame">
-      <div class="mc-tier">T${minion.tier}</div>
-      <div class="mc-portrait" style="background:${bgGrad}">
-        <span class="mc-portrait-emoji">${portrait.emoji}</span>
-      </div>
-      <div class="mc-name">${escapeHtml(minion.name)}${minion.golden ? " ✨" : ""}</div>
-      <div class="mc-kws">${buildKwIcons(minion)}</div>
-      ${minion.description ? `<div class="mc-desc">${escapeHtml(minion.description)}</div>` : ""}
-      <div class="mc-atk">${minion.attack}</div>
-      <div class="mc-hp">${minion.health}</div>
+    ${imgHtml}
+    <div class="card-fallback" style="display:${imgUrl ? "none" : "flex"}">
+      <span class="card-fallback-emoji">${portrait.emoji}</span>
+      <span class="card-fallback-name">${escapeHtml(minion.name)}</span>
     </div>
+    <div class="mc-atk">${minion.attack}</div>
+    <div class="mc-hp">${minion.health}</div>
   `;
 
   return wrapper;
@@ -132,35 +130,23 @@ function buildCombatCard(minion) {
   if (minion.divine_shield) wrapper.classList.add("divine-glow");
 
   const portrait = getPortrait(minion.id);
-  const bgGrad   = getPortraitBg(minion.id, minion.tribe);
+  const imgUrl   = getCardImageUrl(minion.id);
+  const imgHtml  = imgUrl
+    ? `<img class="card-full-img" src="${imgUrl}" alt="${escapeHtml(minion.name)}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : "";
 
   wrapper.innerHTML = `
-    <div class="mc-frame">
-      <div class="mc-tier">T${minion.tier}</div>
-      <div class="mc-portrait" style="background:${bgGrad}">
-        <span class="mc-portrait-emoji">${portrait.emoji}</span>
-      </div>
-      <div class="mc-name">${escapeHtml(minion.name)}</div>
-      <div class="mc-kws">${buildKwIcons(minion)}</div>
-      <div class="mc-atk">${minion.attack}</div>
-      <div class="mc-hp">${minion.health}</div>
+    ${imgHtml}
+    <div class="card-fallback" style="display:${imgUrl ? "none" : "flex"}">
+      <span class="card-fallback-emoji">${portrait.emoji}</span>
+      <span class="card-fallback-name">${escapeHtml(minion.name)}</span>
     </div>
+    <div class="mc-atk">${minion.attack}</div>
+    <div class="mc-hp">${minion.health}</div>
   `;
 
   return wrapper;
-}
-
-// ── Keyword-icoontjes ─────────────────────────────────────────
-function buildKwIcons(minion) {
-  const icons = [];
-  if (minion.taunt)         icons.push('<span class="mc-kw" title="Taunt">🛡️</span>');
-  if (minion.divine_shield) icons.push('<span class="mc-kw" title="Goddelijk Schild">💫</span>');
-  if (minion.reborn)        icons.push('<span class="mc-kw" title="Herboren">🔮</span>');
-  if (minion.poisonous)     icons.push('<span class="mc-kw" title="Giftig">☠️</span>');
-  if (minion.windfury)      icons.push('<span class="mc-kw" title="Windtoom">⚡</span>');
-  if (minion.cleave)        icons.push('<span class="mc-kw" title="Cleave">🗡️</span>');
-  if (minion.deathrattle)   icons.push('<span class="mc-kw" title="Sterf-effect">💀</span>');
-  return icons.join("");
 }
 
 // ── Tooltip ──────────────────────────────────────────────────
@@ -183,6 +169,7 @@ function showTooltip(minion, e) {
       <span class="hp">❤️ ${minion.health}</span>
     </div>
     ${kws.length ? `<div class="tip-kws">${kws.join(" · ")}</div>` : ""}
+    ${minion.description ? `<div class="tip-desc">${escapeHtml(minion.description)}</div>` : ""}
   `;
   tip.classList.remove("hidden");
   moveTooltip(e);

@@ -201,7 +201,15 @@ class Player:
         if effect == "buff_tribe":
             tribe = bc.get("tribe")
             targets = [m for m in self.board if m.tribe == tribe and m is not minion]
-            if targets:
+            if bc.get("all"):
+                for target in targets:
+                    target.attack += bc.get("attack", 0)
+                    target.health += bc.get("health", 0)
+                    target.max_health += bc.get("health", 0)
+                    if bc.get("add_taunt"):
+                        target.taunt = True
+                return {"buffed_all": [t.to_dict() for t in targets]} if targets else None
+            elif targets:
                 target = random.choice(targets)
                 target.attack += bc.get("attack", 0)
                 target.health += bc.get("health", 0)
