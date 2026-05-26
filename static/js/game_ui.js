@@ -87,7 +87,7 @@ const GameUI = {
   },
 };
 
-// ── Bouw een kaart op basis van de echte BG kaartafbeelding ──
+// ── Bouw een oval portret-kaart (Hearthstone BG stijl) ──────
 function buildOvalCard(minion, context) {
   const isShop = context === "shop";
   const wrapper = document.createElement("div");
@@ -101,16 +101,16 @@ function buildOvalCard(minion, context) {
 
   const portrait = getPortrait(minion.id);
   const imgUrl   = getCardImageUrl(minion.id);
-  const imgHtml  = imgUrl
-    ? `<img class="card-full-img" src="${imgUrl}" alt="${escapeHtml(minion.name)}" loading="lazy"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : "";
 
   wrapper.innerHTML = `
-    ${imgHtml}
-    <div class="card-fallback" style="display:${imgUrl ? "none" : "flex"}">
-      <span class="card-fallback-emoji">${portrait.emoji}</span>
-      <span class="card-fallback-name">${escapeHtml(minion.name)}</span>
+    <div class="mc-portrait">
+      ${imgUrl
+        ? `<img class="mc-portrait-img" src="${imgUrl}" alt="${escapeHtml(minion.name)}" loading="lazy"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : ""}
+      <div class="mc-portrait-fallback" style="display:${imgUrl ? "none" : "flex"}">
+        <span>${portrait.emoji}</span>
+      </div>
     </div>
     <div class="mc-atk">${minion.attack}</div>
     <div class="mc-hp">${minion.health}</div>
@@ -119,7 +119,7 @@ function buildOvalCard(minion, context) {
   return wrapper;
 }
 
-// ── Combat-versie van de kaart (iets kleiner) ────────────────
+// ── Combat-versie van de kaart ────────────────────────────────
 function buildCombatCard(minion) {
   const wrapper = document.createElement("div");
   wrapper.className = "combat-minion";
@@ -131,16 +131,16 @@ function buildCombatCard(minion) {
 
   const portrait = getPortrait(minion.id);
   const imgUrl   = getCardImageUrl(minion.id);
-  const imgHtml  = imgUrl
-    ? `<img class="card-full-img" src="${imgUrl}" alt="${escapeHtml(minion.name)}" loading="lazy"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : "";
 
   wrapper.innerHTML = `
-    ${imgHtml}
-    <div class="card-fallback" style="display:${imgUrl ? "none" : "flex"}">
-      <span class="card-fallback-emoji">${portrait.emoji}</span>
-      <span class="card-fallback-name">${escapeHtml(minion.name)}</span>
+    <div class="mc-portrait">
+      ${imgUrl
+        ? `<img class="mc-portrait-img" src="${imgUrl}" alt="${escapeHtml(minion.name)}" loading="lazy"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : ""}
+      <div class="mc-portrait-fallback" style="display:${imgUrl ? "none" : "flex"}">
+        <span>${portrait.emoji}</span>
+      </div>
     </div>
     <div class="mc-atk">${minion.attack}</div>
     <div class="mc-hp">${minion.health}</div>

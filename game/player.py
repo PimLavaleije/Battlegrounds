@@ -168,9 +168,14 @@ class Player:
             for c in copies:
                 if c in self.board:
                     self.board.remove(c)
-            # Golden versie
+            # Golden versie: basis×2 + alle geaccumuleerde buffs van de 3 kopieën
             golden = Minion.from_id(minion.id)
             golden.make_golden()
+            extra_atk = sum(c.attack - c.base_attack for c in copies)
+            extra_hp  = sum(c.health - c.base_health for c in copies)
+            golden.attack     += extra_atk
+            golden.health     += extra_hp
+            golden.max_health += extra_hp
             self.board.append(golden)
             discover_tier = min(self.tavern_tier + 1, 6)
             return {"triple": True, "golden": golden.to_dict(), "discover_tier": discover_tier}

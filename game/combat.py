@@ -18,9 +18,11 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
     current_side = 0  # 0 = speler valt aan, 1 = vijand valt aan
     safety = 0
 
-    # Bepaal wie begint (speler met meer minions, anders speler)
+    # Bepaal wie begint: meer minions gaat eerst; gelijkspel = muntopgooi
     if len(e_board) > len(p_board):
         current_side = 1
+    elif len(e_board) == len(p_board):
+        current_side = random.randint(0, 1)
 
     _apply_combat_auras(p_board)
     _apply_combat_auras(e_board)
@@ -46,8 +48,8 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
         if target is None:
             break
 
-        # Sla aan (en windfury = 2x)
-        attacks = 2 if attacker.windfury else 1
+        # Mega-windfury (golden windfury) = 4x, gewone windfury = 2x, anders 1x
+        attacks = 4 if attacker.megawindfury else (2 if attacker.windfury else 1)
         for _ in range(attacks):
             if not p_board or not e_board:
                 break
@@ -67,8 +69,16 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
             if not p_board or not e_board:
                 break
 
-            # Herkies doelwit voor volgende windfury aanval
-            if attacker not in attacker_board or attacker.dead:
+            # Ververs board-referenties zodat cleave-indexen en target-keuze kloppen
+            if current_side == 0:
+                attacker_board = p_board
+                defender_board = e_board
+            else:
+                attacker_board = e_board
+                defender_board = p_board
+
+            # Herkies doelwit voor volgende aanval (windfury / mega-windfury)
+            if attacker.dead:
                 break
             target, target_idx = _choose_target(attacker, defender_board)
             if target is None:
@@ -167,11 +177,12 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
     if result_a.get("shield_broken"):
         _trigger_shield_pop_passives(attacker, attacker_board, step)
 
-    # Cleave
+    # Cleave (aangrenzende minions ontvangen ook schade; poisonous geldt ook)
     if attacker.cleave:
         adj = _get_adjacent(target_idx, defender_board)
         for adj_m in adj:
-            adj_result = adj_m.take_damage(attacker.attack)
+            cleave_dmg = 9999 if attacker.poisonous else attacker.attack
+            adj_result = adj_m.take_damage(cleave_dmg)
             step["events"].append({
                 "type": "cleave_damage",
                 "target_uid": adj_m.uid,
@@ -425,10 +436,9 @@ def _trigger_shield_pop_passives(popped: Minion, friendly_board: list, step: dic
             step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
 
-def calculate_damage(winner_board: list[Minion], loser_tavern_tier: int) -> int:
-    """Schade die de verliezer ontvangt: winnaar tavern tier + sum aanval overlevers."""
-    # Gebruik de tavern tier van de winnaar (we sturen de survivors mee)
-    # Eenvoudigere formule: basischade op basis van board sterktes
-    base = 2 + loser_tavern_tier  # Iets meer schade naarmate ronde vordert
-    minion_dmg = sum(m.attack for m in winner_board)
-    return base + minion_dmg
+def calculate_damage(winner_board: list[Minion], winner_tavern_tier: int) -> int:
+    """Schade = winnaar tavern tier + som van tier van elke overlevende minion.
+    Tokens (niet-koopbare minions) tellen als tier 1.
+    Golden minions tellen hun basis tier, niet het dubbele."""
+    minion_tier_sum = sum(max(m.tier, 1) for m in winner_board)
+    return winner_tavern_tier + minion_tier_sum

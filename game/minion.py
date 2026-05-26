@@ -24,6 +24,7 @@ class Minion:
         self.windfury = "windfury" in self.abilities
         self.cleave = "cleave" in self.abilities
         self.zapp = "zapp_targeting" in self.abilities
+        self.megawindfury = "megawindfury" in self.abilities
 
         self.deathrattle = data.get("deathrattle")
         self.battlecry = data.get("battlecry")
@@ -59,6 +60,30 @@ class Minion:
         self.attack = self.base_attack * 2
         self.health = self.base_health * 2
         self.max_health = self.base_health * 2
+        # Windfury → mega-windfury (4 aanvallen)
+        if self.windfury:
+            self.megawindfury = True
+        # Verdubbel numerieke waarden in deathrattle-effecten
+        if self.deathrattle:
+            self.deathrattle = self._double_effect_values(self.deathrattle)
+
+    @staticmethod
+    def _double_effect_values(effect: dict) -> dict:
+        import copy
+        d = copy.deepcopy(effect)
+        dtype = d.get("type")
+        # Summon-types omzetten naar summon_count met verdubbeld aantal
+        if dtype == "summon":
+            d["type"] = "summon_count"
+            d["count"] = 2
+        elif dtype == "summon_two":
+            d["type"] = "summon_count"
+            d["count"] = 4
+        else:
+            for key in ("attack", "health", "amount", "count"):
+                if key in d:
+                    d[key] *= 2
+        return d
 
     # ── Serialisatie ────────────────────────────────────────
     def to_dict(self) -> dict:
@@ -78,6 +103,7 @@ class Minion:
             "reborn": self.reborn,
             "poisonous": self.poisonous,
             "windfury": self.windfury,
+            "megawindfury": self.megawindfury,
             "cleave": self.cleave,
             "zapp": self.zapp,
             "abilities": self.abilities,
@@ -107,6 +133,7 @@ class Minion:
         m.reborn = d.get("reborn", "reborn" in data.get("abilities", []))
         m.poisonous = d.get("poisonous", "poisonous" in data.get("abilities", []))
         m.windfury = d.get("windfury", "windfury" in data.get("abilities", []))
+        m.megawindfury = d.get("megawindfury", "megawindfury" in data.get("abilities", []))
         m.cleave = d.get("cleave", "cleave" in data.get("abilities", []))
         m.uid = d.get("uid", id(m))
         return m

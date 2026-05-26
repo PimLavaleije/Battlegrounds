@@ -128,16 +128,15 @@ html, body {
 .timer-fill { height:100%; background:linear-gradient(90deg,#207040,var(--gold)); border-radius:3px; transition:width 1s linear; }
 
 /* ══════════════════════════════════════════════════════════
-   ═══════════  MINION KAART (KAARTAFBEELDING)  ════════════
+   ═══════════  MINION KAART (OVAL HEARTHSTONE BG STIJL)  ══
 ══════════════════════════════════════════════════════════ */
 .minion-card {
   position: relative;
-  width: 120px;
-  height: 196px;
+  width: 90px;
+  height: 104px;
   cursor: pointer;
   flex-shrink: 0;
   transition: transform 0.2s ease, filter 0.2s;
-  border-radius: 10px;
 }
 .minion-card:hover {
   transform: translateY(-10px) scale(1.08);
@@ -145,105 +144,114 @@ html, body {
   z-index: 20;
 }
 
-/* Volledige kaartafbeelding vult het kaartgebied */
-.card-full-img {
+/* Gouden 8-puntige starburst achter portret */
+.minion-card::before {
+  content: '';
+  position: absolute;
+  top: 2px; left: 4px;
+  width: 82px; height: 82px;
+  background: radial-gradient(circle at center, #fff4a0 0%, #f5c518 30%, #c8900a 62%, #8b6a00 100%);
+  clip-path: polygon(
+    50% 0%, 63% 18%, 85% 15%, 82% 37%,
+    100% 50%, 82% 63%, 85% 85%, 63% 82%,
+    50% 100%, 37% 82%, 15% 85%, 18% 63%,
+    0% 50%, 18% 37%, 15% 15%, 37% 18%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Circulair portret */
+.mc-portrait {
+  position: absolute;
+  top: 7px; left: 9px;
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #c8a030;
+  box-shadow: 0 0 0 2px #3a1a00, 0 3px 12px rgba(0,0,0,0.7);
+  z-index: 2;
+  background: #0d0a18;
+}
+
+/* Kaartafbeelding ingezoomd op portretdeel (bovenste ~75% van de kaart) */
+.mc-portrait-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
+  object-fit: cover;
+  object-position: center 20%;
   display: block;
 }
 
-/* Fallback (emoji + naam) wanneer afbeelding ontbreekt */
-.card-fallback {
+/* Emoji-fallback */
+.mc-portrait-fallback {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
-  background: linear-gradient(160deg, #1e1a2e, #0d0a18);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-}
-.card-fallback-emoji { font-size: 2rem; }
-.card-fallback-name {
-  font-size: 0.48rem;
-  font-weight: 700;
-  color: var(--text);
-  text-align: center;
-  padding: 0 4px;
-  word-break: break-word;
+  font-size: 2.2rem;
 }
 
-/* Aanval gem (links-onder, goud) */
+/* Aanval gem (links-onder) */
 .mc-atk {
   position: absolute;
-  bottom: -8px;
-  left: -8px;
-  width: 40px;
-  height: 40px;
+  bottom: 6px; left: -4px;
+  width: 34px; height: 34px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 28%, #ffe884, #d48808, #6a3a00);
   border: 3px solid #3a1800;
   color: #1a0800;
   font-weight: 900;
-  font-size: 1.15rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.8);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.8);
   z-index: 10;
 }
 
-/* HP gem (rechts-onder, rood) */
+/* HP gem (rechts-onder) */
 .mc-hp {
   position: absolute;
-  bottom: -8px;
-  right: -8px;
-  width: 40px;
-  height: 40px;
+  bottom: 6px; right: -4px;
+  width: 34px; height: 34px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 28%, #ff8888, #c41818, #6a0000);
   border: 3px solid #3a0000;
   color: #fff;
   font-weight: 900;
-  font-size: 1.15rem;
+  font-size: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.8);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.8);
   z-index: 10;
 }
 
-/* GOLDEN: gouden gloed over de kaartafbeelding */
-.minion-card.golden .card-full-img,
-.minion-card.golden .card-fallback {
-  box-shadow: 0 0 16px rgba(245,197,24,0.6), 0 0 4px rgba(245,197,24,0.4);
+/* GOLDEN: gouden gloed + shimmer */
+.minion-card.golden .mc-portrait {
+  border-color: #f5c518;
+  box-shadow: 0 0 0 2px #3a1a00, 0 0 18px rgba(245,197,24,0.9);
+  animation: golden-shimmer 2.5s ease-in-out infinite;
+}
+.minion-card.golden::before {
+  background: radial-gradient(circle at center, #ffee80 0%, #ffe040 30%, #f5c518 60%, #c8900a 100%);
+  filter: drop-shadow(0 0 6px rgba(255,215,40,0.8));
   animation: golden-shimmer 2.5s ease-in-out infinite;
 }
 
-/* TAUNT: gouden rand */
-.minion-card.taunt-ring::after {
-  content: '';
-  position: absolute;
-  inset: -5px;
-  border-radius: 12px;
-  border: 3px solid #c8a030;
-  box-shadow: 0 0 14px #c8a03099, inset 0 0 8px #c8a03033;
-  pointer-events: none;
+/* TAUNT: gemarkeerde gouden rand */
+.minion-card.taunt-ring .mc-portrait {
+  border-color: #e0b830;
+  box-shadow: 0 0 0 2px #6a4000, 0 0 16px rgba(200,160,48,0.8);
 }
 
-/* DIVINE SHIELD: lichte gloed */
-.minion-card.divine-glow::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 12px;
-  border: 2px solid rgba(255,255,180,0.85);
-  box-shadow: 0 0 20px rgba(255,255,150,0.7), inset 0 0 10px rgba(255,255,150,0.15);
+/* DIVINE SHIELD: witte gloed */
+.minion-card.divine-glow .mc-portrait {
+  border-color: rgba(255,255,200,0.95);
+  box-shadow: 0 0 0 2px rgba(255,255,180,0.5), 0 0 22px rgba(255,255,150,0.8);
   animation: divine-pulse 1.8s ease-in-out infinite;
-  pointer-events: none;
 }
 
 /* HP laag — rode gloed */
@@ -393,7 +401,7 @@ html, body {
 /* Leeg slot op het board */
 .board-empty-slot {
   width: 90px;
-  height: 148px;
+  height: 104px;
   border: 2px dashed rgba(180,140,60,0.2);
   border-radius: 8px;
   display: flex;
@@ -424,34 +432,84 @@ html, body {
   justify-content: center;
   align-items: flex-end;
   margin-bottom: 10px;
-  min-height: 170px;
+  min-height: 118px;
   padding: 0 4px;
 }
 
-/* Shop kaart — zelfde kaart maar met groene hover-rand en kostprijs */
+/* Shop kaart — oval portret, iets kleiner dan board-kaart */
 .shop-card {
   position: relative;
-  width: 90px;
-  height: 148px;
+  width: 78px;
+  height: 90px;
   cursor: pointer;
   flex-shrink: 0;
   transition: transform 0.2s ease, filter 0.2s;
-  border-radius: 8px;
 }
 .shop-card:hover {
   transform: translateY(-12px) scale(1.08);
   filter: brightness(1.15);
   z-index: 20;
 }
-.shop-card .card-full-img   { outline: 2px solid rgba(120,200,120,0.25); border-radius: 8px; }
-.shop-card .card-fallback   { outline: 2px solid rgba(120,200,120,0.25); }
-.shop-card:hover .card-full-img  { outline: 2px solid rgba(120,255,120,0.6); }
-.shop-card:hover .card-fallback  { outline: 2px solid rgba(120,255,120,0.6); }
+
+/* Shop starburst (iets kleiner) */
+.shop-card::before {
+  content: '';
+  position: absolute;
+  top: 2px; left: 3px;
+  width: 72px; height: 72px;
+  background: radial-gradient(circle at center, #fff4a0 0%, #f5c518 30%, #c8900a 62%, #8b6a00 100%);
+  clip-path: polygon(
+    50% 0%, 63% 18%, 85% 15%, 82% 37%,
+    100% 50%, 82% 63%, 85% 85%, 63% 82%,
+    50% 100%, 37% 82%, 15% 85%, 18% 63%,
+    0% 50%, 18% 37%, 15% 15%, 37% 18%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Shop portret (kleiner) */
+.shop-card .mc-portrait {
+  top: 6px; left: 7px;
+  width: 64px; height: 64px;
+}
+.shop-card .mc-portrait-fallback { font-size: 1.9rem; }
+
+/* Shop stat gems (kleiner) */
+.shop-card .mc-atk,
+.shop-card .mc-hp {
+  width: 28px; height: 28px;
+  font-size: 0.85rem;
+  bottom: 4px;
+}
+.shop-card .mc-atk { left: -2px; }
+.shop-card .mc-hp  { right: -2px; }
+
+/* Shop golden */
+.shop-card.golden .mc-portrait {
+  border-color: #f5c518;
+  box-shadow: 0 0 0 2px #3a1a00, 0 0 14px rgba(245,197,24,0.9);
+  animation: golden-shimmer 2.5s ease-in-out infinite;
+}
+.shop-card.golden::before {
+  background: radial-gradient(circle at center, #ffee80 0%, #ffe040 30%, #f5c518 60%, #c8900a 100%);
+  animation: golden-shimmer 2.5s ease-in-out infinite;
+}
+
+/* Shop taunt / divine */
+.shop-card.taunt-ring .mc-portrait {
+  border-color: #e0b830;
+  box-shadow: 0 0 0 2px #6a4000, 0 0 12px rgba(200,160,48,0.7);
+}
+.shop-card.divine-glow .mc-portrait {
+  border-color: rgba(255,255,200,0.95);
+  box-shadow: 0 0 0 2px rgba(255,255,180,0.5), 0 0 18px rgba(255,255,150,0.7);
+}
 
 /* Kostenprijs label boven shop-kaart */
 .shop-card-cost {
   position: absolute;
-  top: -12px;
+  top: -14px;
   left: 50%;
   transform: translateX(-50%);
   background: radial-gradient(circle at 35% 30%, #ffe884, #d48808, #6a3a00);
@@ -463,13 +521,14 @@ html, body {
   border-radius: 10px;
   white-space: nowrap;
   box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  z-index: 20;
 }
 
 .shop-empty {
-  width: 90px;
-  height: 148px;
+  width: 78px;
+  height: 90px;
   border: 2px dashed rgba(120,90,30,0.2);
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -643,17 +702,56 @@ html, body {
 .cle.won   { color: #40b060; }
 .cle.lost  { color: #c04040; }
 
-/* Combat minion (iets kleiner) */
+/* Combat portret (oval stijl, zelfde grootte als board) */
 .combat-minion {
   position: relative;
-  width: 80px;
-  height: 131px;
+  width: 90px;
+  height: 104px;
   flex-shrink: 0;
   transition: transform 0.15s;
-  border-radius: 7px;
 }
-.combat-minion .mc-atk { width: 26px; height: 26px; font-size: 0.85rem; }
-.combat-minion .mc-hp  { width: 26px; height: 26px; font-size: 0.85rem; }
+
+/* Combat starburst */
+.combat-minion::before {
+  content: '';
+  position: absolute;
+  top: 2px; left: 4px;
+  width: 82px; height: 82px;
+  background: radial-gradient(circle at center, #fff4a0 0%, #f5c518 30%, #c8900a 62%, #8b6a00 100%);
+  clip-path: polygon(
+    50% 0%, 63% 18%, 85% 15%, 82% 37%,
+    100% 50%, 82% 63%, 85% 85%, 63% 82%,
+    50% 100%, 37% 82%, 15% 85%, 18% 63%,
+    0% 50%, 18% 37%, 15% 15%, 37% 18%
+  );
+  z-index: 0;
+  pointer-events: none;
+}
+
+.combat-minion .mc-atk { bottom: 6px; left: -4px; width: 32px; height: 32px; font-size: 0.95rem; }
+.combat-minion .mc-hp  { bottom: 6px; right: -4px; width: 32px; height: 32px; font-size: 0.95rem; }
+
+/* Combat golden */
+.combat-minion.golden .mc-portrait {
+  border-color: #f5c518;
+  box-shadow: 0 0 0 2px #3a1a00, 0 0 16px rgba(245,197,24,0.9);
+  animation: golden-shimmer 2.5s ease-in-out infinite;
+}
+.combat-minion.golden::before {
+  background: radial-gradient(circle at center, #ffee80 0%, #ffe040 30%, #f5c518 60%, #c8900a 100%);
+  animation: golden-shimmer 2.5s ease-in-out infinite;
+}
+
+/* Combat taunt / divine */
+.combat-minion.taunt-ring .mc-portrait {
+  border-color: #e0b830;
+  box-shadow: 0 0 0 2px #6a4000, 0 0 16px rgba(200,160,48,0.8);
+}
+.combat-minion.divine-glow .mc-portrait {
+  border-color: rgba(255,255,200,0.95);
+  box-shadow: 0 0 0 2px rgba(255,255,180,0.5), 0 0 22px rgba(255,255,150,0.8);
+  animation: divine-pulse 1.8s ease-in-out infinite;
+}
 
 /* ══════════════════════════════════════════════════════════
    GAME OVER SCHERM
@@ -748,5 +846,6 @@ html, body {
 @media (max-width:768px) {
   .opponents-sidebar { width: 48px; }
   .shop-row { flex-wrap: wrap; }
-  .minion-card, .shop-card { width:76px; height:124px; }
+  .minion-card { width:80px; height:94px; }
+  .shop-card { width:68px; height:80px; }
 }

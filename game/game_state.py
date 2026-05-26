@@ -242,14 +242,14 @@ class GameState:
 
             if result["winner"] == "player":
                 survivor_minions = [Minion.from_dict(d) for d in result["surviving_minions"]]
-                damage_to_opp = calculate_damage(survivor_minions, opp_tavern)
+                damage_to_opp = calculate_damage(survivor_minions, player.tavern_tier)
                 if not opp_ref.startswith("ghost:"):
                     opp_obj = self.players.get(opp_ref)
                     if opp_obj:
                         opp_obj.take_damage(damage_to_opp)
             elif result["winner"] == "enemy":
                 survivor_minions = [Minion.from_dict(d) for d in result["surviving_minions"]]
-                damage_to_player = calculate_damage(survivor_minions, player.tavern_tier)
+                damage_to_player = calculate_damage(survivor_minions, opp_tavern)
                 player.take_damage(damage_to_player)
 
             your_result = result["winner"] if result["winner"] in ("tie",) else \
