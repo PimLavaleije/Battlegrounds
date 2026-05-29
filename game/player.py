@@ -307,6 +307,82 @@ class Player:
         elif sid == "brood_of_nozdormu":
             if self.board:
                 self.board[0].attack *= 2
+        # ── Simple all-board buffs ──────────────────────────
+        elif sid in ("conflagration", "arcane_absorption"):
+            for m in self.board:
+                m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid in ("natural_blessing", "eonars_favor"):
+            for m in self.board:
+                m.attack += 2; m.health += 3; m.max_health += 3
+        elif sid in ("easterly_winds", "fleeting_vigor", "robust_evolution"):
+            for m in self.board:
+                m.attack += 1
+        elif sid == "mounting_avalanche":
+            for m in self.board:
+                m.attack += 2; m.health += 1; m.max_health += 1
+        elif sid == "upper_hand":
+            for m in self.board:
+                m.attack += 2
+        elif sid in ("lost_staff_of_hamuul", "eyes_of_the_earth_mother"):
+            for m in self.board:
+                m.attack += 3; m.health += 3; m.max_health += 3
+        elif sid == "channel_the_devourer":
+            for m in self.board:
+                m.attack += 4; m.health += 4; m.max_health += 4
+        elif sid == "butchering":
+            for m in self.board:
+                m.attack += 5
+        elif sid == "gem_confiscation":
+            for m in self.board:
+                m.divine_shield = True
+                if "divine_shield" not in m.abilities:
+                    m.abilities.append("divine_shield")
+        # ── Tribe-specific buffs ────────────────────────────
+        elif sid == "spitescale_special":
+            for m in self.board:
+                if "Murloc" in m.types:
+                    m.attack += 3; m.health += 3; m.max_health += 3
+        elif sid == "tomb_turning":
+            for m in self.board:
+                if m.deathrattle:
+                    m.attack += 3; m.health += 3; m.max_health += 3
+        # ── Random-target buffs ─────────────────────────────
+        elif sid == "friendly_bounty":
+            import random as _r
+            targets = _r.sample(self.board, min(3, len(self.board)))
+            for t in targets:
+                t.attack += 1; t.health += 1; t.max_health += 1
+        elif sid == "back_to_back":
+            import random as _r
+            targets = _r.sample(self.board, min(2, len(self.board)))
+            for t in targets:
+                t.attack += 3; t.health += 3; t.max_health += 3
+        elif sid == "bargain_bundle":
+            import random as _r
+            targets = _r.sample(self.board, min(3, len(self.board)))
+            for t in targets:
+                t.attack += 3; t.health += 3; t.max_health += 3
+        elif sid == "overconfidence":
+            import random as _r
+            if self.board:
+                t = _r.choice(self.board)
+                t.attack += 3; t.health += 3; t.max_health += 3
+        # ── Single-target buffs ─────────────────────────────
+        elif sid == "a_new_sprout":
+            if self.board:
+                t = self.board[0]
+                t.attack += 1; t.health += 1; t.max_health += 1
+        elif sid == "temperature_shift":
+            if self.board:
+                t = self.board[0]
+                t.attack += 4; t.health += 4; t.max_health += 4
+        elif sid == "unmasked_identity":
+            tribes = set()
+            for m in self.board:
+                tribes.update(m.types)
+            bonus = len(tribes)
+            for m in self.board:
+                m.attack += bonus
         return {"spell": sid}
 
     def sell_from_hand(self, hand_index: int) -> dict:
