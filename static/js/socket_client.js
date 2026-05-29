@@ -6,7 +6,11 @@ const SocketClient = {
   joinLobby(name, code)      { socket.emit("join_lobby",     { player_name: name, room_code: code }); },
   startGame()                { socket.emit("start_game",     {}); },
   selectHero(heroId)         { socket.emit("select_hero",    { hero_id: heroId }); },
-  buyMinion(shopIndex)       { socket.emit("buy_minion",     { shop_index: shopIndex }); },
+  buyMinion(shopIndex, targetIndex = null) {
+    const d = { shop_index: shopIndex };
+    if (targetIndex !== null) d.target_index = targetIndex;
+    socket.emit("buy_minion", d);
+  },
   sellMinion(boardIndex)     { socket.emit("sell_minion",    { board_index: boardIndex }); },
   reroll()                   { socket.emit("reroll",         {}); },
   freeze()                   { socket.emit("freeze",         {}); },

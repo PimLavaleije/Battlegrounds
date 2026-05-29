@@ -80,7 +80,7 @@ def on_buy_minion(data):
     room_code = manager.get_player_room(request.sid)
     if not room_code:
         return
-    result = manager.buy_minion(request.sid, room_code, data.get("shop_index", 0))
+    result = manager.buy_minion(request.sid, room_code, data.get("shop_index", 0), data.get("target_index"))
     if result["success"]:
         emit("player_update", result["player"])
         if result.get("triple"):

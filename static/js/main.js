@@ -271,3 +271,8 @@ function escapeHtml(str) {
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
+
+// Escape-toets annuleert spreuk-targeting
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && SpellTarget.active) SpellTarget.cancel();
+});

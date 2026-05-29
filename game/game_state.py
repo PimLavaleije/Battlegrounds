@@ -109,11 +109,11 @@ class GameState:
         }
 
     # ── Shop acties ─────────────────────────────────────────
-    def buy_minion(self, sid: str, shop_index: int) -> dict:
+    def buy_minion(self, sid: str, shop_index: int, target_index: int | None = None) -> dict:
         p = self.players.get(sid)
         if not p or not p.alive:
             return {"success": False, "message": "Speler niet gevonden."}
-        result = p.buy_minion(shop_index)
+        result = p.buy_minion(shop_index, target_index)
         if result.get("triple"):
             tier = result["triple"].get("discover_tier", p.tavern_tier)
             result["triple"]["discover_options"] = self._discover_options(tier)
@@ -243,6 +243,16 @@ class GameState:
                 enemy_board = [m.clone() for m in opp.board]
                 opp_name = opp.name
                 opp_tavern = opp.tavern_tier
+
+            # Pas uitgestelde spreuk-effecten toe op vijandelijk board
+            for spell_id in player.pending_combat_spells:
+                if spell_id == "corrupted_cupcakes":
+                    for m in enemy_board:
+                        m.attack = max(0, m.attack - 2)
+                elif spell_id == "hired_headhunter":
+                    if enemy_board:
+                        enemy_board.pop(random.randrange(len(enemy_board)))
+            player.pending_combat_spells.clear()
 
             # Simuleer gevecht
             result = simulate_combat(player.board, enemy_board)

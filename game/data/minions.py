@@ -103,7 +103,17 @@ TOKENS = {'skeleton': {'id': 'skeleton',
                  'tribe': 'Undead',
                  'abilities': ['reborn'],
                  'token': True,
-                 'description': 'Geroepen door Handless Forsaken.'}}
+                 'description': 'Geroepen door Handless Forsaken.'},
+ 'beetle': {'id': 'beetle',
+            'name': 'Kever',
+            'tier': 1,
+            'attack': 1,
+            'health': 1,
+            'tribe': 'Beast',
+            'types': ['Beast'],
+            'abilities': [],
+            'token': True,
+            'description': 'Geroepen door Zegen van Kevers.'}}
 
 # Main minion pool (shop-able)
 # Auto-generated from minions(1).py + MinionsGolden.xlsx.

@@ -26,6 +26,7 @@ class Player:
         self.double_battlecry = False  # Brann
         self.double_deathrattle = False  # Baron / Lich King
         self.hand: list[Minion] = []
+        self.pending_combat_spells: list[str] = []
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -67,7 +68,7 @@ class Player:
     def can_buy(self) -> bool:
         return self.gold >= 3
 
-    def buy_minion(self, shop_index: int) -> dict:
+    def buy_minion(self, shop_index: int, target_index: int | None = None) -> dict:
         if shop_index < 0 or shop_index >= len(self.shop):
             return {"success": False, "message": "Ongeldige winkel-index."}
         item = self.shop[shop_index]
@@ -75,7 +76,7 @@ class Player:
             return {"success": False, "message": "Geen minion op die plek."}
         # Spell dict in shop — redirect to spell handler
         if isinstance(item, dict):
-            return self._cast_spell_from_shop(shop_index)
+            return self._cast_spell_from_shop(shop_index, target_index)
         minion = item
         if not self.can_buy():
             return {"success": False, "message": "Niet genoeg goud."}
@@ -201,22 +202,48 @@ class Player:
         return {"success": True, "battlecry": battlecry_result}
 
     # ── Spreuken ─────────────────────────────────────────────────
-    def _cast_spell_from_shop(self, shop_index: int) -> dict:
+    def _cast_spell_from_shop(self, shop_index: int, target_index: int | None = None) -> dict:
         spell = self.shop[shop_index]
         cost = spell.get("cost", 3)
         if self.gold < cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
+        if spell.get("targeted") and not self.board:
+            return {"success": False, "message": "Geen minions op je board."}
         self.shop[shop_index] = None
         self.gold -= cost
-        effect = self._apply_spell(spell)
+        effect = self._apply_spell(spell, target_index)
         return {"success": True, "spell": spell, "spell_effect": effect}
 
-    def _apply_spell(self, spell: dict) -> dict:
+    def _apply_spell(self, spell: dict, target_index: int | None = None) -> dict:
+        import random as _r
         sid = spell["id"]
+
+        def _target() -> "Minion | None":
+            if not self.board:
+                return None
+            if target_index is not None and 0 <= target_index < len(self.board):
+                return self.board[target_index]
+            return self.board[0]
+
+        def _give_taunt(m: "Minion"):
+            m.taunt = True
+            if "taunt" not in m.abilities:
+                m.abilities.append("taunt")
+
+        def _make_golden(m: "Minion"):
+            if not m.golden:
+                m.golden = True
+                m.attack *= 2
+                m.health *= 2
+                m.max_health *= 2
+
+        # ── Gold generation ─────────────────────────────────
         if sid == "tavern_coin":
             self.gold = min(self.gold + 1, self.MAX_GOLD)
         elif sid == "wealthy_bounty":
             self.gold = min(self.gold + 2, self.MAX_GOLD)
+
+        # ── All-board buffs ─────────────────────────────────
         elif sid == "shiny_ring":
             for m in self.board:
                 m.attack += 1; m.health += 1; m.max_health += 1
@@ -224,6 +251,39 @@ class Player:
             for _ in range(2):
                 for m in self.board:
                     m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid == "conflagration":
+            for m in self.board:
+                m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid == "arcane_absorption":
+            for m in self.board:
+                m.attack += 1; m.health += 1; m.max_health += 1
+        elif sid == "natural_blessing":
+            for m in self.board:
+                m.attack += 2; m.health += 3; m.max_health += 3
+        elif sid == "eonars_favor":
+            for m in self.board:
+                m.attack += 1; m.health += 2; m.max_health += 2
+        elif sid in ("easterly_winds", "fleeting_vigor", "robust_evolution"):
+            for m in self.board:
+                m.attack += 1
+        elif sid == "mounting_avalanche":
+            for m in self.board:
+                m.attack += 2; m.health += 1; m.max_health += 1
+        elif sid == "upper_hand":
+            for m in self.board:
+                m.attack += 2
+        elif sid == "lost_staff_of_hamuul":
+            for m in self.board:
+                m.attack += 3; m.health += 3; m.max_health += 3
+        elif sid == "eyes_of_the_earth_mother":
+            for m in self.board:
+                m.attack += 5; m.health += 5; m.max_health += 5
+        elif sid == "channel_the_devourer":
+            for m in self.board:
+                m.attack += 4; m.health += 4; m.max_health += 4
+        elif sid == "butchering":
+            for m in self.board:
+                m.attack += 5
         elif sid == "sanctify":
             for m in self.board:
                 if m.divine_shield:
@@ -238,65 +298,6 @@ class Player:
                 m.attack += 3; m.health += 2; m.max_health += 2
                 if m.golden:
                     m.attack += 3; m.health += 2; m.max_health += 2
-        elif sid == "might_of_stormwind":
-            import random as _r
-            targets = _r.sample(self.board, min(4, len(self.board)))
-            for t in targets:
-                t.attack += 1; t.health += 2; t.max_health += 2
-        elif sid == "healthy_bounty":
-            import random as _r
-            targets = _r.sample(self.board, min(3, len(self.board)))
-            for t in targets:
-                t.health += 4; t.max_health += 4
-        elif sid == "hostile_bounty":
-            import random as _r
-            targets = _r.sample(self.board, min(3, len(self.board)))
-            for t in targets:
-                t.attack += 4
-        elif sid == "selfish_bounty":
-            if self.board:
-                m = self.board[0]
-                m.attack += 6; m.health += 6; m.max_health += 6
-        elif sid == "pointy_arrow":
-            if self.board:
-                self.board[0].attack += 4
-        elif sid == "tavern_dish_banana":
-            if self.board:
-                t = self.board[0]
-                t.attack += 2; t.health += 2; t.max_health += 2
-        elif sid == "fortify":
-            if self.board:
-                t = self.board[0]
-                t.health += 3; t.max_health += 3; t.taunt = True
-                if "taunt" not in t.abilities:
-                    t.abilities.append("taunt")
-        elif sid == "defenders_rites":
-            if self.board:
-                t = self.board[0]
-                t.attack += 6; t.health += 6; t.max_health += 6
-                t.taunt = True
-                if "taunt" not in t.abilities:
-                    t.abilities.append("taunt")
-        elif sid == "tricky_trousers":
-            if self.board:
-                t = self.board[0]
-                t.attack += 1; t.health += 2; t.max_health += 2
-                t.taunt = not t.taunt
-                if t.taunt and "taunt" not in t.abilities:
-                    t.abilities.append("taunt")
-                elif not t.taunt and "taunt" in t.abilities:
-                    t.abilities.remove("taunt")
-        elif sid == "perfect_vision":
-            if self.board:
-                t = self.board[0]
-                t.attack = 20; t.health = 20; t.max_health = 20
-        elif sid == "deepwater_clan":
-            if self.board:
-                t = self.board[0]
-                t.attack += 2; t.health += 2; t.max_health += 2
-            for m in self.board:
-                if "Murloc" in m.types:
-                    m.attack += 2; m.health += 2; m.max_health += 2
         elif sid == "misplaced_tea_set":
             seen = set()
             for m in self.board:
@@ -304,39 +305,17 @@ class Player:
                 if tribe and tribe not in seen:
                     seen.add(tribe)
                     m.attack += 2; m.health += 2; m.max_health += 2
-        elif sid == "brood_of_nozdormu":
-            if self.board:
-                self.board[0].attack *= 2
-        # ── Simple all-board buffs ──────────────────────────
-        elif sid in ("conflagration", "arcane_absorption"):
-            for m in self.board:
-                m.attack += 2; m.health += 2; m.max_health += 2
-        elif sid in ("natural_blessing", "eonars_favor"):
-            for m in self.board:
-                m.attack += 2; m.health += 3; m.max_health += 3
-        elif sid in ("easterly_winds", "fleeting_vigor", "robust_evolution"):
-            for m in self.board:
-                m.attack += 1
-        elif sid == "mounting_avalanche":
-            for m in self.board:
-                m.attack += 2; m.health += 1; m.max_health += 1
-        elif sid == "upper_hand":
-            for m in self.board:
-                m.attack += 2
-        elif sid in ("lost_staff_of_hamuul", "eyes_of_the_earth_mother"):
-            for m in self.board:
-                m.attack += 3; m.health += 3; m.max_health += 3
-        elif sid == "channel_the_devourer":
-            for m in self.board:
-                m.attack += 4; m.health += 4; m.max_health += 4
-        elif sid == "butchering":
-            for m in self.board:
-                m.attack += 5
         elif sid == "gem_confiscation":
             for m in self.board:
                 m.divine_shield = True
                 if "divine_shield" not in m.abilities:
                     m.abilities.append("divine_shield")
+        elif sid == "unmasked_identity":
+            tribes = {t for m in self.board for t in m.types}
+            bonus = len(tribes)
+            for m in self.board:
+                m.attack += bonus
+
         # ── Tribe-specific buffs ────────────────────────────
         elif sid == "spitescale_special":
             for m in self.board:
@@ -346,43 +325,125 @@ class Player:
             for m in self.board:
                 if m.deathrattle:
                     m.attack += 3; m.health += 3; m.max_health += 3
+
         # ── Random-target buffs ─────────────────────────────
+        elif sid == "might_of_stormwind":
+            for t in _r.sample(self.board, min(4, len(self.board))):
+                t.attack += 1; t.health += 2; t.max_health += 2
+        elif sid == "healthy_bounty":
+            for t in _r.sample(self.board, min(3, len(self.board))):
+                t.health += 4; t.max_health += 4
+        elif sid == "hostile_bounty":
+            for t in _r.sample(self.board, min(3, len(self.board))):
+                t.attack += 4
         elif sid == "friendly_bounty":
-            import random as _r
-            targets = _r.sample(self.board, min(3, len(self.board)))
-            for t in targets:
+            for t in _r.sample(self.board, min(3, len(self.board))):
                 t.attack += 1; t.health += 1; t.max_health += 1
         elif sid == "back_to_back":
-            import random as _r
-            targets = _r.sample(self.board, min(2, len(self.board)))
-            for t in targets:
+            for t in _r.sample(self.board, min(2, len(self.board))):
                 t.attack += 3; t.health += 3; t.max_health += 3
         elif sid == "bargain_bundle":
-            import random as _r
-            targets = _r.sample(self.board, min(3, len(self.board)))
-            for t in targets:
+            for t in _r.sample(self.board, min(3, len(self.board))):
                 t.attack += 3; t.health += 3; t.max_health += 3
         elif sid == "overconfidence":
-            import random as _r
             if self.board:
                 t = _r.choice(self.board)
                 t.attack += 3; t.health += 3; t.max_health += 3
-        # ── Single-target buffs ─────────────────────────────
+
+        # ── Single-target buffs (use _target()) ────────────
+        elif sid == "pointy_arrow":
+            t = _target()
+            if t:
+                t.attack += 4
+        elif sid == "tavern_dish_banana":
+            t = _target()
+            if t:
+                t.attack += 2; t.health += 2; t.max_health += 2
         elif sid == "a_new_sprout":
-            if self.board:
-                t = self.board[0]
+            t = _target()
+            if t:
                 t.attack += 1; t.health += 1; t.max_health += 1
+        elif sid == "selfish_bounty":
+            t = _target()
+            if t:
+                t.attack += 6; t.health += 6; t.max_health += 6
         elif sid == "temperature_shift":
-            if self.board:
-                t = self.board[0]
+            t = _target()
+            if t:
                 t.attack += 4; t.health += 4; t.max_health += 4
-        elif sid == "unmasked_identity":
-            tribes = set()
+        elif sid == "fortify":
+            t = _target()
+            if t:
+                t.health += 3; t.max_health += 3; _give_taunt(t)
+        elif sid == "defenders_rites":
+            t = _target()
+            if t:
+                t.attack += 6; t.health += 6; t.max_health += 6; _give_taunt(t)
+        elif sid == "tricky_trousers":
+            t = _target()
+            if t:
+                t.attack += 1; t.health += 2; t.max_health += 2
+                t.taunt = not t.taunt
+                if t.taunt and "taunt" not in t.abilities:
+                    t.abilities.append("taunt")
+                elif not t.taunt and "taunt" in t.abilities:
+                    t.abilities.remove("taunt")
+        elif sid == "deepwater_clan":
+            t = _target()
+            if t:
+                t.attack += 2; t.health += 2; t.max_health += 2
             for m in self.board:
-                tribes.update(m.types)
-            bonus = len(tribes)
-            for m in self.board:
-                m.attack += bonus
+                if "Murloc" in m.types:
+                    m.attack += 2; m.health += 2; m.max_health += 2
+        elif sid == "brood_of_nozdormu":
+            t = _target()
+            if t:
+                t.attack *= 2
+        elif sid == "perfect_vision":
+            t = _target()
+            if t:
+                t.attack = 20; t.health = 20; t.max_health = 20
+        elif sid == "knockoff_wisdomball":
+            t = _target()
+            if t:
+                t.attack += 5; t.health += 5; t.max_health += 5
+
+        # ── Board manipulation ──────────────────────────────
+        elif sid == "shifting_tide":
+            _r.shuffle(self.board)
+        elif sid == "boon_of_beetles":
+            for _ in range(2):
+                if len(self.board) < self.MAX_BOARD:
+                    self.board.append(Minion.from_id("beetle"))
+
+        # ── Add minions to hand ─────────────────────────────
+        elif sid == "portal_in_a_fountain":
+            from game.data.minions import MINIONS
+            t5 = [mid for mid, d in MINIONS.items() if d["tier"] == 5]
+            if t5:
+                self.hand.append(Minion.from_id(_r.choice(t5)))
+        elif sid == "portal_in_a_crystal":
+            from game.data.minions import MINIONS
+            pool = list(MINIONS.keys())
+            for mid in _r.sample(pool, min(3, len(pool))):
+                self.hand.append(Minion.from_id(mid))
+
+        # ── Board copy / golden ─────────────────────────────
+        elif sid == "cloning_conch":
+            t = _target()
+            if t and len(self.board) < self.MAX_BOARD:
+                self.board.append(t.clone())
+        elif sid == "golden_touch":
+            t = _target()
+            if t:
+                _make_golden(t)
+
+        # ── Pending combat effects (applied at combat start) ─
+        elif sid == "corrupted_cupcakes":
+            self.pending_combat_spells.append("corrupted_cupcakes")
+        elif sid == "hired_headhunter":
+            self.pending_combat_spells.append("hired_headhunter")
+
         return {"spell": sid}
 
     def sell_from_hand(self, hand_index: int) -> dict:

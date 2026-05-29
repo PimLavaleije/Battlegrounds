@@ -68,11 +68,11 @@ class GameManager:
         all_selected = game.select_hero(sid, hero_id)
         return {"success": True, "all_selected": all_selected}
 
-    def buy_minion(self, sid: str, room_code: str, shop_index: int) -> dict:
+    def buy_minion(self, sid: str, room_code: str, shop_index: int, target_index: int | None = None) -> dict:
         game = self.rooms.get(room_code)
         if not game:
             return {"success": False}
-        result = game.buy_minion(sid, shop_index)
+        result = game.buy_minion(sid, shop_index, target_index)
         if result["success"]:
             p = game.players[sid]
             result["player"] = p.to_dict(include_shop=True)

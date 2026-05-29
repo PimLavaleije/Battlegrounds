@@ -1,3 +1,27 @@
+// ── Spell targeting state ────────────────────────────────────
+const SpellTarget = {
+  active: false,
+  shopIndex: null,
+  start(shopIndex) {
+    this.active = true;
+    this.shopIndex = shopIndex;
+    document.getElementById("board-slots").classList.add("spell-targeting");
+    showNotification("Klik op een minion op je board om de spreuk te richten. (Esc = annuleer)", 30000);
+  },
+  cancel() {
+    this.active = false;
+    this.shopIndex = null;
+    document.getElementById("board-slots").classList.remove("spell-targeting");
+    hideTooltip();
+    document.getElementById("global-notification")?.classList.add("hidden");
+  },
+  confirm(boardIndex) {
+    const idx = this.shopIndex;
+    this.cancel();
+    SocketClient.buyMinion(idx, boardIndex);
+  },
+};
+
 // ── GameUI: rendert shop en board met ovale Hearthstone-stijl kaarten ──
 const GameUI = {
 
@@ -13,7 +37,13 @@ const GameUI = {
       } else if (item.type === "spell") {
         const card = buildSpellCard(item);
         card.dataset.shopIndex = idx;
-        card.addEventListener("click", () => SocketClient.buyMinion(idx));
+        card.addEventListener("click", () => {
+          if (item.targeted) {
+            SpellTarget.start(idx);
+          } else {
+            SocketClient.buyMinion(idx);
+          }
+        });
         card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);
@@ -80,6 +110,15 @@ const GameUI = {
         card.dataset.boardIndex = i;
 
         if (!State.inCombat) {
+          // Spell targeting: klik op board minion om spreuk te richten
+          card.addEventListener("click", e => {
+            if (SpellTarget.active) {
+              e.stopPropagation();
+              SpellTarget.confirm(i);
+              return;
+            }
+          });
+
           // Drag starten (voor verkopen of herschikken)
           card.draggable = true;
           card.addEventListener("dragstart", e => {
@@ -106,6 +145,7 @@ const GameUI = {
           // Rechtsklik = verkopen
           card.addEventListener("contextmenu", e => {
             e.preventDefault();
+            if (SpellTarget.active) { SpellTarget.cancel(); return; }
             if (confirm(`Verkoop ${minion.name} voor 1💰?`)) {
               SocketClient.sellMinion(i);
             }
