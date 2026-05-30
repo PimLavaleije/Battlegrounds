@@ -24,8 +24,12 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
     elif len(e_board) == len(p_board):
         current_side = random.randint(0, 1)
 
+    post_rewards: dict[str, list] = {"player": [], "enemy": []}
+
     _apply_combat_auras(p_board)
     _apply_combat_auras(e_board)
+    _apply_rally_effects(p_board, post_rewards["player"])
+    _apply_rally_effects(e_board, post_rewards["enemy"])
 
     while p_board and e_board and safety < 150:
         safety += 1
@@ -60,7 +64,7 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
             # Na aanval doden verwerken
             deaths = _collect_deaths(p_board, e_board)
             if deaths:
-                death_step = _process_deaths(deaths, p_board, e_board, steps)
+                death_step = _process_deaths(deaths, p_board, e_board, steps, post_rewards)
                 if death_step:
                     steps.extend(death_step)
             p_board = [m for m in p_board if not m.dead]
@@ -107,6 +111,7 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
         "steps": steps,
         "winner": winner,
         "surviving_minions": [m.to_dict() for m in survivors],
+        "post_combat_rewards": post_rewards,
     }
 
 
@@ -150,6 +155,8 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
     result_t = target.take_damage(attacker.attack if not attacker.poisonous else 9999)
     step["target_damage"] = result_t["damage"]
     step["target_shield_broken"] = result_t.get("shield_broken", False)
+    if result_t.get("damage", 0) > 0 and target.health <= 0:
+        target.killed_by_uid = attacker.uid
 
     # Hardy Orca: als doelwit schade ontvangt, buff alle andere vrienden op verdedigend bord
     defender_board_ref = e_board if current_side == 0 else p_board
@@ -214,7 +221,10 @@ def _collect_deaths(p_board: list[Minion], e_board: list[Minion]) -> list[tuple[
     return deaths
 
 
-def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], all_steps: list) -> list[dict]:
+def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], all_steps: list,
+                    post_rewards: dict | None = None) -> list[dict]:
+    if post_rewards is None:
+        post_rewards = {"player": [], "enemy": []}
     result_steps = []
 
     for dead_minion, dead_side in deaths:
@@ -228,6 +238,7 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
 
         friendly_board = p_board if dead_side == "player" else e_board
         enemy_board = e_board if dead_side == "player" else p_board
+        side_rewards = post_rewards[dead_side]
 
         # Passive triggers op vriendelijke minions
         for m in friendly_board:
@@ -253,7 +264,6 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                 death_step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
             elif ptype == "demon_dies_damage" and "Demon" in dead_minion.types:
-                # Deal schade aan willekeurige vijand
                 alive_enemies = [e for e in enemy_board if not e.dead]
                 if alive_enemies:
                     target = random.choice(alive_enemies)
@@ -263,24 +273,28 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
         # Deathrattle
         if dead_minion.deathrattle:
             dr = dead_minion.deathrattle
-            # Titus Rivendare check
-            has_titus = any(m.id == "titus_rivendare" and not m.dead for m in friendly_board)
-            triggers = 2 if has_titus else 1
+            # Titus Rivendare: golden = 3 triggers, normal = 2 triggers
+            titus = next((m for m in friendly_board if m.id == "titus_rivendare" and not m.dead), None)
+            if titus:
+                triggers = 3 if titus.golden else 2
+            else:
+                triggers = 1
 
             for _ in range(triggers):
-                _apply_deathrattle(dead_minion, dr, friendly_board, enemy_board, death_step)
+                _apply_deathrattle(dead_minion, dr, friendly_board, enemy_board, death_step, side_rewards)
 
-        # Reborn
+        # Reborn — insert at dead minion's position
         if dead_minion.reborn and not dead_minion.reborn_used:
             dead_minion.reborn_used = True
-            if len(friendly_board) < 7:
+            alive_count = sum(1 for m in friendly_board if not m.dead)
+            if alive_count < 7:
                 reborn_copy = dead_minion.clone()
-                # Sinrunner Blanchy herrijst met volle HP
                 full_hp = dead_minion.passive and dead_minion.passive.get("type") == "full_health_reborn"
                 reborn_copy.health = reborn_copy.max_health if full_hp else 1
                 reborn_copy.dead = False
                 reborn_copy.reborn = False
-                friendly_board.append(reborn_copy)
+                dead_idx = next((i for i, m in enumerate(friendly_board) if m is dead_minion), len(friendly_board))
+                friendly_board.insert(dead_idx + 1, reborn_copy)
                 death_step["events"].append({"type": "reborn", "uid": reborn_copy.uid, "name": reborn_copy.name})
 
         result_steps.append(death_step)
@@ -288,26 +302,44 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
     return result_steps
 
 
-def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board: list, step: dict):
-    dtype = dr.get("type")
+def _alive_count(board: list) -> int:
+    return sum(1 for m in board if not m.dead)
 
-    if dtype == "summon" and len(friendly_board) < 7:
-        token_id = dr["token"]
+
+def _dead_idx(dead: Minion, board: list) -> int:
+    for i, m in enumerate(board):
+        if m is dead:
+            return i
+    return len(board)
+
+
+def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board: list, step: dict,
+                       post_rewards: list | None = None):
+    dtype = dr.get("type")
+    spawn_pos = _dead_idx(dead, friendly_board)  # insert tokens right after dead slot
+
+    def _summon_token(token_id: str, overrides: dict | None = None) -> bool:
         from game.minion import Minion as M
+        if _alive_count(friendly_board) >= 7:
+            return False
         token = M.from_id(token_id)
-        friendly_board.append(token)
+        if overrides:
+            for k, v in overrides.items():
+                setattr(token, k, v)
+        nonlocal spawn_pos
+        friendly_board.insert(spawn_pos + 1, token)
+        spawn_pos += 1
         step["events"].append({"type": "summon", "token": token.to_dict()})
         _trigger_pack_leader(token, friendly_board, step)
+        return True
+
+    if dtype == "summon":
+        _summon_token(dr["token"])
 
     elif dtype == "summon_two":
         for _ in range(2):
-            if len(friendly_board) >= 7:
+            if not _summon_token(dr["token"]):
                 break
-            from game.minion import Minion as M
-            token = M.from_id(dr["token"])
-            friendly_board.append(token)
-            step["events"].append({"type": "summon", "token": token.to_dict()})
-            _trigger_pack_leader(token, friendly_board, step)
 
     elif dtype == "give_attack_random":
         alive = [m for m in friendly_board if not m.dead and m is not dead]
@@ -333,12 +365,8 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
     elif dtype == "summon_count":
         count = dr.get("count", 1)
         for _ in range(count):
-            if len(friendly_board) >= 7:
+            if not _summon_token(dr["token"]):
                 break
-            from game.minion import Minion as M
-            token = M.from_id(dr["token"])
-            friendly_board.append(token)
-            step["events"].append({"type": "summon", "token": token.to_dict()})
 
     elif dtype == "buff_tribe":
         tribe = dr.get("tribe")
@@ -378,21 +406,16 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         atk_buff = dr.get("attack", 0)
         hp_buff = dr.get("health", 0)
         add_taunt = dr.get("add_taunt", False)
-        dead_idx = None
-        for i, m in enumerate(friendly_board):
-            if m is dead:
-                dead_idx = i
-                break
-        if dead_idx is not None:
-            for adj_idx in [dead_idx - 1, dead_idx + 1]:
-                if 0 <= adj_idx < len(friendly_board):
-                    m = friendly_board[adj_idx]
-                    if not m.dead:
-                        m.attack += atk_buff
-                        m.health += hp_buff
-                        if add_taunt:
-                            m.taunt = True
-                        step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+        dead_i = _dead_idx(dead, friendly_board)
+        for adj_idx in [dead_i - 1, dead_i + 1]:
+            if 0 <= adj_idx < len(friendly_board):
+                m = friendly_board[adj_idx]
+                if not m.dead:
+                    m.attack += atk_buff
+                    m.health += hp_buff
+                    if add_taunt:
+                        m.taunt = True
+                    step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
     elif dtype == "buff_all_health":
         amount = dr.get("amount", 1)
@@ -401,24 +424,57 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                 m.health += amount
                 step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
 
-    elif dtype == "summon_with_self_attack" and len(friendly_board) < 7:
-        from game.minion import Minion as M
-        token = M.from_id(dr["token"])
-        token.attack = dead.attack
-        friendly_board.append(token)
-        step["events"].append({"type": "summon", "token": token.to_dict()})
+    elif dtype == "summon_with_self_attack":
+        _summon_token(dr["token"], {"attack": dead.attack})
 
     elif dtype == "summon_random_deathrattle":
         dr_minions = [mid for mid, data in MINIONS.items() if data.get("deathrattle")]
         count = dr.get("count", 2)
         for _ in range(count):
-            if len(friendly_board) >= 7 or not dr_minions:
+            if not dr_minions:
                 break
             chosen_id = random.choice(dr_minions)
-            from game.minion import Minion as M
-            new_m = M.from_id(chosen_id)
-            friendly_board.append(new_m)
-            step["events"].append({"type": "summon", "token": new_m.to_dict()})
+            if not _summon_token(chosen_id):
+                break
+
+    # ── New deathrattle types ────────────────────────────────
+    elif dtype == "give_reborn_undead":
+        eligible = [m for m in friendly_board if not m.dead and m is not dead
+                    and "Undead" in m.types and not m.reborn]
+        if eligible:
+            target = random.choice(eligible)
+            target.reborn = True
+            step["events"].append({"type": "buff", "uid": target.uid, "attack": target.attack, "health": target.health})
+
+    elif dtype == "buff_all_hp_deal_damage":
+        hp_buff = dr.get("health", 1)
+        dmg = dr.get("damage", 1)
+        for m in friendly_board:
+            if not m.dead and m is not dead:
+                m.health += hp_buff
+                m.max_health += hp_buff
+                m.take_damage(dmg)
+        step["events"].append({"type": "aoe_damage", "amount": dmg})
+
+    elif dtype == "destroy_killer":
+        # tracked via last_hit_by on the dead minion (set in _do_attack if we add that)
+        killer_uid = getattr(dead, "killed_by_uid", None)
+        if killer_uid:
+            for m in enemy_board:
+                if m.uid == killer_uid and not m.dead:
+                    m.health = -9999
+                    step["events"].append({"type": "aoe_damage", "amount": 0})
+                    break
+
+    # ── Post-combat reward types (fired in combat, given after) ─
+    elif dtype in ("add_spell_post_combat", "give_random_chromadrake_post_combat",
+                   "give_random_bounty_post_combat", "give_random_magnetic_mech_post_combat",
+                   "free_refreshes_post_combat", "spell_discount_post_combat",
+                   "buff_random_hand"):
+        if post_rewards is not None:
+            reward = dict(dr)
+            reward["type"] = dtype
+            post_rewards.append(reward)
 
 
 def _trigger_self_damaged_passive(damaged: Minion, board: list[Minion], step: dict):
@@ -468,6 +524,61 @@ def _apply_combat_auras(board: list[Minion]):
 
 def _trigger_pack_leader(new_minion: Minion, friendly_board: list, step: dict):
     pass
+
+
+def _apply_rally_effects(board: list[Minion], post_rewards: list):
+    """Fires Rally effects at start of combat for minions on board."""
+    for m in board:
+        if not m.rally:
+            continue
+        rtype = m.rally.get("type")
+        multiplier = 2 if m.golden else 1
+
+        if rtype == "buff_tribe_random":
+            tribe = m.rally.get("tribe")
+            eligible = [a for a in board if a is not m and not a.dead
+                        and (tribe is None or tribe in a.types)]
+            if eligible:
+                target = random.choice(eligible)
+                target.attack += m.rally.get("attack", 0) * multiplier
+                target.health += m.rally.get("health", 0) * multiplier
+
+        elif rtype == "buff_tribe_all" or rtype == "buff_tribe_others":
+            tribe = m.rally.get("tribe")
+            for ally in board:
+                if ally is not m and not ally.dead and (tribe is None or tribe in ally.types):
+                    ally.attack += m.rally.get("attack", 0) * multiplier
+                    ally.health += m.rally.get("health", 0) * multiplier
+
+        elif rtype == "trigger_leftmost_deathrattle":
+            dr_m = next((a for a in board if a is not m and not a.dead and a.deathrattle), None)
+            if dr_m:
+                dummy_step = {"events": []}
+                _apply_deathrattle(dr_m, dr_m.deathrattle, board, [], dummy_step, post_rewards)
+
+        elif rtype == "give_tribe_keyword":
+            tribe = m.rally.get("tribe")
+            keyword = m.rally.get("keyword", "venomous")
+            eligible = [a for a in board if a is not m and not a.dead
+                        and (tribe is None or tribe in a.types)]
+            if eligible:
+                target = random.choice(eligible)
+                setattr(target, keyword, True)
+                target.poisonous = True  # venomous implies poisonous in combat
+
+        elif rtype == "cast_queens_command":
+            for ally in board:
+                if not ally.dead:
+                    ally.attack += 3 * multiplier
+                    ally.health += 3 * multiplier
+                    if "Naga" in ally.types:
+                        ally.attack += 3 * multiplier
+                        ally.health += 3 * multiplier
+
+        elif rtype in ("give_random_bounty_post_combat", "give_random_magnetic_mech_post_combat"):
+            count = multiplier
+            for _ in range(count):
+                post_rewards.append({"type": rtype})
 
 
 def _trigger_shield_pop_passives(popped: Minion, friendly_board: list, step: dict):

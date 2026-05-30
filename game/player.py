@@ -23,19 +23,24 @@ class Player:
         self.ready = False
         self.alive = True
         self.triple_tracker: dict[str, list[Minion]] = {}
-        self.double_battlecry = False  # Brann
+        self.double_battlecry = False  # Brann (legacy flag kept for hero compat)
+        self.battlecry_triggers = 1   # 1=normal, 2=Brann, 3=golden Brann
         self.double_deathrattle = False  # Baron / Lich King
         self.hand: list[Minion] = []
         self.pending_combat_spells: list[str] = []
+        self.gold_next_turn_bonus = 0
+        self.free_refreshes_available = 0
+        self.next_spell_discount = 0
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
-        self.gold = min(3 + round_num - 1, self.MAX_GOLD)
+        base_gold = min(3 + round_num - 1, self.MAX_GOLD)
+        bonus = self.gold_next_turn_bonus
+        self.gold_next_turn_bonus = 0
+        self.gold = min(base_gold + bonus, self.MAX_GOLD)
         self.ready = False
-        # Upgrade kost daalt elke ronde (min 0)
         if self.upgrade_cost > 0:
             self.upgrade_cost = max(0, self.upgrade_cost - 1)
-        # Pas hero-passief toe
         self._apply_start_of_round_hero()
 
     def _apply_start_of_round_hero(self):
@@ -105,7 +110,7 @@ class Player:
         if board_index < 0 or board_index >= len(self.board):
             return {"success": False, "message": "Ongeldige board-index."}
         minion = self.board.pop(board_index)
-        self.gold = min(self.gold + 1, self.MAX_GOLD)
+        self.gold = min(self.gold + self._sell_gold(minion), self.MAX_GOLD)
         self._remove_from_triple(minion)
         self._recalculate_board_passives()
         sell_passive = self._trigger_sell_passive(minion)
@@ -183,6 +188,12 @@ class Player:
     def play_from_hand(self, hand_index: int, board_index: int = -1) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
             return {"success": False, "message": "Ongeldige hand-index."}
+        item = self.hand[hand_index]
+        # Spell stored in hand (given by battlecry/deathrattle)
+        if isinstance(item, dict) and item.get("type") == "spell":
+            self.hand.pop(hand_index)
+            effect = self._apply_spell(item, board_index if board_index >= 0 else None)
+            return {"success": True, "spell": item, "spell_effect": effect}
         if len(self.board) >= self.MAX_BOARD:
             return {"success": False, "message": "Board is vol (max 7). Verkoop een minion om ruimte te maken."}
         minion = self.hand.pop(hand_index)
@@ -192,11 +203,10 @@ class Player:
             self.board.append(minion)
         self._recalculate_board_passives()
 
-        # Battlecry fires when played to board (not on buy)
         battlecry_result = None
         if minion.battlecry:
             battlecry_result = self._apply_battlecry(minion)
-            if self.double_battlecry and battlecry_result:
+            for _ in range(self.battlecry_triggers - 1):
                 self._apply_battlecry(minion)
 
         return {"success": True, "battlecry": battlecry_result}
@@ -204,7 +214,8 @@ class Player:
     # ── Spreuken ─────────────────────────────────────────────────
     def _cast_spell_from_shop(self, shop_index: int, target_index: int | None = None) -> dict:
         spell = self.shop[shop_index]
-        cost = spell.get("cost", 3)
+        cost = max(0, spell.get("cost", 3) - self.next_spell_discount)
+        self.next_spell_discount = 0
         if self.gold < cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
         if spell.get("targeted") and not self.board:
@@ -450,7 +461,7 @@ class Player:
         if hand_index < 0 or hand_index >= len(self.hand):
             return {"success": False, "message": "Ongeldige hand-index."}
         minion = self.hand.pop(hand_index)
-        self.gold = min(self.gold + 1, self.MAX_GOLD)
+        self.gold = min(self.gold + self._sell_gold(minion), self.MAX_GOLD)
         self._remove_from_triple(minion)
         sell_passive = self._trigger_sell_passive(minion)
         return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
@@ -528,22 +539,66 @@ class Player:
                         events.append({"type": "buy_passive", "uid": ally.uid, "attack": ally.attack, "health": ally.health})
         return events
 
+    def _sell_gold(self, minion: Minion) -> int:
+        if minion.passive and minion.passive.get("type") == "on_sell_gold":
+            total = minion.passive.get("total", 1)
+            return total * 2 if minion.golden else total
+        return 1
+
     def _trigger_sell_passive(self, sold: Minion) -> dict | None:
         if not sold.passive:
             return None
         ptype = sold.passive.get("type")
+        multiplier = 2 if sold.golden else 1
+
         if ptype == "on_sell_self":
             token_id = sold.passive.get("token")
             if not token_id:
                 return None
-            token = Minion.from_id(token_id)
-            for i, slot in enumerate(self.shop):
-                if slot is None:
-                    self.shop[i] = token
-                    break
-            else:
-                self.shop.append(token)
-            return {"added_to_shop": token.to_dict()}
+            results = []
+            for _ in range(multiplier):
+                token = Minion.from_id(token_id)
+                self.hand.append(token)
+                results.append(token.to_dict())
+            return {"added_to_hand": results}
+
+        if ptype == "on_sell_give_random_tier":
+            from game.data.minions import MINIONS
+            tier = sold.passive.get("tier", 1)
+            pool = [m for m in MINIONS.values() if m["tier"] == tier]
+            if not pool:
+                return None
+            results = []
+            for _ in range(multiplier):
+                data = random.choice(pool)
+                minion = Minion.from_id(data["id"])
+                self.hand.append(minion)
+                results.append(minion.to_dict())
+            return {"added_to_hand": results}
+
+        if ptype == "on_sell_give_random_tribe":
+            from game.data.minions import MINIONS
+            tribe = sold.passive.get("tribe")
+            pool = [m for m in MINIONS.values() if m.get("tribe") == tribe]
+            if not pool:
+                return None
+            results = []
+            for _ in range(multiplier):
+                data = random.choice(pool)
+                minion = Minion.from_id(data["id"])
+                self.hand.append(minion)
+                results.append(minion.to_dict())
+            return {"added_to_hand": results}
+
+        if ptype == "on_sell_buff_board":
+            atk = sold.passive.get("attack", 0) * multiplier
+            hp  = sold.passive.get("health", 0) * multiplier
+            for m in self.board:
+                m.attack      += atk
+                m.health      += hp
+                m.max_health  += hp
+            return {"buffed_board": {"attack": atk, "health": hp}}
+
         return None
 
     def _recalculate_board_passives(self):
