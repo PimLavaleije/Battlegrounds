@@ -102,12 +102,20 @@ class Player:
         # Shop-event passives (wrath_weaver, deflect_o_bot, blazing_skyfin, kalecgos)
         passive_events = self._trigger_buy_passives(minion)
 
+        # Spellcraft: generate free spell when buying a Naga with spellcraft
+        spellcraft_spell = None
+        if "spellcraft" in minion.abilities and minion.spellcraft:
+            spellcraft_spell = self._generate_spellcraft_spell(minion)
+            if spellcraft_spell:
+                self.hand.append(spellcraft_spell)
+
         return {
             "success": True,
             "minion": minion.to_dict(),
             "triple": triple_result,
             "battlecry": None,
             "passive_events": passive_events,
+            "spellcraft_spell": spellcraft_spell,
         }
 
     def sell_minion(self, board_index: int) -> dict:
@@ -462,7 +470,93 @@ class Player:
         elif sid == "hired_headhunter":
             self.pending_combat_spells.append("hired_headhunter")
 
+        # ── Spellcraft spells ────────────────────────────────
+        elif sid == "sc_surf_n_surf":
+            t = _target()
+            if t:
+                t.deathrattle = {"type": "summon", "token": "crab"}
+                if "deathrattle" not in t.abilities:
+                    t.abilities.append("deathrattle")
+        elif sid == "sc_lava_lurker":
+            t = _target()
+            if t:
+                t.attack += 2; t.health += 2; t.max_health += 2
+        elif sid == "sc_reef_riffer":
+            t = _target()
+            if t:
+                bonus = self.tavern_tier
+                t.attack += bonus; t.health += bonus; t.max_health += bonus
+        elif sid == "sc_deep_blue_crooner":
+            t = _target()
+            if t:
+                t.attack += 2; t.health += 3; t.max_health += 3
+        elif sid == "sc_deep_sea_angler":
+            t = _target()
+            if t:
+                t.attack += 2; t.health += 6; t.max_health += 6; _give_taunt(t)
+        elif sid == "sc_private_chef":
+            t = _target()
+            if t and t.types:
+                from game.data.minions import MINIONS as _MINS
+                tribe = t.types[0]
+                candidates = [mid for mid, d in _MINS.items()
+                              if tribe in d.get("types", []) and mid != t.id]
+                if candidates:
+                    self.hand.append(Minion.from_id(_r.choice(candidates)))
+        elif sid == "sc_rimescale_priestess":
+            from game.data.spells import SPELLS_BY_TIER as _SBT
+            stat_spells = [s for tier_spells in _SBT.values() for s in tier_spells
+                           if s["tier"] <= self.tavern_tier and "+" in s.get("description", "")]
+            if stat_spells:
+                chosen = _r.choice(stat_spells)
+                self.hand.append({**chosen, "type": "spell", "cost": chosen.get("cost", 3)})
+        elif sid == "sc_waverider":
+            t = _target()
+            if t:
+                t.attack += 2; t.health += 2; t.max_health += 2
+                if "Naga" in t.types and not t.windfury:
+                    t.windfury = True
+                    if "windfury" not in t.abilities:
+                        t.abilities.append("windfury")
+        elif sid == "sc_zesty_shaker":
+            if self.board:
+                t = _r.choice(self.board)
+                t.attack += 2; t.health += 2; t.max_health += 2
+        elif sid == "sc_darkcrest_strategist":
+            from game.data.minions import MINIONS as _MINS2
+            t1_nagas = [mid for mid, d in _MINS2.items()
+                        if d["tier"] == 1 and "Naga" in d.get("types", [])]
+            if t1_nagas:
+                self.hand.append(Minion.from_id(_r.choice(t1_nagas)))
+        elif sid == "sc_glowscale":
+            t = _target()
+            if t:
+                t.divine_shield = True
+                if "divine_shield" not in t.abilities:
+                    t.abilities.append("divine_shield")
+        elif sid == "sc_tranquil_meditative":
+            for m in self.board:
+                m.health += 2; m.max_health += 2
+        elif sid == "sc_well_wisher":
+            if self.board:
+                t = _r.choice(self.board)
+                t.attack += 3; t.health += 3; t.max_health += 3
+
         return {"spell": sid}
+
+    def _generate_spellcraft_spell(self, minion: "Minion") -> dict | None:
+        sc = minion.spellcraft
+        if not sc:
+            return None
+        return {
+            "type": "spell",
+            "id": sc["spell_id"],
+            "name": f"Spellcraft: {sc['name']}",
+            "tier": minion.tier,
+            "cost": 0,
+            "description": sc["description"],
+            "targeted": sc.get("targeted", False),
+        }
 
     def sell_from_hand(self, hand_index: int) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
