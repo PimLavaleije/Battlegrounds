@@ -466,6 +466,34 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                     step["events"].append({"type": "aoe_damage", "amount": 0})
                     break
 
+    elif dtype == "summon_random_beast_set_stats":
+        beast_ids = [mid for mid, data in MINIONS.items()
+                     if "Beast" in data.get("types", [])]
+        if beast_ids:
+            chosen_id = random.choice(beast_ids)
+            atk = dr.get("attack", 6)
+            hp = dr.get("health", 6)
+            _summon_token(chosen_id, {"attack": atk, "health": hp, "max_health": hp})
+
+    elif dtype == "summon_dead_mechs":
+        count = dr.get("count", 2)
+        dead_mechs = [m for m in friendly_board if m.dead and "Mech" in m.types][:count]
+        for dead_m in dead_mechs:
+            _summon_token(dead_m.id)
+
+    elif dtype == "cast_queens_command":
+        multiplier = 2 if dead.golden else 1
+        for m in friendly_board:
+            if not m.dead:
+                atk = 3 * multiplier
+                hp = 3 * multiplier
+                if "Naga" in m.types:
+                    atk *= 2
+                    hp *= 2
+                m.attack += atk
+                m.health += hp
+                step["events"].append({"type": "buff", "uid": m.uid, "attack": m.attack, "health": m.health})
+
     # ── Post-combat reward types (fired in combat, given after) ─
     elif dtype in ("add_spell_post_combat", "give_random_chromadrake_post_combat",
                    "give_random_bounty_post_combat", "give_random_magnetic_mech_post_combat",

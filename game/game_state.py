@@ -6,6 +6,53 @@ from game.combat import simulate_combat, calculate_damage
 from game.matchmaking import make_matchups
 from game.data.heroes import HEROES_LIST
 from game.minion import Minion
+from game.data.spells import SPELLS_BY_TIER
+
+_SPELLS_FLAT = {s["id"]: s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells}
+_BOUNTY_SPELLS = [s for s in _SPELLS_FLAT.values() if "bounty" in s["id"]]
+
+
+def _apply_post_combat_rewards(player: Player, rewards: list):
+    from game.data.minions import MINIONS
+    for reward in rewards:
+        rtype = reward.get("type")
+
+        if rtype == "add_spell_post_combat":
+            spell_id = reward.get("spell")
+            spell = _SPELLS_FLAT.get(spell_id)
+            if spell:
+                player.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 3)})
+
+        elif rtype == "give_random_bounty_post_combat":
+            if _BOUNTY_SPELLS:
+                spell = random.choice(_BOUNTY_SPELLS)
+                player.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 2)})
+
+        elif rtype == "give_random_chromadrake_post_combat":
+            pool = [m for mid, m in MINIONS.items() if "chromadrake" in mid]
+            if pool:
+                data = random.choice(pool)
+                player.hand.append(Minion.from_id(data["id"]))
+
+        elif rtype == "give_random_magnetic_mech_post_combat":
+            pool = [m for m in MINIONS.values() if "Mech" in m.get("types", [])]
+            if pool:
+                data = random.choice(pool)
+                player.hand.append(Minion.from_id(data["id"]))
+
+        elif rtype == "free_refreshes_post_combat":
+            player.free_refreshes_available += reward.get("count", 1)
+
+        elif rtype == "spell_discount_post_combat":
+            player.next_spell_discount += 1
+
+        elif rtype == "buff_random_hand":
+            minions_in_hand = [m for m in player.hand if isinstance(m, Minion)]
+            if minions_in_hand:
+                target = random.choice(minions_in_hand)
+                target.attack += reward.get("attack", 5)
+                target.health += reward.get("health", 5)
+                target.max_health += reward.get("health", 5)
 
 
 AI_NAMES = [
@@ -256,6 +303,13 @@ class GameState:
 
             # Simuleer gevecht
             result = simulate_combat(player.board, enemy_board)
+
+            # Pas post-combat beloningen toe
+            _apply_post_combat_rewards(player, result["post_combat_rewards"]["player"])
+            if not opp_ref.startswith("ghost:"):
+                opp_obj = self.players.get(opp_ref)
+                if opp_obj:
+                    _apply_post_combat_rewards(opp_obj, result["post_combat_rewards"]["enemy"])
 
             # Bereken schade
             damage_to_player = 0

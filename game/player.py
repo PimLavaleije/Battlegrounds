@@ -1,6 +1,10 @@
 import random
 from game.minion import Minion
 from game.data.heroes import HEROES_LIST
+from game.data.spells import SPELLS_BY_TIER
+
+_SPELLS_FLAT = {s["id"]: s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells}
+_BOUNTY_SPELLS = [s for s in _SPELLS_FLAT.values() if "bounty" in s["id"]]
 
 
 class Player:
@@ -497,6 +501,75 @@ class Player:
                 if bc.get("add_taunt"):
                     target.taunt = True
                 return {"buffed": target.to_dict()}
+
+        if effect == "make_self_golden":
+            if not minion.golden:
+                minion.make_golden()
+            return {"golden": minion.to_dict()}
+
+        if effect == "next_spell_discount":
+            self.next_spell_discount += bc.get("amount", 1)
+            return {"spell_discount": bc.get("amount", 1)}
+
+        if effect == "gold_next_turn":
+            self.gold_next_turn_bonus += bc.get("amount", 1)
+            return {"gold_next_turn": bc.get("amount", 1)}
+
+        if effect == "give_free_refreshes":
+            self.free_refreshes_available += bc.get("count", 2)
+            return {"free_refreshes": bc.get("count", 2)}
+
+        if effect == "add_spell_to_hand":
+            spell_id = bc.get("spell")
+            spell = _SPELLS_FLAT.get(spell_id)
+            if spell:
+                self.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 3)})
+                return {"spell_added": spell_id}
+
+        if effect == "add_random_spell_to_hand":
+            tier = bc.get("spell_tier", 1)
+            pool = SPELLS_BY_TIER.get(tier, [])
+            if pool:
+                spell = random.choice(pool)
+                self.hand.append({**spell, "type": "spell", "cost": spell.get("cost", tier)})
+                return {"spell_added": spell["id"]}
+
+        if effect == "add_random_minion_tribe_to_hand":
+            from game.data.minions import MINIONS
+            tribe = bc.get("tribe")
+            pool = [m for m in MINIONS.values() if tribe in m.get("types", [])]
+            if pool:
+                data = random.choice(pool)
+                self.hand.append(Minion.from_id(data["id"]))
+                return {"minion_added": data["id"]}
+
+        if effect == "add_random_chromadrake_to_hand":
+            from game.data.minions import MINIONS
+            pool = [m for mid, m in MINIONS.items() if "chromadrake" in mid]
+            if pool:
+                data = random.choice(pool)
+                self.hand.append(Minion.from_id(data["id"]))
+                return {"minion_added": data["id"]}
+
+        if effect == "add_random_bounty_to_hand":
+            if _BOUNTY_SPELLS:
+                spell = random.choice(_BOUNTY_SPELLS)
+                self.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 2)})
+                return {"spell_added": spell["id"]}
+
+        if effect == "cast_queens_command":
+            multiplier = 2 if minion.golden else 1
+            for m in self.board:
+                atk = 3 * multiplier
+                hp = 3 * multiplier
+                if "Naga" in m.types:
+                    atk *= 2
+                    hp *= 2
+                m.attack += atk
+                m.health += hp
+                m.max_health += hp
+            return {"queens_command": True}
+
         return None
 
     def _trigger_buy_passives(self, bought: Minion) -> list[dict]:
