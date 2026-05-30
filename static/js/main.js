@@ -93,8 +93,16 @@ function renderHeroSelection(heroes, timeout) {
   heroes.forEach(hero => {
     const card = document.createElement("div");
     card.className = "hero-card";
+    const imgUrl = getHeroImageUrl(hero.id);
     card.innerHTML = `
-      <span class="hero-card-emoji">${hero.emoji || "⚔️"}</span>
+      <div class="hero-card-portrait">
+        ${imgUrl
+          ? `<img src="${imgUrl}" alt="${escapeHtml(hero.name)}" loading="lazy"
+                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+             <span class="hero-card-emoji" style="display:none">${hero.emoji || "⚔️"}</span>`
+          : `<span class="hero-card-emoji">${hero.emoji || "⚔️"}</span>`
+        }
+      </div>
       <div class="hero-card-name">${escapeHtml(hero.name)}</div>
       <div class="hero-card-desc">${escapeHtml(hero.description)}</div>
     `;
@@ -146,8 +154,15 @@ function updateHUD(player, roundNum) {
   document.getElementById("hud-gold").textContent  = player.gold;
   document.getElementById("board-count").textContent = `(${player.board.length}/7)`;
   if (player.hero) {
-    document.getElementById("hud-hero-emoji").textContent = player.hero.emoji || "⚔️";
-    document.getElementById("hud-hero-name").textContent  = player.hero.name;
+    const heroEmoji = document.getElementById("hud-hero-emoji");
+    const imgUrl = getHeroImageUrl(player.hero.id);
+    if (imgUrl && !heroEmoji.dataset.loaded) {
+      heroEmoji.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(player.hero.name)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle" onerror="this.parentElement.textContent='${(player.hero.emoji || '⚔️').replace(/'/g,"\\'")}'">`;
+      heroEmoji.dataset.loaded = "1";
+    } else if (!imgUrl) {
+      heroEmoji.textContent = player.hero.emoji || "⚔️";
+    }
+    document.getElementById("hud-hero-name").textContent = player.hero.name;
   }
   const upBtn = document.getElementById("btn-upgrade");
   document.getElementById("upgrade-cost").textContent = player.upgrade_cost;
