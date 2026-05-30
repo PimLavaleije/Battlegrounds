@@ -68,32 +68,38 @@ const GameUI = {
       container.innerHTML = '<div class="hand-empty-msg">Koop minions — klik om op board te zetten</div>';
       return;
     }
-    hand.forEach((minion, idx) => {
-      const card = buildShopCard(minion, { showCost: false });
-      card.dataset.handIndex = idx;
+    hand.forEach((item, idx) => {
+      let card;
+      if (item.type === "spell") {
+        card = buildSpellCard(item);
+        card.addEventListener("click", () => SocketClient.playFromHand(idx));
+        card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
+        card.addEventListener("mouseleave", hideTooltip);
+        card.addEventListener("mousemove", moveTooltip);
+      } else {
+        card = buildShopCard(item, { showCost: false });
+        card.dataset.handIndex = idx;
 
-      // Klik = speel naar board
-      card.addEventListener("click", () => SocketClient.playFromHand(idx));
+        card.addEventListener("click", () => SocketClient.playFromHand(idx));
 
-      // Drag = kan naar sell-zone gesleept worden
-      card.draggable = true;
-      card.addEventListener("dragstart", e => {
-        e.dataTransfer.setData("hand_index", idx);
-        document.getElementById("sell-zone").classList.remove("hidden");
-      });
-      card.addEventListener("dragend", () => {
-        document.getElementById("sell-zone").classList.add("hidden");
-      });
+        card.draggable = true;
+        card.addEventListener("dragstart", e => {
+          e.dataTransfer.setData("hand_index", idx);
+          document.getElementById("sell-zone").classList.remove("hidden");
+        });
+        card.addEventListener("dragend", () => {
+          document.getElementById("sell-zone").classList.add("hidden");
+        });
 
-      // Rechtsklik = verkoop
-      card.addEventListener("contextmenu", e => {
-        e.preventDefault();
-        if (confirm(`Verkoop ${minion.name} voor 1💰?`)) SocketClient.sellFromHand(idx);
-      });
+        card.addEventListener("contextmenu", e => {
+          e.preventDefault();
+          if (confirm(`Verkoop ${item.name} voor 1💰?`)) SocketClient.sellFromHand(idx);
+        });
 
-      card.addEventListener("mouseenter", e => showTooltip(minion, e));
-      card.addEventListener("mouseleave", hideTooltip);
-      card.addEventListener("mousemove", moveTooltip);
+        card.addEventListener("mouseenter", e => showTooltip(item, e));
+        card.addEventListener("mouseleave", hideTooltip);
+        card.addEventListener("mousemove", moveTooltip);
+      }
       container.appendChild(card);
     });
   },

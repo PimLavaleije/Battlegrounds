@@ -121,6 +121,9 @@ class Player:
         return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
 
     def reroll(self) -> dict:
+        if self.free_refreshes_available > 0:
+            self.free_refreshes_available -= 1
+            return {"success": True, "gold": self.gold}
         if self.gold < 1:
             return {"success": False, "message": "Niet genoeg goud."}
         self.gold -= 1
@@ -464,6 +467,9 @@ class Player:
     def sell_from_hand(self, hand_index: int) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
             return {"success": False, "message": "Ongeldige hand-index."}
+        item = self.hand[hand_index]
+        if isinstance(item, dict):
+            return {"success": False, "message": "Spreuken kunnen niet verkocht worden."}
         minion = self.hand.pop(hand_index)
         self.gold = min(self.gold + self._sell_gold(minion), self.MAX_GOLD)
         self._remove_from_triple(minion)
@@ -705,7 +711,7 @@ class Player:
             "upgrade_cost": self.upgrade_cost,
             "gold": self.gold,
             "board": [m.to_dict() for m in self.board],
-            "hand": [m.to_dict() for m in self.hand],
+            "hand": [(m if isinstance(m, dict) else m.to_dict()) for m in self.hand],
             "frozen": self.frozen,
             "hero": self.hero,
             "ready": self.ready,
