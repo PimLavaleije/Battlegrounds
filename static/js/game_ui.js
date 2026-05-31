@@ -1,24 +1,24 @@
-// ── Spell targeting state ────────────────────────────────────
+// ── Spell targeting state (vanuit hand) ──────────────────────
 const SpellTarget = {
   active: false,
-  shopIndex: null,
-  start(shopIndex) {
+  handIndex: null,
+  start(handIndex) {
     this.active = true;
-    this.shopIndex = shopIndex;
+    this.handIndex = handIndex;
     document.getElementById("board-slots").classList.add("spell-targeting");
     showNotification("Klik op een minion op je board om de spreuk te richten. (Esc = annuleer)", 30000);
   },
   cancel() {
     this.active = false;
-    this.shopIndex = null;
+    this.handIndex = null;
     document.getElementById("board-slots").classList.remove("spell-targeting");
     hideTooltip();
     document.getElementById("global-notification")?.classList.add("hidden");
   },
   confirm(boardIndex) {
-    const idx = this.shopIndex;
+    const idx = this.handIndex;
     this.cancel();
-    SocketClient.buyMinion(idx, boardIndex);
+    SocketClient.playFromHand(idx, boardIndex);
   },
 };
 
@@ -37,13 +37,8 @@ const GameUI = {
       } else if (item.type === "spell") {
         const card = buildSpellCard(item);
         card.dataset.shopIndex = idx;
-        card.addEventListener("click", () => {
-          if (item.targeted) {
-            SpellTarget.start(idx);
-          } else {
-            SocketClient.buyMinion(idx);
-          }
-        });
+        // Kopen = gaat naar hand; spelen vanuit hand om te casten
+        card.addEventListener("click", () => SocketClient.buyMinion(idx));
         card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);
@@ -72,7 +67,13 @@ const GameUI = {
       let card;
       if (item.type === "spell") {
         card = buildSpellCard(item);
-        card.addEventListener("click", () => SocketClient.playFromHand(idx));
+        card.addEventListener("click", () => {
+          if (item.targeted && State.player?.board?.length > 0) {
+            SpellTarget.start(idx);
+          } else {
+            SocketClient.playFromHand(idx);
+          }
+        });
         card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);
@@ -116,12 +117,10 @@ const GameUI = {
         card.dataset.boardIndex = i;
 
         if (!State.inCombat) {
-          // Spell targeting: klik op board minion om spreuk te richten
           card.addEventListener("click", e => {
             if (SpellTarget.active) {
               e.stopPropagation();
               SpellTarget.confirm(i);
-              return;
             }
           });
 

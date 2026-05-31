@@ -12,29 +12,27 @@ _SPELLS_FLAT = {s["id"]: s for tier_spells in SPELLS_BY_TIER.values() for s in t
 _BOUNTY_SPELLS = [s for s in _SPELLS_FLAT.values() if "bounty" in s["id"]]
 
 
-def _apply_hero_combat_auras(player: Player, enemy_board: list):
-    """Applies hero passives that trigger at the start of combat."""
-    if not player.hero:
+def _apply_hero_combat_auras(board: list, enemy_board: list, hero: dict | None):
+    """Applies hero passives at start of combat on the (already cloned) combat board."""
+    if not hero:
         return
-    effect = player.hero.get("ability", {}).get("effect")
-    ab = player.hero.get("ability", {})
+    effect = hero.get("ability", {}).get("effect")
+    ab = hero.get("ability", {})
     if effect == "all_will_burn":
-        # Deathwing: give ALL minions +attack Attack (both sides)
         bonus = ab.get("attack", 2)
-        for m in player.board + enemy_board:
+        for m in board + enemy_board:
             m.attack += bonus
     elif effect == "wingmen":
-        # Illidan: first and last friendly minion get +atk/+hp
         atk = ab.get("attack", 2)
         hp  = ab.get("health", 1)
-        if player.board:
-            player.board[0].attack += atk
-            player.board[0].health += hp
-            player.board[0].max_health += hp
-            if len(player.board) > 1:
-                player.board[-1].attack += atk
-                player.board[-1].health += hp
-                player.board[-1].max_health += hp
+        if board:
+            board[0].attack += atk
+            board[0].health += hp
+            board[0].max_health += hp
+            if len(board) > 1:
+                board[-1].attack += atk
+                board[-1].health += hp
+                board[-1].max_health += hp
 
 
 def _apply_post_combat_rewards(player: Player, rewards: list):
@@ -326,11 +324,25 @@ class GameState:
                         enemy_board.pop(random.randrange(len(enemy_board)))
             player.pending_combat_spells.clear()
 
-            # Hero passives at combat start
-            _apply_hero_combat_auras(player, enemy_board)
+            # Clone board voor combat (muteert nooit het echte board)
+            combat_board = [m.clone() for m in player.board]
+
+            # Flighty Scout: als in hand, voeg kopie toe aan combat board
+            for item in player.hand:
+                if isinstance(item, Minion) and item.id == "flighty_scout" and len(combat_board) < player.MAX_BOARD:
+                    scout = item.clone()
+                    if item.golden:
+                        scout.attack *= 2
+                        scout.health *= 2
+                        scout.max_health *= 2
+                    combat_board.append(scout)
+                    break
+
+            # Hero passives at combat start (op de clone, niet het echte board)
+            _apply_hero_combat_auras(combat_board, enemy_board, player.hero)
 
             # Simuleer gevecht
-            result = simulate_combat(player.board, enemy_board)
+            result = simulate_combat(combat_board, enemy_board)
 
             # Pas post-combat beloningen toe
             _apply_post_combat_rewards(player, result["post_combat_rewards"]["player"])

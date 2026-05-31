@@ -36,6 +36,7 @@ class Player:
         self.free_refreshes_available = 0
         self.next_spell_discount = 0
         self.kael_buy_count = 0  # Kael'thas: resets each turn
+        self.ancestral_automaton_count = 0  # AA buff tracking
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -162,12 +163,18 @@ class Player:
         # Shop-event passives (wrath_weaver, deflect_o_bot, blazing_skyfin, kalecgos)
         passive_events = self._trigger_buy_passives(minion)
 
-        # Spellcraft: generate free spell when buying a Naga with spellcraft
-        spellcraft_spell = None
-        if "spellcraft" in minion.abilities and minion.spellcraft:
-            spellcraft_spell = self._generate_spellcraft_spell(minion)
-            if spellcraft_spell:
-                self.hand.append(spellcraft_spell)
+        # Ancestral Automaton: buff all existing AAs, set bonus on new one
+        if minion.id == "ancestral_automaton":
+            for m in self.board:
+                if m.id == "ancestral_automaton":
+                    m.attack += 3; m.health += 2; m.max_health += 2
+            for m in self.hand:
+                if isinstance(m, Minion) and m.id == "ancestral_automaton":
+                    m.attack += 3; m.health += 2; m.max_health += 2
+            minion.attack += self.ancestral_automaton_count * 3
+            minion.health += self.ancestral_automaton_count * 2
+            minion.max_health += self.ancestral_automaton_count * 2
+            self.ancestral_automaton_count += 1
 
         # Hero passives on buy
         if self.hero:
@@ -185,7 +192,6 @@ class Player:
             "triple": triple_result,
             "battlecry": None,
             "passive_events": passive_events,
-            "spellcraft_spell": spellcraft_spell,
         }
 
     def sell_minion(self, board_index: int) -> dict:
@@ -298,21 +304,26 @@ class Player:
             for _ in range(self.battlecry_triggers - 1):
                 self._apply_battlecry(minion)
 
+        # Spellcraft: Naga generates free spell when played to board
+        if "spellcraft" in minion.abilities and minion.spellcraft:
+            sc_spell = self._generate_spellcraft_spell(minion)
+            if sc_spell:
+                self.hand.append(sc_spell)
+
         return {"success": True, "battlecry": battlecry_result}
 
     # ── Spreuken ─────────────────────────────────────────────────
     def _cast_spell_from_shop(self, shop_index: int, target_index: int | None = None) -> dict:
+        """Koop een spreuk uit de winkel: gaat naar hand (niet direct gecastet)."""
         spell = self.shop[shop_index]
         cost = max(0, spell.get("cost", 3) - self.next_spell_discount)
         self.next_spell_discount = 0
         if self.gold < cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
-        if spell.get("targeted") and not self.board:
-            return {"success": False, "message": "Geen minions op je board."}
         self.shop[shop_index] = None
         self.gold -= cost
-        effect = self._apply_spell(spell, target_index)
-        return {"success": True, "spell": spell, "spell_effect": effect}
+        self.hand.append(spell)
+        return {"success": True, "spell": spell}
 
     def _apply_spell(self, spell: dict, target_index: int | None = None) -> dict:
         import random as _r

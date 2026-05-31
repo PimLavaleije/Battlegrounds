@@ -426,7 +426,9 @@ const HERO_PORTRAITS = {
 function getHeroImageUrl(heroId) {
   const cardId = HERO_PORTRAITS[heroId];
   if (!cardId) return null;
-  return `https://hearthstone.wiki.gg/images/thumb/${cardId}.png/200px-${cardId}.png`;
+  // Hero images on the wiki don't have _Battlegrounds suffix (unlike minion images)
+  const wikiId = cardId.replace(/_Battlegrounds$/, "");
+  return `https://hearthstone.wiki.gg/images/thumb/${wikiId}.png/200px-${wikiId}.png`;
 }
 
 // ── Spell portraits (emoji only — card IDs to be added later) ──
