@@ -47,6 +47,17 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
 
         attacker = attacker_board[atk_idx]
 
+        # Roaring Recruiter: Dragon aanvaller krijgt buff voor aanval
+        if "Dragon" in attacker.types:
+            for ally in attacker_board:
+                if ally.dead or ally is attacker:
+                    continue
+                if ally.passive and ally.passive.get("type") == "on_dragon_attack_buff_it":
+                    mult = 2 if ally.golden else 1
+                    attacker.attack += ally.passive.get("attack", 3) * mult
+                    attacker.health += ally.passive.get("health", 1) * mult
+                    attacker.max_health += ally.passive.get("health", 1) * mult
+
         # Kies doelwit
         target, target_idx = _choose_target(attacker, defender_board)
         if target is None:
@@ -163,6 +174,23 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
     if not result_t.get("shielded") and result_t.get("damage", 0) > 0:
         if target.passive and target.passive.get("type") == "on_self_damaged":
             _trigger_self_damaged_passive(target, defender_board_ref, step)
+        # Iridescent Skyblazer / Trigore: Beast neemt schade
+        if "Beast" in target.types:
+            for ally in defender_board_ref:
+                if ally.dead or ally is target:
+                    continue
+                if ally.passive and ally.passive.get("type") == "on_beast_damage_buff_other_beast":
+                    mult = 2 if ally.golden else 1
+                    others = [a for a in defender_board_ref if not a.dead and a is not target]
+                    if others:
+                        chosen = random.choice(others)
+                        chosen.attack += ally.passive.get("attack", 2) * mult
+                        chosen.health += ally.passive.get("health", 1) * mult
+                        chosen.max_health += ally.passive.get("health", 1) * mult
+                elif ally.passive and ally.passive.get("type") == "on_beast_damage_buff_self_health":
+                    mult = 2 if ally.golden else 1
+                    ally.health += ally.passive.get("health", 2) * mult
+                    ally.max_health += ally.passive.get("health", 2) * mult
 
     # Tegenslag
     result_a = attacker.take_damage(target.attack if not target.poisonous else 9999)
@@ -274,6 +302,10 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                 count = m.passive.get("count", 1) * (2 if m.golden else 1)
                 side_rewards.append({"type": "give_blood_gems_post_combat", "count": count, "golden": False})
 
+            elif ptype == "on_deathrattle_death_bg_bonus" and dead_minion.deathrattle:
+                amount = m.passive.get("amount", 1) * (2 if m.golden else 1)
+                side_rewards.append({"type": "blood_gem_attack_bonus_post_combat", "amount": amount, "golden": False})
+
         # Avenge – tel dood mee voor alle levende vriendelijke avenge-minions
         for m in friendly_board:
             if m.dead or not m.avenge:
@@ -345,6 +377,17 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         spawn_pos += 1
         step["events"].append({"type": "summon", "token": token.to_dict()})
         _trigger_pack_leader(token, friendly_board, step)
+        # Deflect-o-Bot: Mech gesummond → buff deflect_o_bots
+        if "Mech" in token.types:
+            for ally in friendly_board:
+                if ally.dead:
+                    continue
+                if ally.passive and ally.passive.get("type") == "on_mech_summon_buff_self":
+                    ally_mult = 2 if ally.golden else 1
+                    ally.attack += ally.passive.get("attack", 2) * ally_mult
+                    ally.divine_shield = True
+                    if "divine_shield" not in ally.abilities:
+                        ally.abilities.append("divine_shield")
         return True
 
     if dtype == "summon":

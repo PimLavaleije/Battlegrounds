@@ -47,6 +47,8 @@ class Player:
         self.passes_this_turn = 0
         self.total_passes_game = 0
         self.pass_free_used_this_turn = 0
+        self.gold_spent_this_turn = 0
+        self.last_combat_lost = False
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -62,6 +64,7 @@ class Player:
         self.cards_played_this_turn = 0
         self.passes_this_turn = 0
         self.pass_free_used_this_turn = 0
+        self.gold_spent_this_turn = 0
         self._apply_start_of_round_hero()
         self._apply_start_of_turn_board()
         for m in self.board:
@@ -78,6 +81,7 @@ class Player:
             if hasattr(m, '_storm_splitter_used'):
                 m._storm_splitter_used = False
         self._update_transport_reactor()
+        self._check_board_thresholds()
 
     def _apply_start_of_round_hero(self):
         if not self.hero:
@@ -183,6 +187,7 @@ class Player:
 
         self.shop[shop_index] = None
         self.gold -= 3
+        self._on_gold_spent(3)
         self.hand.append(minion)
 
         # Triple check
@@ -241,6 +246,7 @@ class Player:
         if self.gold < 1:
             return {"success": False, "message": "Niet genoeg goud."}
         self.gold -= 1
+        self._on_gold_spent(1)
         return {"success": True, "gold": self.gold}
 
     def toggle_freeze(self) -> dict:
@@ -252,7 +258,9 @@ class Player:
             return {"success": False, "message": "Al op maximaal tavern niveau."}
         if self.gold < self.upgrade_cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {self.upgrade_cost})."}
-        self.gold -= self.upgrade_cost
+        cost_paid = self.upgrade_cost
+        self.gold -= cost_paid
+        self._on_gold_spent(cost_paid)
         self.tavern_tier += 1
         # Nieuwe upgrade kost voor volgende tier
         tier_costs = {2: 5, 3: 7, 4: 8, 5: 9, 6: 10}
@@ -326,7 +334,7 @@ class Player:
                 return {"success": False, "message": "Geen minions om Blood Gem op te spelen."}
             self.hand.pop(hand_index)
             target = self.board[board_index] if 0 <= board_index < len(self.board) else self.board[0]
-            self._apply_blood_gem(target, item.get("bonus_keyword"), item.get("bonus_tribe"))
+            self._apply_blood_gem(target, item.get("bonus_keyword"), item.get("bonus_tribe"), _from_hand=True)
             return {"success": True, "blood_gem": True, "target": target.to_dict()}
         if len(self.board) >= self.MAX_BOARD:
             return {"success": False, "message": "Board is vol (max 7). Verkoop een minion om ruimte te maken."}
@@ -363,6 +371,8 @@ class Player:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
         self.shop[shop_index] = None
         self.gold -= cost
+        if cost > 0:
+            self._on_gold_spent(cost)
         self.hand.append(spell)
         return {"success": True, "spell": spell}
 
@@ -871,7 +881,160 @@ class Player:
             self.blood_gem_health_bonus += bc.get("amount", 1) * (2 if minion.golden else 1)
             return {"blood_gem_health_bonus": bc.get("amount", 1)}
 
+        if effect == "blood_gems_all_board":
+            mult = 2 if minion.golden else 1
+            count = bc.get("count", 2) * mult
+            for ally in [m for m in self.board if m is not minion]:
+                for _ in range(count):
+                    self._apply_blood_gem(ally)
+            return {"blood_gems_all_board": True}
+
+        if effect == "blood_gem_with_keyword_tribe":
+            tribe = bc.get("tribe")
+            kw = bc.get("keyword", "divine_shield")
+            mult = 2 if minion.golden else 1
+            count = bc.get("count", 1) * mult
+            for _ in range(count):
+                self.hand.append(self._create_blood_gem(bonus_keyword=kw, bonus_tribe=tribe))
+            return {"blood_gem_with_keyword": True}
+
+        if effect == "get_slimy_shields":
+            mult = 2 if minion.golden else 1
+            count = bc.get("count", 2) * mult
+            for _ in range(count):
+                self.hand.append({
+                    "type": "blood_gem", "id": "slimy_shield", "name": "Slimy Shield",
+                    "cost": 0, "description": "Geef een minion +1/+1 en Taunt.",
+                    "bonus_keyword": "taunt",
+                })
+            return {"slimy_shields": count}
+
+        if effect == "discover_tribe":
+            from game.data.minions import MINIONS
+            tribe = bc.get("tribe")
+            require = bc.get("require_tribe")
+            if require and not any(require in m.types for m in self.board if m is not minion):
+                return None
+            pool = [m for m in MINIONS.values() if tribe in m.get("types", [])]
+            if not pool:
+                return None
+            chosen = random.sample(pool, min(3, len(pool)))
+            return {"discover_options": [{"id": m["id"], "name": m["name"], "tier": m["tier"],
+                    "attack": m["attack"], "health": m["health"], "tribe": m.get("tribe"),
+                    "description": m.get("description", ""), "abilities": m.get("abilities", []),
+                    "golden": False} for m in chosen]}
+
+        if effect == "discover_tribe_self_damage":
+            from game.data.minions import MINIONS
+            tribe = bc.get("tribe")
+            pool = [m for m in MINIONS.values() if tribe in m.get("types", [])]
+            if not pool:
+                return None
+            chosen = random.sample(pool, min(3, len(pool)))
+            result = {"discover_options": [{"id": m["id"], "name": m["name"], "tier": m["tier"],
+                       "attack": m["attack"], "health": m["health"], "tribe": m.get("tribe"),
+                       "description": m.get("description", ""), "abilities": m.get("abilities", []),
+                       "golden": False} for m in chosen],
+                      "self_damage_tier": True}
+            self.hp -= minion.tier
+            return result
+
+        if effect == "destroy_undead_get_copy":
+            undead = [m for m in self.board if "Undead" in m.types and m is not minion]
+            if not undead:
+                return None
+            target = random.choice(undead)
+            self.board.remove(target)
+            mult = 2 if minion.golden else 1
+            for _ in range(mult):
+                fresh = Minion.from_id(target.id)
+                self.hand.append(fresh)
+            return {"destroyed": target.to_dict()}
+
+        if effect == "buff_tribe_by_gold_spent":
+            tribe = bc.get("tribe")
+            hp_per = bc.get("health", 1) * (2 if minion.golden else 1)
+            atk_per = bc.get("attack", 0) * (2 if minion.golden else 1)
+            bonus = self.gold_spent_this_turn
+            targets = [m for m in self.board if tribe in m.types and m is not minion]
+            if targets:
+                t = random.choice(targets)
+                t.health += hp_per + bonus * hp_per
+                t.max_health += hp_per + bonus * hp_per
+                if atk_per:
+                    t.attack += atk_per + bonus * atk_per
+                return {"buffed": t.to_dict()}
+
+        if effect == "buff_random_board_by_spells":
+            mult = 2 if minion.golden else 1
+            repeats = 1 + self.cards_played_this_turn
+            atk = bc.get("attack", 2) * mult
+            hp = bc.get("health", 2) * mult
+            targets = [m for m in self.board if m is not minion]
+            if targets:
+                t = random.choice(targets)
+                for _ in range(repeats):
+                    t.attack += atk
+                    t.health += hp
+                    t.max_health += hp
+                self._check_board_thresholds()
+                return {"buffed": t.to_dict()}
+
         return None
+
+    def _on_gold_spent(self, amount: int):
+        """Bijhouden gouduitgaven per beurt + threshold-passives triggeren."""
+        self.gold_spent_this_turn += amount
+        for m in self.board:
+            if not m.passive or m.passive.get("type") != "on_gold_spent_threshold":
+                continue
+            threshold = m.passive.get("threshold", 5)
+            remaining = getattr(m, "_gold_threshold_remaining", threshold)
+            remaining -= amount
+            while remaining <= 0:
+                remaining += threshold
+                mult = 2 if m.golden else 1
+                effect = m.passive.get("effect")
+                if effect == "buff_tribe":
+                    tribe = m.passive.get("tribe")
+                    atk = m.passive.get("attack", 1) * mult
+                    for ally in self.board:
+                        if tribe in ally.types:
+                            ally.attack += atk
+                elif effect == "buff_two_random_tribe":
+                    tribe = m.passive.get("tribe")
+                    atk = m.passive.get("attack", 4) * mult
+                    hp = m.passive.get("health", 4) * mult
+                    targets = [a for a in self.board if tribe in a.types]
+                    for t in random.sample(targets, min(2 * mult, len(targets))):
+                        t.attack += atk
+                        t.health += hp
+                        t.max_health += hp
+                elif effect == "blood_gems_tribe":
+                    tribe = m.passive.get("tribe")
+                    count = m.passive.get("count", 1) * mult
+                    for ally in self.board:
+                        if tribe in ally.types:
+                            for _ in range(count):
+                                self._apply_blood_gem(ally)
+                elif effect == "get_spell":
+                    spell_id = m.passive.get("spell")
+                    if spell_id and spell_id in _SPELLS_FLAT:
+                        for _ in range(mult):
+                            self.hand.append({**_SPELLS_FLAT[spell_id], "type": "spell"})
+            m._gold_threshold_remaining = remaining
+
+    def _check_board_thresholds(self):
+        """Controleer stat-drempel passives (scarlet_survivor, defiant_shipwright)."""
+        for m in self.board:
+            if not m.passive:
+                continue
+            ptype = m.passive.get("type")
+            if ptype == "attack_threshold_divine_shield":
+                if m.attack >= m.passive.get("threshold", 6) and not m.divine_shield:
+                    m.divine_shield = True
+                    if "divine_shield" not in m.abilities:
+                        m.abilities.append("divine_shield")
 
     def _trigger_buy_passives(self, bought: Minion) -> list[dict]:
         events = []
@@ -1009,6 +1172,11 @@ class Player:
         if ptype == "on_sell_pass" and not getattr(sold, '_jumping_jack_passed', False):
             sold._jumping_jack_passed = True
             return {"type": "sell_then_pass", "minion": sold.to_dict()}
+
+        if ptype == "on_sell_if_lost_bonus_gold" and self.last_combat_lost:
+            bonus = sold.passive.get("gold", 5) * multiplier - 1  # -1 want base gold al uitbetaald
+            self.gold = min(self.gold + bonus, self.MAX_GOLD)
+            return {"bonus_gold": bonus}
 
         return None
 
@@ -1158,6 +1326,53 @@ class Player:
                     self.hand.append(self._create_blood_gem(kw, tribe))
                 events.append({"type": "eot", "uid": m.uid})
 
+            elif etype == "eot_blood_gem_all_minions":
+                count = eot.get("count", 1) * mult
+                for ally in list(self.board):
+                    for _ in range(count):
+                        self._apply_blood_gem(ally)
+                self._check_board_thresholds()
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_demon_consume_tavern":
+                shop_minions = [(i, sm) for i, sm in enumerate(self.shop)
+                                if sm is not None and isinstance(sm, Minion)]
+                demons = [dm for dm in self.board if "Demon" in dm.types]
+                for demon in demons:
+                    if not shop_minions:
+                        break
+                    idx2, consumed = random.choice(shop_minions)
+                    shop_minions = [(i, s) for i, s in shop_minions if i != idx2]
+                    self.shop[idx2] = None
+                    dmult = 2 if demon.golden else 1
+                    demon.attack += consumed.attack * dmult * mult
+                    demon.health += consumed.health * dmult * mult
+                    demon.max_health += consumed.health * dmult * mult
+                events.append({"type": "eot", "uid": m.uid})
+
+        # Drakkari Enchanter: EOT effecten extra keer triggeren
+        drakkari = next((m for m in self.board if m.passive and m.passive.get("type") == "double_eot"), None)
+        if drakkari and events:
+            extra = (3 if drakkari.golden else 2) - 1
+            for _ in range(extra):
+                for m in list(self.board):
+                    eot = m.end_of_turn
+                    if not eot:
+                        continue
+                    mult = 2 if m.golden else 1
+                    etype = eot.get("type")
+                    if etype == "eot_give_blood_gems":
+                        count = eot.get("count", 1) * mult
+                        kw = eot.get("bonus_keyword")
+                        tribe = eot.get("bonus_tribe")
+                        for _ in range(count):
+                            self.hand.append(self._create_blood_gem(kw, tribe))
+                    elif etype == "eot_blood_gem_all_minions":
+                        for ally in list(self.board):
+                            self._apply_blood_gem(ally)
+                    elif etype == "eot_buff_adjacent_goldens":
+                        pass  # skip complex re-runs
+
         return events
 
     def _get_spell_stat_bonus(self) -> tuple[int, int]:
@@ -1257,11 +1472,17 @@ class Player:
         return bg
 
     def _apply_blood_gem(self, target: Minion, bonus_keyword: str | None = None,
-                         bonus_tribe: str | None = None, _from_bounce: bool = False):
+                         bonus_tribe: str | None = None, _from_bounce: bool = False,
+                         _from_hand: bool = False):
         """Past een Blood Gem toe op een minion: +1/+1 + permanente bonussen."""
         target.attack += 1 + self.blood_gem_attack_bonus
         target.health += 1 + self.blood_gem_health_bonus
         target.max_health += 1 + self.blood_gem_health_bonus
+        # Defiant Shipwright: wanneer attack omhoog gaat (blood gem geeft altijd +1 atk), ook +1 health
+        if target.passive and target.passive.get("type") == "on_attack_gained_health":
+                hp_bonus = target.passive.get("health", 1) * (2 if target.golden else 1)
+                target.health += hp_bonus
+                target.max_health += hp_bonus
         if bonus_keyword:
             if bonus_tribe is None or bonus_tribe in target.types:
                 setattr(target, bonus_keyword, True)
@@ -1279,6 +1500,16 @@ class Player:
                     count = 2 if target.golden else 1
                     for _ in range(count):
                         self._apply_blood_gem(random.choice(others), _from_bounce=True)
+        # Hot Air Surveyor: blood gem van hand cast een extra keer
+        if _from_hand and not _from_bounce:
+            extra = sum(
+                (2 if m.golden else 1)
+                for m in self.board
+                if m.passive and m.passive.get("type") == "blood_gem_extra_cast"
+            )
+            for _ in range(extra):
+                self._apply_blood_gem(target, bonus_keyword, bonus_tribe, _from_bounce=True)
+        self._check_board_thresholds()
 
     def _give_random_keyword(self, minion: Minion):
         keywords = ["taunt", "divine_shield", "reborn", "windfury"]

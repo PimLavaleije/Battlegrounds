@@ -355,7 +355,12 @@ class GameState:
         p = self.players.get(sid)
         if not p or not p.alive:
             return {"success": False}
-        return p.play_from_hand(hand_index, board_index)
+        result = p.play_from_hand(hand_index, board_index)
+        # Battlecry discover: genereer opties als de battlecry dat vraagt
+        bc = result.get("battlecry") or {}
+        if isinstance(bc, dict) and "discover_options" in bc:
+            result["battlecry_discover"] = bc["discover_options"]
+        return result
 
     def sell_from_hand(self, sid: str, hand_index: int) -> dict:
         p = self.players.get(sid)
@@ -481,6 +486,7 @@ class GameState:
 
             your_result = result["winner"] if result["winner"] in ("tie",) else \
                 ("won" if result["winner"] == "player" else "lost")
+            player.last_combat_lost = (your_result == "lost")
 
             results[p_sid] = {
                 "opponent_name": opp_name,

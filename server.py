@@ -193,6 +193,8 @@ def on_play_from_hand(data):
     )
     if result["success"]:
         emit("player_update", result["player"])
+        if result.get("battlecry_discover"):
+            emit("triple_discover", {"options": result["battlecry_discover"]})
     else:
         emit("error", {"message": result.get("message", "Kan niet spelen.")})
 
