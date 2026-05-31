@@ -140,6 +140,16 @@ class GameManager:
             result["player"] = p.to_dict(include_shop=True)
         return result
 
+    def pass_minion(self, sid: str, room_code: str, hand_index: int) -> dict:
+        game = self.rooms.get(room_code)
+        if not game:
+            return {"success": False}
+        result = game.pass_minion(sid, hand_index)
+        if result.get("success"):
+            p = game.players[sid]
+            result["player"] = p.to_dict(include_shop=True)
+        return result
+
     def move_minion(self, sid: str, room_code: str, from_idx: int, to_idx: int) -> dict:
         game = self.rooms.get(room_code)
         if not game:

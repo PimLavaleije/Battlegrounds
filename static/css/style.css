@@ -474,6 +474,25 @@ html, body {
   transform: translateY(-16px) scale(1.08);
 }
 
+.hand-pass-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #ffd700;
+  border-radius: 4px;
+  font-size: 0.6em;
+  padding: 2px 5px;
+  cursor: pointer;
+  z-index: 6;
+  user-select: none;
+  pointer-events: all;
+}
+.hand-pass-btn:hover {
+  background: rgba(80, 40, 0, 0.9);
+  color: #fff;
+}
+
 /* Shop kaart — oval portret, iets kleiner dan board-kaart */
 .shop-card {
   position: relative;

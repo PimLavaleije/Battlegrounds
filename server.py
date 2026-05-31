@@ -88,6 +88,8 @@ def on_buy_minion(data):
                 "golden": result["triple"]["golden"],
                 "options": result["triple"].get("discover_options", []),
             })
+        for pass_info in result.get("mirror_monster_passes", []):
+            socketio.emit("player_update", pass_info["player"], to=pass_info["sid"])
     else:
         emit("error", {"message": result.get("message", "Kan niet kopen.")})
 
@@ -110,8 +112,26 @@ def on_sell_minion(data):
     result = manager.sell_minion(request.sid, room_code, data.get("board_index", 0))
     if result["success"]:
         emit("player_update", result["player"])
+        if result.get("pass_recipient"):
+            socketio.emit("player_update", result["pass_recipient"]["player"],
+                          to=result["pass_recipient"]["sid"])
     else:
         emit("error", {"message": result.get("message", "Kan niet verkopen.")})
+
+
+@socketio.on("pass_minion")
+def on_pass_minion(data):
+    room_code = manager.get_player_room(request.sid)
+    if not room_code:
+        return
+    result = manager.pass_minion(request.sid, room_code, data.get("hand_index", 0))
+    if result["success"]:
+        emit("player_update", result["player"])
+        if result.get("pass_recipient"):
+            socketio.emit("player_update", result["pass_recipient"]["player"],
+                          to=result["pass_recipient"]["sid"])
+    else:
+        emit("error", {"message": result.get("message", "Kan niet passen.")})
 
 
 @socketio.on("reroll")

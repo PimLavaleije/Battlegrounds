@@ -97,6 +97,17 @@ const GameUI = {
           if (confirm(`Verkoop ${item.name} voor 1💰?`)) SocketClient.sellFromHand(idx);
         });
 
+        const passCost = (State.player?.pass_free_available > 0) ? 0 : 1;
+        const passBtn = document.createElement('div');
+        passBtn.className = 'hand-pass-btn';
+        passBtn.textContent = `📤 ${passCost}💰`;
+        passBtn.title = 'Pass naar willekeurige tegenstander';
+        passBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          SocketClient.passMinion(idx);
+        });
+        card.appendChild(passBtn);
+
         card.addEventListener("mouseenter", e => showTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);

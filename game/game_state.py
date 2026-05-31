@@ -236,6 +236,10 @@ class GameState:
         if result.get("triple"):
             tier = result["triple"].get("discover_tier", p.tavern_tier)
             result["triple"]["discover_options"] = self._discover_options(tier)
+        if result.get("success"):
+            bought_passive = (result.get("minion") or {}).get("passive") or {}
+            if bought_passive.get("type") == "on_buy_copy_and_pass":
+                self._handle_mirror_monster(sid, result)
         return result
 
     def _discover_options(self, tier: int) -> list:
@@ -263,13 +267,61 @@ class GameState:
         if not p:
             return {"success": False}
         p.add_discover_minion(minion_id)
-        return {"success": True, "player": p.to_dict(include_shop=True)}
+        result = {"success": True, "player": p.to_dict(include_shop=True)}
+        from game.data.minions import ALL_MINIONS
+        discovered_passive = ALL_MINIONS.get(minion_id, {}).get("passive") or {}
+        if discovered_passive.get("type") == "on_buy_copy_and_pass":
+            self._handle_mirror_monster(sid, result)
+        return result
+
+    def _route_pass(self, sid: str, minion_dict: dict, result: dict):
+        """Stuur een minion-dict naar een willekeurige tegenstander en schrijf pass_recipient in result."""
+        opponents = [op for op in self.players.values() if op.sid != sid and op.alive]
+        if not opponents:
+            return
+        recipient = random.choice(opponents)
+        m = Minion.from_dict(minion_dict)
+        recipient.hand.append(m)
+        result["pass_recipient"] = {
+            "sid": recipient.sid,
+            "player": recipient.to_dict(include_shop=True),
+        }
+
+    def _handle_mirror_monster(self, sid: str, result: dict):
+        """Mirror Monster: pass 1 (of 2 bij golden) kopieën naar tegenstanders."""
+        bought = result.get("minion") or {}
+        is_golden = bought.get("golden", False)
+        copies = 2 if is_golden else 1
+        opponents = [op for op in self.players.values() if op.sid != sid and op.alive]
+        if not opponents:
+            return
+        recipients = []
+        for _ in range(copies):
+            recipient = random.choice(opponents)
+            copy = Minion.from_id("mirror_monster")
+            recipient.hand.append(copy)
+            recipients.append({"sid": recipient.sid, "player": recipient.to_dict(include_shop=True)})
+        result["mirror_monster_passes"] = recipients
+
+    def pass_minion(self, sid: str, hand_index: int) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False, "message": "Speler niet gevonden."}
+        result = p.pass_minion(hand_index)
+        if not result["success"]:
+            return result
+        self._route_pass(sid, result["passed_item"], result)
+        return result
 
     def sell_minion(self, sid: str, board_index: int) -> dict:
         p = self.players.get(sid)
         if not p or not p.alive:
             return {"success": False, "message": "Speler niet gevonden."}
-        return p.sell_minion(board_index)
+        result = p.sell_minion(board_index)
+        sp = result.get("sell_passive") or {}
+        if isinstance(sp, dict) and sp.get("type") == "sell_then_pass":
+            self._route_pass(sid, sp["minion"], result)
+        return result
 
     def reroll(self, sid: str) -> dict:
         p = self.players.get(sid)

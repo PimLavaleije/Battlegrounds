@@ -43,6 +43,9 @@ class Player:
         self.cards_played_this_turn = 0  # voor brazen_buccaneer
         self.blood_gem_attack_bonus = 0  # permanent van prickly_piper deathrattle
         self.blood_gem_health_bonus = 0  # permanent van moon_bacon_jazzer battlecry
+        self.passes_this_turn = 0
+        self.total_passes_game = 0
+        self.pass_free_used_this_turn = 0
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -56,11 +59,24 @@ class Player:
         # Reset turn tracking
         self.last_spell_cast = None
         self.cards_played_this_turn = 0
+        self.passes_this_turn = 0
+        self.pass_free_used_this_turn = 0
         self._apply_start_of_round_hero()
         self._apply_start_of_turn_board()
         for m in self.board:
             if hasattr(m, "_hired_ritualist_triggered"):
                 m._hired_ritualist_triggered = False
+            # Mantid King: remove temp keyword from last turn
+            kw = getattr(m, '_mantid_keyword', None)
+            if kw:
+                m._mantid_keyword = None
+                setattr(m, kw, False)
+                if kw in m.abilities:
+                    m.abilities.remove(kw)
+            # Storm Splitter: reset per-turn flag
+            if hasattr(m, '_storm_splitter_used'):
+                m._storm_splitter_used = False
+        self._update_transport_reactor()
 
     def _apply_start_of_round_hero(self):
         if not self.hero:
@@ -989,6 +1005,10 @@ class Player:
                 self.hand.append(self._create_blood_gem())
             return {"blood_gems": count}
 
+        if ptype == "on_sell_pass" and not getattr(sold, '_jumping_jack_passed', False):
+            sold._jumping_jack_passed = True
+            return {"type": "sell_then_pass", "minion": sold.to_dict()}
+
         return None
 
     def _recalculate_board_passives(self):
@@ -1273,6 +1293,102 @@ class Player:
             self.alive = False
 
     # ── Serialisatie ────────────────────────────────────────
+    # ── Pass mechanic ────────────────────────────────────────
+    def _free_passes_available(self) -> int:
+        total = sum(
+            (2 if m.golden else 1)
+            for m in self.board
+            if m.passive and m.passive.get('type') == 'on_pass_free'
+        )
+        return max(0, total - self.pass_free_used_this_turn)
+
+    def _update_transport_reactor(self):
+        for m in self.board + [x for x in self.hand if isinstance(x, Minion)]:
+            if m.passive and m.passive.get('type') == 'transport_reactor_pass_aura':
+                mult = 2 if m.golden else 1
+                old_bonus = getattr(m, '_tr_applied_bonus', 0)
+                new_bonus = self.total_passes_game * mult
+                diff = new_bonus - old_bonus
+                if diff > 0:
+                    m.attack += diff
+                    m.health += diff
+                    m.max_health += diff
+                    m._tr_applied_bonus = new_bonus
+
+    def pass_minion(self, hand_index: int) -> dict:
+        if hand_index < 0 or hand_index >= len(self.hand):
+            return {"success": False, "message": "Ongeldige hand-index."}
+
+        free = self._free_passes_available() > 0
+        cost = 0 if free else 1
+        if self.gold < cost:
+            return {"success": False, "message": "Niet genoeg goud (Pass kost 1 goud)."}
+
+        item = self.hand.pop(hand_index)
+        self.gold -= cost
+        if free:
+            self.pass_free_used_this_turn += 1
+
+        is_first = self.passes_this_turn == 0
+        self.passes_this_turn += 1
+        self.total_passes_game += 1
+
+        # Puddle Prancer: buff itself when being Passed
+        if isinstance(item, Minion) and item.passive and item.passive.get('type') == 'on_received_buff_self':
+            mult = 2 if item.golden else 1
+            item.attack += item.passive.get('attack', 4) * mult
+            item.health += item.passive.get('health', 4) * mult
+            item.max_health += item.passive.get('health', 4) * mult
+
+        # Passenger: first Pass this turn buffs self
+        pass_events = []
+        if is_first:
+            for m in self.board:
+                if m.passive and m.passive.get('type') == 'on_pass_buff_self':
+                    mult = 2 if m.golden else 1
+                    m.attack += m.passive.get('attack', 1) * mult
+                    m.health += m.passive.get('health', 2) * mult
+                    m.max_health += m.passive.get('health', 2) * mult
+                    pass_events.append({'type': 'passenger_buff', 'uid': m.uid,
+                                        'attack': m.attack, 'health': m.health})
+
+        # Mantid King: random keyword until next turn
+        mantid_events = []
+        for m in self.board:
+            if m.passive and m.passive.get('type') == 'on_pass_random_keyword':
+                old_kw = getattr(m, '_mantid_keyword', None)
+                if old_kw:
+                    setattr(m, old_kw, False)
+                    if old_kw in m.abilities:
+                        m.abilities.remove(old_kw)
+                kw = random.choice(['venomous', 'taunt', 'divine_shield'])
+                m._mantid_keyword = kw
+                setattr(m, kw, True)
+                if kw not in m.abilities:
+                    m.abilities.append(kw)
+                mantid_events.append({'type': 'mantid_keyword', 'uid': m.uid, 'keyword': kw})
+
+        # Storm Splitter: get copy of passed spell
+        storm_events = []
+        if isinstance(item, dict) and item.get('type') == 'spell':
+            for m in self.board:
+                if (m.passive and m.passive.get('type') == 'on_pass_spell_get_copy'
+                        and not getattr(m, '_storm_splitter_used', False)):
+                    m._storm_splitter_used = True
+                    self.hand.append({**item})
+                    storm_events.append({'type': 'storm_splitter', 'uid': m.uid})
+
+        self._update_transport_reactor()
+
+        return {
+            "success": True,
+            "passed_item": item.to_dict() if isinstance(item, Minion) else item,
+            "pass_events": pass_events,
+            "mantid_events": mantid_events,
+            "storm_events": storm_events,
+            "gold": self.gold,
+        }
+
     def to_dict(self, include_shop: bool = False) -> dict:
         d = {
             "sid": self.sid,
@@ -1288,6 +1404,9 @@ class Player:
             "hero": self.hero,
             "ready": self.ready,
             "alive": self.alive,
+            "pass_free_available": self._free_passes_available(),
+            "passes_this_turn": self.passes_this_turn,
+            "total_passes_game": self.total_passes_game,
         }
         if include_shop:
             d["shop"] = [
