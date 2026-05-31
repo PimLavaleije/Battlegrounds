@@ -755,6 +755,18 @@ class Player:
                 m.max_health += hp
             return {"queens_command": True}
 
+        if effect == "consume_tavern_minion":
+            candidates = [(i, m) for i, m in enumerate(self.shop)
+                          if m is not None and isinstance(m, Minion)]
+            if candidates:
+                idx, consumed = random.choice(candidates)
+                self.shop[idx] = None
+                multiplier = 2 if minion.golden else 1
+                minion.attack += consumed.attack * multiplier
+                minion.health += consumed.health * multiplier
+                minion.max_health += consumed.health * multiplier
+                return {"consumed": consumed.to_dict(), "gained_attack": consumed.attack * multiplier, "gained_health": consumed.health * multiplier}
+
         return None
 
     def _trigger_buy_passives(self, bought: Minion) -> list[dict]:

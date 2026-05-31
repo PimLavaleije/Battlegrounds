@@ -269,7 +269,8 @@ MINIONS = {'annoy_o_tron': {'id': 'annoy_o_tron',
                  'description': 'Battlecry: Consume a random minion in the Tavern to '
                                 'gain its stats.',
                  'golden_description': 'Battlecry: Consume a random minion in the '
-                                       'Tavern to gain double its stats.'},
+                                       'Tavern to gain double its stats.',
+                 'battlecry': {'type': 'consume_tavern_minion'}},
  'razorfen_geomancer': {'id': 'razorfen_geomancer',
                         'name': 'Razorfen Geomancer',
                         'tier': 1,
