@@ -22,6 +22,35 @@ const SpellTarget = {
   },
 };
 
+// ── Magnetic targeting state ──────────────────────────────────────────
+const MagnetizeTarget = {
+  active: false,
+  handIndex: null,
+  itemTypes: null,
+  start(handIndex, itemTypes) {
+    this.active = true;
+    this.handIndex = handIndex;
+    this.itemTypes = itemTypes;
+    document.getElementById("board-slots").classList.add("magnetize-targeting");
+    GameUI.renderBoard(State.player?.board);
+    showNotification("Klik op een compatibel minion om te Magnetizen. (Esc = standalone spelen)", 30000);
+  },
+  cancel() {
+    this.active = false;
+    this.handIndex = null;
+    this.itemTypes = null;
+    document.getElementById("board-slots").classList.remove("magnetize-targeting");
+    hideTooltip();
+    document.getElementById("global-notification")?.classList.add("hidden");
+    GameUI.renderBoard(State.player?.board);
+  },
+  confirm(boardIndex) {
+    const idx = this.handIndex;
+    this.cancel();
+    SocketClient.magnetize(idx, boardIndex);
+  },
+};
+
 // ── GameUI: rendert shop en board met ovale Hearthstone-stijl kaarten ──
 const GameUI = {
 
@@ -81,7 +110,17 @@ const GameUI = {
         card = buildShopCard(item, { showCost: false });
         card.dataset.handIndex = idx;
 
-        card.addEventListener("click", () => SocketClient.playFromHand(idx));
+        card.addEventListener("click", () => {
+          const isMagnetic = item.abilities?.includes('magnetic');
+          const hasTarget = isMagnetic && State.player?.board?.some(
+            m => m && item.types?.some(t => m.types?.includes(t))
+          );
+          if (isMagnetic && hasTarget) {
+            MagnetizeTarget.start(idx, item.types);
+          } else {
+            SocketClient.playFromHand(idx);
+          }
+        });
 
         card.draggable = true;
         card.addEventListener("dragstart", e => {
@@ -128,7 +167,17 @@ const GameUI = {
         card.dataset.boardIndex = i;
 
         if (!State.inCombat) {
+          const isValidMagTarget = MagnetizeTarget.active &&
+            minion.types?.some(t => MagnetizeTarget.itemTypes?.includes(t));
+          if (isValidMagTarget) card.classList.add('magnetize-target');
+
           card.addEventListener("click", e => {
+            if (MagnetizeTarget.active) {
+              e.stopPropagation();
+              if (isValidMagTarget) MagnetizeTarget.confirm(i);
+              else MagnetizeTarget.cancel();
+              return;
+            }
             if (SpellTarget.active) {
               e.stopPropagation();
               SpellTarget.confirm(i);

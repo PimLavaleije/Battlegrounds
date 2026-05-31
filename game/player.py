@@ -1,3 +1,4 @@
+import copy
 import random
 from game.minion import Minion
 from game.data.heroes import HEROES_LIST
@@ -1293,6 +1294,47 @@ class Player:
             self.alive = False
 
     # ── Serialisatie ────────────────────────────────────────
+    # ── Magnetic mechanic ────────────────────────────────────
+    def magnetize(self, hand_index: int, board_index: int) -> dict:
+        """Combineer een Magnetic minion met een compatibel board-doelwit."""
+        if hand_index < 0 or hand_index >= len(self.hand):
+            return {"success": False, "message": "Ongeldige hand-index."}
+        item = self.hand[hand_index]
+        if not isinstance(item, Minion) or 'magnetic' not in item.abilities:
+            return {"success": False, "message": "Geen Magnetic minion."}
+        if board_index < 0 or board_index >= len(self.board):
+            return {"success": False, "message": "Ongeldige board-index."}
+        target = self.board[board_index]
+        mag = item
+        if not any(t in target.types for t in mag.types):
+            return {"success": False, "message": f"{target.name} is geen geldig doelwit."}
+
+        self.hand.pop(hand_index)
+
+        # Stats overnemen
+        target.attack += mag.attack
+        target.health += mag.health
+        target.max_health += mag.health
+
+        # Keywords overnemen (niet overschrijven)
+        for kw in ('divine_shield', 'taunt', 'windfury', 'poisonous', 'venomous', 'cleave', 'reborn'):
+            if getattr(mag, kw, False) and not getattr(target, kw, False):
+                setattr(target, kw, True)
+                if kw not in target.abilities:
+                    target.abilities.append(kw)
+
+        # Dubbele windfury → megawindfury
+        if getattr(mag, 'windfury', False) and getattr(target, 'windfury', False):
+            target.megawindfury = True
+            if 'megawindfury' not in target.abilities:
+                target.abilities.append('megawindfury')
+
+        # Deathrattle overnemen als target er geen heeft
+        if mag.deathrattle and not target.deathrattle:
+            target.deathrattle = copy.deepcopy(mag.deathrattle)
+
+        return {"success": True, "target": target.to_dict()}
+
     # ── Pass mechanic ────────────────────────────────────────
     def _free_passes_available(self) -> int:
         total = sum(

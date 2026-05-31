@@ -19,6 +19,7 @@ const SocketClient = {
   playFromHand(handIdx, boardIdx) { socket.emit("play_from_hand", { hand_index: handIdx, board_index: boardIdx ?? -1 }); },
   sellFromHand(handIdx)      { socket.emit("sell_from_hand", { hand_index: handIdx }); },
   passMinion(handIdx)        { socket.emit("pass_minion",    { hand_index: handIdx }); },
+  magnetize(handIdx, boardIdx) { socket.emit("magnetize",    { hand_index: handIdx, board_index: boardIdx }); },
   useHeroPower(targetIdx)    { socket.emit("use_hero_power", { target_index: targetIdx ?? null }); },
   playerReady()              { socket.emit("player_ready",   {}); },
   chooseDiscover(minionId)   { socket.emit("choose_discover", { minion_id: minionId }); },

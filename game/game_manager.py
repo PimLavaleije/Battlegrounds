@@ -140,6 +140,16 @@ class GameManager:
             result["player"] = p.to_dict(include_shop=True)
         return result
 
+    def magnetize(self, sid: str, room_code: str, hand_index: int, board_index: int) -> dict:
+        game = self.rooms.get(room_code)
+        if not game:
+            return {"success": False}
+        result = game.magnetize(sid, hand_index, board_index)
+        if result.get("success"):
+            p = game.players[sid]
+            result["player"] = p.to_dict(include_shop=True)
+        return result
+
     def pass_minion(self, sid: str, room_code: str, hand_index: int) -> dict:
         game = self.rooms.get(room_code)
         if not game:

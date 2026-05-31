@@ -274,6 +274,12 @@ class GameState:
             self._handle_mirror_monster(sid, result)
         return result
 
+    def magnetize(self, sid: str, hand_index: int, board_index: int) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False}
+        return p.magnetize(hand_index, board_index)
+
     def _route_pass(self, sid: str, minion_dict: dict, result: dict):
         """Stuur een minion-dict naar een willekeurige tegenstander en schrijf pass_recipient in result."""
         opponents = [op for op in self.players.values() if op.sid != sid and op.alive]

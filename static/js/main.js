@@ -287,7 +287,10 @@ function escapeHtml(str) {
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-// Escape-toets annuleert spreuk-targeting
+// Escape-toets annuleert spreuk- en magnetize-targeting
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && SpellTarget.active) SpellTarget.cancel();
+  if (e.key === "Escape") {
+    if (SpellTarget.active) SpellTarget.cancel();
+    if (MagnetizeTarget.active) MagnetizeTarget.cancel();
+  }
 });
