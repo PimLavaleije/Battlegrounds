@@ -39,6 +39,8 @@ class Player:
         self.ancestral_automaton_count = 0  # AA buff tracking
         self.spell_attack_bonus = 0  # permanent bonus from chromadrakes, shoalfin_mystic on-sell, etc.
         self.spell_health_bonus = 0  # permanent bonus from chromadrakes, shoalfin_mystic on-sell, etc.
+        self.last_spell_cast: dict | None = None  # voor cataclysmic_harbinger
+        self.cards_played_this_turn = 0  # voor brazen_buccaneer
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -49,7 +51,11 @@ class Player:
         self.ready = False
         if self.upgrade_cost > 0:
             self.upgrade_cost = max(0, self.upgrade_cost - 1)
+        # Reset turn tracking
+        self.last_spell_cast = None
+        self.cards_played_this_turn = 0
         self._apply_start_of_round_hero()
+        self._apply_start_of_turn_board()
 
     def _apply_start_of_round_hero(self):
         if not self.hero:
@@ -299,6 +305,7 @@ class Player:
             self.board.insert(board_index, minion)
         else:
             self.board.append(minion)
+        self.cards_played_this_turn += 1
         self._recalculate_board_passives()
 
         battlecry_result = None
@@ -332,6 +339,8 @@ class Player:
     def _apply_spell(self, spell: dict, target_index: int | None = None) -> dict:
         import random as _r
         sid = spell["id"]
+        # Track voor cataclysmic_harbinger
+        self.last_spell_cast = spell
         # Snapshot board stats voor spell-bonus berekening (post-apply)
         _pre_stats = {id(m): (m.attack, m.health) for m in self.board}
 
@@ -951,6 +960,139 @@ class Player:
             any(m.id == "brann_bronzebeard" for m in self.board)
             or self.hero is not None and self.hero.get("ability", {}).get("effect") == "double_battlecry"
         )
+
+    def _apply_start_of_turn_board(self):
+        """Start-of-turn effecten van minions op het board (Accord-o-Tron, Plunder Pal, etc.)."""
+        for m in self.board:
+            sot = m.start_of_turn
+            if not sot:
+                continue
+            mult = 2 if m.golden else 1
+            stype = sot.get("type")
+            if stype == "sot_gain_gold":
+                amount = sot.get("amount", 1) * mult
+                self.gold = min(self.gold + amount, self.MAX_GOLD)
+
+    def trigger_end_of_turn(self) -> list[dict]:
+        """Triggert alle end-of-turn effecten van minions op het board."""
+        events = []
+        for m in list(self.board):
+            eot = m.end_of_turn
+            if not eot:
+                continue
+            mult = 2 if m.golden else 1
+            etype = eot.get("type")
+
+            if etype == "eot_buff_adjacent_goldens":
+                idx = self.board.index(m) if m in self.board else -1
+                if idx < 0:
+                    continue
+                atk = eot.get("attack", 1) * mult
+                golden_count = sum(1 for a in self.board if a.golden)
+                repeats = 1 + golden_count
+                for _ in range(repeats):
+                    for adj_idx in [idx - 1, idx + 1]:
+                        if 0 <= adj_idx < len(self.board):
+                            self.board[adj_idx].attack += atk
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_buff_all":
+                atk = eot.get("attack", 0) * mult
+                hp = eot.get("health", 0) * mult
+                for ally in self.board:
+                    if ally is not m:
+                        ally.attack += atk
+                        ally.health += hp
+                        ally.max_health += hp
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_get_random_spell":
+                count = eot.get("count", 1) * mult
+                pool = [s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells
+                        if s.get("tier", 99) <= self.tavern_tier]
+                for _ in range(count):
+                    if pool:
+                        spell = random.choice(pool)
+                        self.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 3)})
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_get_random_bounty":
+                count = eot.get("count", 1) * mult
+                for _ in range(count):
+                    if _BOUNTY_SPELLS:
+                        spell = random.choice(_BOUNTY_SPELLS)
+                        self.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 2)})
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_consume_highest_hp_tavern":
+                shop_minions = [(i, sm) for i, sm in enumerate(self.shop)
+                                if sm is not None and isinstance(sm, Minion)]
+                if shop_minions:
+                    shop_minions.sort(key=lambda x: x[1].health, reverse=True)
+                    idx2, consumed = shop_minions[0]
+                    self.shop[idx2] = None
+                    m.attack += consumed.attack * mult
+                    m.health += consumed.health * mult
+                    m.max_health += consumed.health * mult
+                    events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_get_mrrglton":
+                if m.golden:
+                    self.hand.append(Minion.from_id("mama_mrrglton"))
+                    self.hand.append(Minion.from_id("papa_mrrglton"))
+                else:
+                    self.hand.append(Minion.from_id(random.choice(["mama_mrrglton", "papa_mrrglton"])))
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_last_spell_copy":
+                if self.last_spell_cast:
+                    count = eot.get("count", 1) * mult
+                    for _ in range(count):
+                        self.hand.append({**self.last_spell_cast, "type": "spell"})
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_buff_leftmost_tribe_plays":
+                tribe = eot.get("tribe")
+                atk = eot.get("attack", 0) * mult
+                hp = eot.get("health", 0) * mult
+                leftmost = next((a for a in self.board if tribe is None or tribe in a.types), None)
+                if leftmost:
+                    repeats = 1 + self.cards_played_this_turn
+                    for _ in range(repeats):
+                        leftmost.attack += atk
+                        leftmost.health += hp
+                        leftmost.max_health += hp
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_get_random_tier_tribe_every_n":
+                tribe = eot.get("tribe")
+                every = eot.get("every", 3)
+                m._eot_counter = getattr(m, "_eot_counter", 0) + 1
+                if m._eot_counter >= every:
+                    m._eot_counter = 0
+                    from game.data.minions import MINIONS as _MINS
+                    pool = [mid for mid, d in _MINS.items()
+                            if (tribe is None or tribe in d.get("types", []))
+                            and d["tier"] <= self.tavern_tier]
+                    for _ in range(mult):
+                        if pool:
+                            self.hand.append(Minion.from_id(random.choice(pool)))
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_spell_stat_bonus":
+                self.spell_attack_bonus += eot.get("attack", 0) * mult
+                self.spell_health_bonus += eot.get("health", 0) * mult
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "eot_get_random_tier1":
+                from game.data.minions import MINIONS as _MINS
+                pool = [mid for mid, d in _MINS.items() if d["tier"] == 1]
+                for _ in range(mult):
+                    if pool:
+                        self.hand.append(Minion.from_id(random.choice(pool)))
+                events.append({"type": "eot", "uid": m.uid})
+
+        return events
 
     def _get_spell_stat_bonus(self) -> tuple[int, int]:
         """Berekent totale spell stat bonus: permanent (chromadrakes) + on-board (enchanted_sentinel, humongozz)."""

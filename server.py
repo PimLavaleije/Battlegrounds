@@ -207,6 +207,9 @@ def on_player_ready(data):
     if not room_code:
         return
     result = manager.player_ready(request.sid, room_code)
+    # Stuur bijgewerkte state terug als end-of-turn effecten zijn gevuurd
+    if result.get("player"):
+        emit("player_update", result["player"])
     ready_count = manager.get_ready_count(room_code)
     emit("ready_update", ready_count, to=room_code)
 

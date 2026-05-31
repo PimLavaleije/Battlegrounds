@@ -43,6 +43,7 @@ class Minion:
         self.battlecry = copy.deepcopy(data.get("battlecry"))
         self.passive = copy.deepcopy(data.get("passive"))
         self.end_of_turn = copy.deepcopy(data.get("end_of_turn"))
+        self.start_of_turn = copy.deepcopy(data.get("start_of_turn"))
         self.rally = copy.deepcopy(data.get("rally"))
         self.spellcraft = copy.deepcopy(data.get("spellcraft"))
 
@@ -136,6 +137,7 @@ class Minion:
             "battlecry": self.battlecry,
             "passive": self.passive,
             "end_of_turn": self.end_of_turn,
+            "start_of_turn": self.start_of_turn,
             "rally": self.rally,
             "spellcraft": self.spellcraft,
             "description": self.description,
@@ -176,6 +178,7 @@ class Minion:
         m.reborn_used = d.get("reborn_used", False)
         m.uid = d.get("uid", id(m))
         m.rally = copy.deepcopy(d.get("rally", data.get("rally")))
+        m.start_of_turn = copy.deepcopy(d.get("start_of_turn", data.get("start_of_turn")))
         m.spellcraft = copy.deepcopy(d.get("spellcraft", data.get("spellcraft")))
         return m
 

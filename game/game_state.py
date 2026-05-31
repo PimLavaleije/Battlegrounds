@@ -270,11 +270,16 @@ class GameState:
 
     def player_ready(self, sid: str) -> dict:
         p = self.players.get(sid)
+        eot_events = []
         if p:
             p.ready = True
+            eot_events = p.trigger_end_of_turn()
         alive = [pl for pl in self.players.values() if pl.alive]
         all_ready = all(pl.ready or pl.is_ai for pl in alive)
-        return {"all_ready": all_ready}
+        result: dict = {"all_ready": all_ready, "eot_events": eot_events}
+        if p:
+            result["player"] = p.to_dict(include_shop=True)
+        return result
 
     # ── Combat ───────────────────────────────────────────────
     def resolve_combat(self) -> dict[str, dict]:
