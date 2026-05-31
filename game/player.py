@@ -37,6 +37,8 @@ class Player:
         self.next_spell_discount = 0
         self.kael_buy_count = 0  # Kael'thas: resets each turn
         self.ancestral_automaton_count = 0  # AA buff tracking
+        self.spell_attack_bonus = 0  # permanent bonus from chromadrakes, shoalfin_mystic on-sell, etc.
+        self.spell_health_bonus = 0  # permanent bonus from chromadrakes, shoalfin_mystic on-sell, etc.
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -288,7 +290,8 @@ class Player:
         if isinstance(item, dict) and item.get("type") == "spell":
             self.hand.pop(hand_index)
             effect = self._apply_spell(item, board_index if board_index >= 0 else None)
-            return {"success": True, "spell": item, "spell_effect": effect}
+            spell_passives = self._trigger_spell_cast_passives()
+            return {"success": True, "spell": item, "spell_effect": effect, "spell_passives": spell_passives}
         if len(self.board) >= self.MAX_BOARD:
             return {"success": False, "message": "Board is vol (max 7). Verkoop een minion om ruimte te maken."}
         minion = self.hand.pop(hand_index)
@@ -310,7 +313,8 @@ class Player:
             if sc_spell:
                 self.hand.append(sc_spell)
 
-        return {"success": True, "battlecry": battlecry_result}
+        play_passives = self._trigger_play_passives(minion, battlecry_fired=bool(battlecry_result))
+        return {"success": True, "battlecry": battlecry_result, "play_passives": play_passives}
 
     # ── Spreuken ─────────────────────────────────────────────────
     def _cast_spell_from_shop(self, shop_index: int, target_index: int | None = None) -> dict:
@@ -328,6 +332,8 @@ class Player:
     def _apply_spell(self, spell: dict, target_index: int | None = None) -> dict:
         import random as _r
         sid = spell["id"]
+        # Snapshot board stats voor spell-bonus berekening (post-apply)
+        _pre_stats = {id(m): (m.attack, m.health) for m in self.board}
 
         def _target() -> "Minion | None":
             if not self.board:
@@ -627,6 +633,19 @@ class Player:
                 t = _r.choice(self.board)
                 t.attack += 3; t.health += 3; t.max_health += 3
 
+        # Pas spell stat bonus toe op minions die gebuffed werden door de spreuk
+        _ab, _hb = self._get_spell_stat_bonus()
+        if _ab or _hb:
+            for m in self.board:
+                pre = _pre_stats.get(id(m))
+                if pre is None:
+                    continue
+                if m.attack > pre[0]:
+                    m.attack += _ab
+                if m.health > pre[1]:
+                    m.health += _hb
+                    m.max_health += _hb
+
         return {"spell": sid}
 
     def _generate_spellcraft_spell(self, minion: "Minion") -> dict | None:
@@ -670,6 +689,8 @@ class Player:
         if effect == "buff_tribe":
             tribe = bc.get("tribe")
             targets = [m for m in self.board if tribe in m.types and m is not minion]
+            if bc.get("include_hand"):
+                targets += [m for m in self.hand if isinstance(m, Minion) and tribe in m.types and m is not minion]
             if bc.get("all"):
                 for target in targets:
                     target.attack += bc.get("attack", 0)
@@ -767,6 +788,38 @@ class Player:
                 minion.max_health += consumed.health * multiplier
                 return {"consumed": consumed.to_dict(), "gained_attack": consumed.attack * multiplier, "gained_health": consumed.health * multiplier}
 
+        if effect == "spell_attack_bonus":
+            self.spell_attack_bonus += bc.get("amount", 1) * (2 if minion.golden else 1)
+            return {"spell_attack_bonus": bc.get("amount", 1)}
+
+        if effect == "spell_health_bonus":
+            self.spell_health_bonus += bc.get("amount", 1) * (2 if minion.golden else 1)
+            return {"spell_health_bonus": bc.get("amount", 1)}
+
+        if effect == "buff_tavern":
+            tribe = bc.get("tribe")
+            mult = 2 if minion.golden else 1
+            for m in self.shop:
+                if m is None or isinstance(m, dict):
+                    continue
+                if tribe is None or tribe in m.types:
+                    m.attack += bc.get("attack", 0) * mult
+                    m.health += bc.get("health", 0) * mult
+                    m.max_health += bc.get("health", 0) * mult
+            return {"buff_tavern": True}
+
+        if effect == "buff_tavern_low":
+            max_tier = bc.get("max_tier", 6)
+            mult = 2 if minion.golden else 1
+            for m in self.shop:
+                if m is None or isinstance(m, dict):
+                    continue
+                if m.tier <= max_tier:
+                    m.attack += bc.get("attack", 0) * mult
+                    m.health += bc.get("health", 0) * mult
+                    m.max_health += bc.get("health", 0) * mult
+            return {"buff_tavern": True}
+
         return None
 
     def _trigger_buy_passives(self, bought: Minion) -> list[dict]:
@@ -776,7 +829,29 @@ class Player:
                 continue
             ptype = m.passive.get("type")
 
-            if ptype == "on_demon_bought" and "Demon" in bought.types:
+            if ptype == "on_buy_count_buff":
+                counter = getattr(m, "_buy_counter", 0) + 1
+                m._buy_counter = counter
+                threshold = m.passive.get("buy_count", 4)
+                if counter >= threshold:
+                    m._buy_counter = 0
+                    mult = 2 if m.golden else 1
+                    m.attack += m.passive.get("attack", 4) * mult
+                    m.health += m.passive.get("health", 4) * mult
+                    m.max_health += m.passive.get("health", 4) * mult
+                    events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
+
+        return events
+
+    def _trigger_play_passives(self, played: Minion, battlecry_fired: bool = False) -> list[dict]:
+        """Fires passives that trigger when a minion is played from hand to board."""
+        events = []
+        for m in self.board:
+            if not m.passive or m is played:
+                continue
+            ptype = m.passive.get("type")
+
+            if ptype == "on_demon_bought" and "Demon" in played.types:
                 m.attack += m.passive.get("attack", 2)
                 m.health += m.passive.get("health", 1)
                 m.max_health += m.passive.get("health", 1)
@@ -784,29 +859,23 @@ class Player:
                 self.hp = max(0, self.hp - dmg)
                 if self.hp == 0:
                     self.alive = False
-                events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health, "self_damage": dmg})
+                events.append({"type": "play_passive", "uid": m.uid, "attack": m.attack, "health": m.health, "self_damage": dmg})
 
-            elif ptype == "on_mech_bought" and "Mech" in bought.types:
-                m.attack += m.passive.get("attack", 2)
-                m.divine_shield = True
-                if "divine_shield" not in m.abilities:
-                    m.abilities.append("divine_shield")
-                events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
-
-            elif ptype == "on_battlecry_self" and (bought.battlecry or "battlecry" in bought.abilities):
+            elif ptype == "on_battlecry_self" and battlecry_fired:
                 m.attack += m.passive.get("attack", 1)
                 m.health += m.passive.get("health", 1)
                 m.max_health += m.passive.get("health", 1)
-                events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
+                events.append({"type": "play_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
 
-            elif ptype == "on_battlecry_tribe" and (bought.battlecry or "battlecry" in bought.abilities):
+            elif ptype == "on_battlecry_tribe" and battlecry_fired:
                 tribe = m.passive.get("tribe")
                 for ally in self.board:
                     if tribe in ally.types:
                         ally.attack += m.passive.get("attack", 1)
                         ally.health += m.passive.get("health", 1)
                         ally.max_health += m.passive.get("health", 1)
-                        events.append({"type": "buy_passive", "uid": ally.uid, "attack": ally.attack, "health": ally.health})
+                        events.append({"type": "play_passive", "uid": ally.uid, "attack": ally.attack, "health": ally.health})
+
         return events
 
     def _sell_gold(self, minion: Minion) -> int:
@@ -869,6 +938,11 @@ class Player:
                 m.max_health  += hp
             return {"buffed_board": {"attack": atk, "health": hp}}
 
+        if ptype == "on_sell_spell_stat_bonus":
+            self.spell_attack_bonus += sold.passive.get("attack", 1) * multiplier
+            self.spell_health_bonus += sold.passive.get("health", 1) * multiplier
+            return {"spell_stat_bonus": True}
+
         return None
 
     def _recalculate_board_passives(self):
@@ -877,6 +951,93 @@ class Player:
             any(m.id == "brann_bronzebeard" for m in self.board)
             or self.hero is not None and self.hero.get("ability", {}).get("effect") == "double_battlecry"
         )
+
+    def _get_spell_stat_bonus(self) -> tuple[int, int]:
+        """Berekent totale spell stat bonus: permanent (chromadrakes) + on-board (enchanted_sentinel, humongozz)."""
+        ab = self.spell_attack_bonus
+        hb = self.spell_health_bonus
+        for m in self.board:
+            if m.passive and m.passive.get("type") == "spell_stat_bonus":
+                mult = 2 if m.golden else 1
+                ab += m.passive.get("attack", 0) * mult
+                hb += m.passive.get("health", 0) * mult
+        return ab, hb
+
+    def _trigger_spell_cast_passives(self) -> list[dict]:
+        """Triggert passives die afvuren als een tavern spreuk gecast wordt."""
+        events = []
+        for m in self.board:
+            if not m.passive:
+                continue
+            ptype = m.passive.get("type")
+            mult = 2 if m.golden else 1
+
+            if ptype == "on_spell_cast_buff_all":
+                atk = m.passive.get("attack", 1) * mult
+                for ally in self.board:
+                    ally.attack += atk
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+            elif ptype == "on_spell_cast_buff_divine_shield":
+                atk = m.passive.get("attack", 3) * mult
+                for ally in self.board:
+                    if ally.divine_shield:
+                        ally.attack += atk
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+            elif ptype == "on_spell_cast_buff_tribe_one":
+                atk = m.passive.get("attack", 3) * mult
+                hp = m.passive.get("health", 2) * mult
+                seen_tribes: set = set()
+                for ally in self.board:
+                    for tribe in ally.types:
+                        if tribe not in seen_tribes:
+                            seen_tribes.add(tribe)
+                            ally.attack += atk
+                            ally.health += hp
+                            ally.max_health += hp
+                            break
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+            elif ptype == "on_spell_cast_buff_tribe_permanent":
+                tribe = m.passive.get("tribe")
+                atk = m.passive.get("attack", 1) * mult
+                for ally in self.board:
+                    if tribe is None or tribe in ally.types:
+                        ally.attack += atk
+                for item in self.hand:
+                    if isinstance(item, Minion) and (tribe is None or tribe in item.types):
+                        item.attack += atk
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+            elif ptype == "on_spell_cast_buff_tribe_random":
+                tribe = m.passive.get("tribe")
+                count = m.passive.get("count", 4)
+                atk = m.passive.get("attack", 1) * mult
+                hp = m.passive.get("health", 0) * mult
+                eligible = [a for a in self.board if tribe is None or tribe in a.types]
+                chosen = random.sample(eligible, min(count, len(eligible)))
+                for a in chosen:
+                    a.attack += atk
+                    if hp:
+                        a.health += hp
+                        a.max_health += hp
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+            elif ptype == "on_spell_cast_buff_tavern_tribe":
+                tribe = m.passive.get("tribe")
+                atk = m.passive.get("attack", 1) * mult
+                hp = m.passive.get("health", 1) * mult
+                for shop_m in self.shop:
+                    if shop_m is None or isinstance(shop_m, dict):
+                        continue
+                    if tribe is None or tribe in shop_m.types:
+                        shop_m.attack += atk
+                        shop_m.health += hp
+                        shop_m.max_health += hp
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+        return events
 
     def _give_random_keyword(self, minion: Minion):
         keywords = ["taunt", "divine_shield", "reborn", "windfury"]
