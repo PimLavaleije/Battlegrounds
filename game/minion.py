@@ -46,6 +46,7 @@ class Minion:
         self.start_of_turn = copy.deepcopy(data.get("start_of_turn"))
         self.rally = copy.deepcopy(data.get("rally"))
         self.spellcraft = copy.deepcopy(data.get("spellcraft"))
+        self.avenge = copy.deepcopy(data.get("avenge"))
 
         self.description = data.get("description", "")
         self.golden_description = data.get("golden_description", "")
@@ -140,6 +141,7 @@ class Minion:
             "start_of_turn": self.start_of_turn,
             "rally": self.rally,
             "spellcraft": self.spellcraft,
+            "avenge": self.avenge,
             "description": self.description,
             "golden_description": self.golden_description,
             "dead": self.dead,
@@ -180,6 +182,7 @@ class Minion:
         m.rally = copy.deepcopy(d.get("rally", data.get("rally")))
         m.start_of_turn = copy.deepcopy(d.get("start_of_turn", data.get("start_of_turn")))
         m.spellcraft = copy.deepcopy(d.get("spellcraft", data.get("spellcraft")))
+        m.avenge = copy.deepcopy(d.get("avenge", data.get("avenge")))
         return m
 
     def clone(self) -> "Minion":

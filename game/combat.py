@@ -274,6 +274,16 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                 count = m.passive.get("count", 1) * (2 if m.golden else 1)
                 side_rewards.append({"type": "give_blood_gems_post_combat", "count": count, "golden": False})
 
+        # Avenge – tel dood mee voor alle levende vriendelijke avenge-minions
+        for m in friendly_board:
+            if m.dead or not m.avenge:
+                continue
+            threshold = m.avenge.get("threshold", 1)
+            m._avenge_counter = getattr(m, "_avenge_counter", 0) + 1
+            if m._avenge_counter >= threshold:
+                m._avenge_counter = 0
+                _trigger_avenge(m, m.avenge, friendly_board, enemy_board, death_step, side_rewards)
+
         # Deathrattle
         if dead_minion.deathrattle:
             dr = dead_minion.deathrattle
@@ -617,6 +627,60 @@ def _apply_rally_effects(board: list[Minion], post_rewards: list):
             count = multiplier
             for _ in range(count):
                 post_rewards.append({"type": rtype})
+
+
+def _trigger_avenge(avenger: Minion, avenge: dict, friendly_board: list, enemy_board: list,
+                    step: dict, post_rewards: list):
+    """Triggert het Avenge-effect van een minion."""
+    atype = avenge.get("type")
+    mult = 2 if avenger.golden else 1
+
+    if atype == "avenge_summon":
+        token_id = avenge.get("token")
+        make_golden = avenge.get("golden_token") and avenger.golden
+        for _ in range(mult):
+            from game.minion import Minion as M
+            if _alive_count(friendly_board) >= 7:
+                break
+            token = M.from_id(token_id)
+            if make_golden:
+                token.make_golden()
+            spawn_pos = next((i for i, m in enumerate(friendly_board) if m is avenger), len(friendly_board))
+            friendly_board.insert(spawn_pos + 1, token)
+            step["events"].append({"type": "avenge_summon", "token": token.to_dict()})
+
+    elif atype == "avenge_self_buff":
+        atk = avenge.get("attack", 1) * mult
+        hp = avenge.get("health", 1) * mult
+        avenger.attack += atk
+        avenger.health += hp
+        avenger.max_health += hp
+        step["events"].append({"type": "buff", "uid": avenger.uid,
+                                "attack": avenger.attack, "health": avenger.health})
+
+    elif atype == "avenge_divine_shield":
+        for _ in range(mult):
+            avenger.divine_shield = True
+            step["events"].append({"type": "avenge_divine_shield", "uid": avenger.uid})
+
+    elif atype == "avenge_blood_gems_tribe":
+        tribe = avenge.get("tribe")
+        count = avenge.get("count", 2) * mult
+        for m in friendly_board:
+            if m.dead or m is avenger:
+                continue
+            if tribe is None or tribe in m.types:
+                for _ in range(count):
+                    m.attack += 1
+                    m.health += 1
+                    m.max_health += 1
+                step["events"].append({"type": "buff", "uid": m.uid,
+                                        "attack": m.attack, "health": m.health})
+
+    elif atype in ("avenge_chromadrake", "avenge_spell", "avenge_blood_gem_bonus",
+                   "avenge_get_undead", "avenge_teammate_minion"):
+        reward = {**avenge, "golden": avenger.golden}
+        post_rewards.append(reward)
 
 
 def _trigger_shield_pop_passives(popped: Minion, friendly_board: list, step: dict):

@@ -91,6 +91,41 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
         elif rtype == "blood_gem_adjacent_post_combat":
             pass  # skulking_bristlemane: combat-positie niet beschikbaar post-combat
 
+        elif rtype == "avenge_chromadrake":
+            count = 2 if reward.get("golden") else 1
+            pool = [m for mid, m in MINIONS.items() if "chromadrake" in mid]
+            for _ in range(count):
+                if pool:
+                    data = random.choice(pool)
+                    player.hand.append(Minion.from_id(data["id"]))
+
+        elif rtype == "avenge_spell":
+            spell_id = reward.get("spell")
+            spell = _SPELLS_FLAT.get(spell_id)
+            count = 2 if reward.get("golden") else 1
+            if spell:
+                for _ in range(count):
+                    player.hand.append({**spell, "type": "spell", "cost": spell.get("cost", 3)})
+
+        elif rtype == "avenge_blood_gem_bonus":
+            amount = reward.get("amount", 1) * (2 if reward.get("golden") else 1)
+            stat = reward.get("stat", "health")
+            if stat == "health":
+                player.blood_gem_health_bonus += amount
+            else:
+                player.blood_gem_attack_bonus += amount
+
+        elif rtype == "avenge_get_undead":
+            count = 2 if reward.get("golden") else 1
+            pool = [m for m in MINIONS.values() if "Undead" in m.get("types", [])]
+            for _ in range(count):
+                if pool:
+                    data = random.choice(pool)
+                    player.hand.append(Minion.from_id(data["id"]))
+
+        elif rtype == "avenge_teammate_minion":
+            pass  # Solos: geen teammate
+
 
 AI_NAMES = [
     "Rexxar", "Jaina", "Thrall", "Anduin", "Sylvanas",
