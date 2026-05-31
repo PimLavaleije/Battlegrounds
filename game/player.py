@@ -41,6 +41,8 @@ class Player:
         self.spell_health_bonus = 0  # permanent bonus from chromadrakes, shoalfin_mystic on-sell, etc.
         self.last_spell_cast: dict | None = None  # voor cataclysmic_harbinger
         self.cards_played_this_turn = 0  # voor brazen_buccaneer
+        self.blood_gem_attack_bonus = 0  # permanent van prickly_piper deathrattle
+        self.blood_gem_health_bonus = 0  # permanent van moon_bacon_jazzer battlecry
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -56,6 +58,9 @@ class Player:
         self.cards_played_this_turn = 0
         self._apply_start_of_round_hero()
         self._apply_start_of_turn_board()
+        for m in self.board:
+            if hasattr(m, "_hired_ritualist_triggered"):
+                m._hired_ritualist_triggered = False
 
     def _apply_start_of_round_hero(self):
         if not self.hero:
@@ -298,6 +303,14 @@ class Player:
             effect = self._apply_spell(item, board_index if board_index >= 0 else None)
             spell_passives = self._trigger_spell_cast_passives()
             return {"success": True, "spell": item, "spell_effect": effect, "spell_passives": spell_passives}
+        # Blood Gem — doelgericht +1/+1 item
+        if isinstance(item, dict) and item.get("type") == "blood_gem":
+            if not self.board:
+                return {"success": False, "message": "Geen minions om Blood Gem op te spelen."}
+            self.hand.pop(hand_index)
+            target = self.board[board_index] if 0 <= board_index < len(self.board) else self.board[0]
+            self._apply_blood_gem(target, item.get("bonus_keyword"), item.get("bonus_tribe"))
+            return {"success": True, "blood_gem": True, "target": target.to_dict()}
         if len(self.board) >= self.MAX_BOARD:
             return {"success": False, "message": "Board is vol (max 7). Verkoop een minion om ruimte te maken."}
         minion = self.hand.pop(hand_index)
@@ -829,6 +842,18 @@ class Player:
                     m.max_health += bc.get("health", 0) * mult
             return {"buff_tavern": True}
 
+        if effect == "give_blood_gems":
+            count = bc.get("count", 1) * (2 if minion.golden else 1)
+            kw = bc.get("bonus_keyword")
+            tribe = bc.get("bonus_tribe")
+            for _ in range(count):
+                self.hand.append(self._create_blood_gem(kw, tribe))
+            return {"blood_gems": count}
+
+        if effect == "blood_gem_health_bonus":
+            self.blood_gem_health_bonus += bc.get("amount", 1) * (2 if minion.golden else 1)
+            return {"blood_gem_health_bonus": bc.get("amount", 1)}
+
         return None
 
     def _trigger_buy_passives(self, bought: Minion) -> list[dict]:
@@ -884,6 +909,12 @@ class Player:
                         ally.health += m.passive.get("health", 1)
                         ally.max_health += m.passive.get("health", 1)
                         events.append({"type": "play_passive", "uid": ally.uid, "attack": ally.attack, "health": ally.health})
+
+            elif ptype == "on_quilboar_played" and "Quilboar" in played.types:
+                count = m.passive.get("count", 1) * (2 if m.golden else 1)
+                for _ in range(count):
+                    self.hand.append(self._create_blood_gem())
+                events.append({"type": "play_passive", "uid": m.uid, "blood_gems": count})
 
         return events
 
@@ -951,6 +982,12 @@ class Player:
             self.spell_attack_bonus += sold.passive.get("attack", 1) * multiplier
             self.spell_health_bonus += sold.passive.get("health", 1) * multiplier
             return {"spell_stat_bonus": True}
+
+        if ptype == "on_sell_give_blood_gems":
+            count = sold.passive.get("count", 2) * multiplier
+            for _ in range(count):
+                self.hand.append(self._create_blood_gem())
+            return {"blood_gems": count}
 
         return None
 
@@ -1092,6 +1129,14 @@ class Player:
                         self.hand.append(Minion.from_id(random.choice(pool)))
                 events.append({"type": "eot", "uid": m.uid})
 
+            elif etype == "eot_give_blood_gems":
+                count = eot.get("count", 1) * mult
+                kw = eot.get("bonus_keyword")
+                tribe = eot.get("bonus_tribe")
+                for _ in range(count):
+                    self.hand.append(self._create_blood_gem(kw, tribe))
+                events.append({"type": "eot", "uid": m.uid})
+
         return events
 
     def _get_spell_stat_bonus(self) -> tuple[int, int]:
@@ -1180,6 +1225,39 @@ class Player:
                 events.append({"type": "spell_cast_passive", "uid": m.uid})
 
         return events
+
+    def _create_blood_gem(self, bonus_keyword: str | None = None, bonus_tribe: str | None = None) -> dict:
+        bg: dict = {"type": "blood_gem", "id": "blood_gem", "name": "Blood Gem",
+                    "cost": 0, "description": "Geef een minion +1/+1."}
+        if bonus_keyword:
+            bg["bonus_keyword"] = bonus_keyword
+        if bonus_tribe:
+            bg["bonus_tribe"] = bonus_tribe
+        return bg
+
+    def _apply_blood_gem(self, target: Minion, bonus_keyword: str | None = None,
+                         bonus_tribe: str | None = None, _from_bounce: bool = False):
+        """Past een Blood Gem toe op een minion: +1/+1 + permanente bonussen."""
+        target.attack += 1 + self.blood_gem_attack_bonus
+        target.health += 1 + self.blood_gem_health_bonus
+        target.max_health += 1 + self.blood_gem_health_bonus
+        if bonus_keyword:
+            if bonus_tribe is None or bonus_tribe in target.types:
+                setattr(target, bonus_keyword, True)
+                if bonus_keyword not in target.abilities:
+                    target.abilities.append(bonus_keyword)
+        if not _from_bounce:
+            if target.passive and target.passive.get("type") == "on_blood_gem_played_gold":
+                if not getattr(target, "_hired_ritualist_triggered", False):
+                    target._hired_ritualist_triggered = True
+                    mult = 2 if target.golden else 1
+                    self.gold = min(self.gold + target.passive.get("amount", 2) * mult, self.MAX_GOLD)
+            if target.passive and target.passive.get("type") == "on_blood_gem_played_bounce":
+                others = [m for m in self.board if m is not target]
+                if others:
+                    count = 2 if target.golden else 1
+                    for _ in range(count):
+                        self._apply_blood_gem(random.choice(others), _from_bounce=True)
 
     def _give_random_keyword(self, minion: Minion):
         keywords = ["taunt", "divine_shield", "reborn", "windfury"]

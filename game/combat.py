@@ -270,6 +270,10 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                     target.take_damage(m.passive.get("amount", 3))
                     death_step["events"].append({"type": "soul_juggler", "target_uid": target.uid})
 
+            elif ptype == "taunt_dies_blood_gem" and dead_minion.taunt:
+                count = m.passive.get("count", 1) * (2 if m.golden else 1)
+                side_rewards.append({"type": "give_blood_gems_post_combat", "count": count, "golden": False})
+
         # Deathrattle
         if dead_minion.deathrattle:
             dr = dead_minion.deathrattle
@@ -502,6 +506,12 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         if post_rewards is not None:
             reward = dict(dr)
             reward["type"] = dtype
+            post_rewards.append(reward)
+
+    elif dtype in ("give_blood_gems_post_combat", "blood_gem_attack_bonus_post_combat",
+                   "blood_gem_adjacent_post_combat"):
+        if post_rewards is not None:
+            reward = {**dr, "golden": dead.golden}
             post_rewards.append(reward)
 
 

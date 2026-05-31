@@ -77,6 +77,20 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
                 target.health += reward.get("health", 5)
                 target.max_health += reward.get("health", 5)
 
+        elif rtype == "give_blood_gems_post_combat":
+            count = reward.get("count", 1) * (2 if reward.get("golden") else 1)
+            kw = reward.get("bonus_keyword")
+            tribe = reward.get("bonus_tribe")
+            for _ in range(count):
+                player.hand.append(player._create_blood_gem(kw, tribe))
+
+        elif rtype == "blood_gem_attack_bonus_post_combat":
+            amount = reward.get("amount", 1) * (2 if reward.get("golden") else 1)
+            player.blood_gem_attack_bonus += amount
+
+        elif rtype == "blood_gem_adjacent_post_combat":
+            pass  # skulking_bristlemane: combat-positie niet beschikbaar post-combat
+
 
 AI_NAMES = [
     "Rexxar", "Jaina", "Thrall", "Anduin", "Sylvanas",
