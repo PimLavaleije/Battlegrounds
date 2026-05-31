@@ -35,6 +35,7 @@ class Player:
         self.gold_next_turn_bonus = 0
         self.free_refreshes_available = 0
         self.next_spell_discount = 0
+        self.kael_buy_count = 0  # Kael'thas: resets each turn
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -48,8 +49,12 @@ class Player:
         self._apply_start_of_round_hero()
 
     def _apply_start_of_round_hero(self):
-        # Passive start-of-round effects go here as they are implemented.
-        pass
+        if not self.hero:
+            return
+        effect = self.hero.get("ability", {}).get("effect")
+        if effect == "clairvoyance":           # Nozdormu: first refresh free
+            self.free_refreshes_available += 1
+        self.kael_buy_count = 0               # Kael'thas counter resets each turn
 
     # ── Hero ability ────────────────────────────────────────
     def use_hero_power(self, target_index: int | None = None) -> dict:
@@ -65,11 +70,66 @@ class Player:
         effect = ab.get("effect")
         self.gold -= cost
 
-        # George the Fallen: give a target minion Divine Shield
-        if effect == "give_divine_shield" and self.board and target_index is not None:
-            if 0 <= target_index < len(self.board):
-                self.board[target_index].divine_shield = True
-                return {"success": True, "effect": "divine_shield", "target": self.board[target_index].to_dict()}
+        if effect == "give_divine_shield":
+            # George the Fallen: give a target minion Divine Shield
+            if self.board and target_index is not None and 0 <= target_index < len(self.board):
+                m = self.board[target_index]
+                m.divine_shield = True
+                if "divine_shield" not in m.abilities:
+                    m.abilities.append("divine_shield")
+                return {"success": True, "effect": "divine_shield", "target": m.to_dict()}
+
+        elif effect == "brick_by_brick":
+            # Pyramad: give a random minion +4 Health
+            if self.board:
+                t = random.choice(self.board)
+                t.health += 4; t.max_health += 4
+                return {"success": True, "effect": "brick_by_brick", "target": t.to_dict()}
+
+        elif effect == "graveyard_shift":
+            # Lich Bazhial: take self_damage HP, gain that much gold
+            dmg = ab.get("self_damage", 2)
+            self.hp -= dmg
+            self.gold = min(self.gold + dmg, self.MAX_GOLD)
+            return {"success": True, "effect": "graveyard_shift", "hp": self.hp, "gold": self.gold}
+
+        elif effect == "blessing_nine_frogs":
+            # Doctor Holli'dae: get a random Tavern spell
+            import random as _r
+            stat_spells = [s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells
+                           if s["tier"] <= self.tavern_tier]
+            if stat_spells:
+                chosen = _r.choice(stat_spells)
+                spell = {**chosen, "type": "spell", "cost": chosen.get("cost", 3)}
+                self.hand.append(spell)
+                return {"success": True, "effect": "blessing_nine_frogs", "spell": spell}
+
+        elif effect == "smart_savings":
+            # Gallywix: next reroll is free
+            self.free_refreshes_available += 1
+            return {"success": True, "effect": "smart_savings"}
+
+        elif effect == "lucky_roll":
+            # Snake Eyes: add a random minion of current tier to hand
+            from game.data.minions import MINIONS as _MINS
+            tier_pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
+            if tier_pool:
+                self.hand.append(Minion.from_id(random.choice(tier_pool)))
+            return {"success": True, "effect": "lucky_roll"}
+
+        elif effect == "tale_of_kings":
+            # The Rat King: give all friendly minions +2/+2
+            for m in self.board:
+                m.attack += 2; m.health += 2; m.max_health += 2
+            return {"success": True, "effect": "tale_of_kings"}
+
+        elif effect == "sharpen_blades":
+            # Edwin VanCleef: give a minion +1 Attack for each card in hand
+            if self.board and target_index is not None and 0 <= target_index < len(self.board):
+                bonus = len(self.hand)
+                m = self.board[target_index]
+                m.attack += bonus
+                return {"success": True, "effect": "sharpen_blades", "target": m.to_dict()}
 
         return {"success": True}
 
@@ -108,6 +168,16 @@ class Player:
             spellcraft_spell = self._generate_spellcraft_spell(minion)
             if spellcraft_spell:
                 self.hand.append(spellcraft_spell)
+
+        # Hero passives on buy
+        if self.hero:
+            hero_effect = self.hero.get("ability", {}).get("effect")
+            if hero_effect == "im_the_capn_now" and "Pirate" in minion.types:
+                self.gold = min(self.gold + 1, self.MAX_GOLD)
+            elif hero_effect == "verdant_spheres":
+                self.kael_buy_count += 1
+                if self.kael_buy_count % self.hero["ability"].get("threshold", 3) == 0:
+                    self.hand.append({**_SPELLS_FLAT["tavern_coin"], "type": "spell", "cost": 0})
 
         return {
             "success": True,
@@ -152,6 +222,10 @@ class Player:
         tier_costs = {2: 5, 3: 7, 4: 8, 5: 9, 6: 10}
         next_tier = self.tavern_tier + 1
         self.upgrade_cost = max(0, tier_costs.get(next_tier, 10) - (self.tavern_tier - 1))
+        # Forest Warden Omu: gain gold after leveling
+        if self.hero and self.hero.get("ability", {}).get("effect") == "everbloom":
+            gain = self.hero["ability"].get("gold_gain", 2)
+            self.gold = min(self.gold + gain, self.MAX_GOLD)
         return {"success": True, "tavern_tier": self.tavern_tier, "gold": self.gold}
 
     def move_minion(self, from_idx: int, to_idx: int) -> dict:

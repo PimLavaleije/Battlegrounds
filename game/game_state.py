@@ -12,6 +12,31 @@ _SPELLS_FLAT = {s["id"]: s for tier_spells in SPELLS_BY_TIER.values() for s in t
 _BOUNTY_SPELLS = [s for s in _SPELLS_FLAT.values() if "bounty" in s["id"]]
 
 
+def _apply_hero_combat_auras(player: Player, enemy_board: list):
+    """Applies hero passives that trigger at the start of combat."""
+    if not player.hero:
+        return
+    effect = player.hero.get("ability", {}).get("effect")
+    ab = player.hero.get("ability", {})
+    if effect == "all_will_burn":
+        # Deathwing: give ALL minions +attack Attack (both sides)
+        bonus = ab.get("attack", 2)
+        for m in player.board + enemy_board:
+            m.attack += bonus
+    elif effect == "wingmen":
+        # Illidan: first and last friendly minion get +atk/+hp
+        atk = ab.get("attack", 2)
+        hp  = ab.get("health", 1)
+        if player.board:
+            player.board[0].attack += atk
+            player.board[0].health += hp
+            player.board[0].max_health += hp
+            if len(player.board) > 1:
+                player.board[-1].attack += atk
+                player.board[-1].health += hp
+                player.board[-1].max_health += hp
+
+
 def _apply_post_combat_rewards(player: Player, rewards: list):
     from game.data.minions import MINIONS
     for reward in rewards:
@@ -300,6 +325,9 @@ class GameState:
                     if enemy_board:
                         enemy_board.pop(random.randrange(len(enemy_board)))
             player.pending_combat_spells.clear()
+
+            # Hero passives at combat start
+            _apply_hero_combat_auras(player, enemy_board)
 
             # Simuleer gevecht
             result = simulate_combat(player.board, enemy_board)
