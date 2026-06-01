@@ -126,6 +126,43 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
         elif rtype == "avenge_teammate_minion":
             pass  # Solos: geen teammate
 
+        elif rtype == "rally_buff_tribe_permanent":
+            tribe = reward.get("tribe")
+            atk = reward.get("attack", 0)
+            hp = reward.get("health", 0)
+            for m in player.board:
+                if tribe is None or tribe in m.types:
+                    m.attack += atk; m.health += hp; m.max_health += hp
+            for m in player.hand:
+                if isinstance(m, Minion) and (tribe is None or tribe in m.types):
+                    m.attack += atk; m.health += hp; m.max_health += hp
+
+        elif rtype == "rally_chefs_choice":
+            tribes = reward.get("tribes", [])
+            if tribes:
+                tribe = random.choice(tribes)
+                pool = [m for m in MINIONS.values() if tribe in m.get("types", [])]
+                if pool:
+                    player.hand.append(Minion.from_id(random.choice(pool)["id"]))
+
+        elif rtype == "eternal_knight_died":
+            player._on_game_counter_increment("eternal_knight_deaths", 1)
+
+        elif rtype == "sanlayn_scribe_died":
+            player._on_game_counter_increment("sanlayn_scribe_deaths", 1)
+
+        elif rtype == "deathrattle_triggered_game":
+            player._on_game_counter_increment("deathrattles_triggered", 1)
+
+        elif rtype == "old_soul_deaths":
+            count = reward.get("count", 0)
+            for m in player.hand:
+                if isinstance(m, Minion) and m.id == "old_soul" and not m.golden:
+                    m._death_count = getattr(m, "_death_count", 0) + count
+                    if m._death_count >= 15:
+                        m.make_golden()
+                        m._death_count = 0
+
 
 AI_NAMES = [
     "Rexxar", "Jaina", "Thrall", "Anduin", "Sylvanas",
@@ -220,12 +257,24 @@ class GameState:
 
     def get_round_data_for(self, sid: str) -> dict:
         p = self.players[sid]
-        return {
+        data = {
             "round_num": self.round_num,
             "player": p.to_dict(include_shop=True),
             "opponents": [op.public_dict() for op in self.players.values() if op.sid != sid],
             "timer": self.SHOP_TIMER,
         }
+        if p.pending_egg_hatch is not None:
+            from game.data.minions import MINIONS
+            t6_dragons = [m for m in MINIONS.values() if m.get("tier") == 6 and "Dragon" in m.get("types", [])]
+            chosen = random.sample(t6_dragons, min(3, len(t6_dragons)))
+            is_golden = p.pending_egg_hatch.golden
+            data["egg_hatch_options"] = [{"id": m["id"], "name": m["name"],
+                                           "attack": (m.get("attack") or 0) * (2 if is_golden else 1),
+                                           "health": (m.get("health") or 0) * (2 if is_golden else 1),
+                                           "golden": is_golden,
+                                           "description": m.get("golden_description" if is_golden else "description", ""),
+                                           "abilities": m.get("abilities", [])} for m in chosen]
+        return data
 
     # ── Shop acties ─────────────────────────────────────────
     def buy_minion(self, sid: str, shop_index: int, target_index: int | None = None) -> dict:
@@ -458,11 +507,71 @@ class GameState:
             # Hero passives at combat start (op de clone, niet het echte board)
             _apply_hero_combat_auras(combat_board, enemy_board, player.hero)
 
+            # Expert Aviator: rally — buff linker handminion permanent + summon als tijdelijk combat-minion
+            for ci, cm in enumerate(combat_board):
+                if cm.rally and cm.rally.get("type") == "summon_leftmost_hand":
+                    hand_minions = [item for item in player.hand if isinstance(item, Minion)]
+                    if hand_minions and len(combat_board) < player.MAX_BOARD:
+                        leftmost = hand_minions[0]
+                        mult = 2 if cm.golden else 1
+                        atk_buff = cm.rally.get("attack", 1) * mult
+                        hp_buff = cm.rally.get("health", 1) * mult
+                        leftmost.attack += atk_buff
+                        leftmost.health += hp_buff
+                        leftmost.max_health += hp_buff
+                        combat_board.append(leftmost.clone())
+
+            # Tarecgosa / persistent_poet: snapshot stats na hero-aura, voor combat
+            preserve_uids: set[str] = set()
+            for ci, cm in enumerate(combat_board):
+                if cm.id == "tarecgosa":
+                    preserve_uids.add(cm.uid)
+                elif cm.id == "persistent_poet":
+                    for adj_i in [ci - 1, ci + 1]:
+                        if 0 <= adj_i < len(combat_board):
+                            adj = combat_board[adj_i]
+                            if "Dragon" in adj.types:
+                                preserve_uids.add(adj.uid)
+            pre_combat_stats = {cm.uid: {"attack": cm.attack, "health": cm.health,
+                                         "abilities": list(cm.abilities)}
+                                for cm in combat_board if cm.uid in preserve_uids}
+
             # Simuleer gevecht
             result = simulate_combat(combat_board, enemy_board)
 
             # Pas post-combat beloningen toe
             _apply_post_combat_rewards(player, result["post_combat_rewards"]["player"])
+
+            # Tarecgosa / persistent_poet: bewaar combat-gewonnen stats/keywords op echte board
+            if preserve_uids:
+                for survivor_d in result["surviving_minions"]:
+                    uid = survivor_d.get("uid")
+                    if uid not in preserve_uids:
+                        continue
+                    real_m = next((m for m in player.board if m.uid == uid), None)
+                    pre = pre_combat_stats.get(uid)
+                    if real_m is None or pre is None:
+                        continue
+                    delta_atk = max(0, survivor_d.get("attack", 0) - pre["attack"])
+                    delta_hp = max(0, survivor_d.get("health", 0) - pre["health"])
+                    if delta_atk:
+                        real_m.attack += delta_atk
+                    if delta_hp:
+                        real_m.health += delta_hp
+                        real_m.max_health += delta_hp
+                    for ability in survivor_d.get("abilities", []):
+                        if ability not in pre["abilities"] and ability not in real_m.abilities:
+                            real_m.abilities.append(ability)
+                    if survivor_d.get("divine_shield") and not real_m.divine_shield:
+                        real_m.divine_shield = True
+                    if survivor_d.get("windfury") and not real_m.windfury:
+                        real_m.windfury = True
+                    if survivor_d.get("megawindfury") and not real_m.megawindfury:
+                        real_m.megawindfury = True
+                    if survivor_d.get("poisonous") and not real_m.poisonous:
+                        real_m.poisonous = True
+                    if survivor_d.get("venomous") and not real_m.venomous:
+                        real_m.venomous = True
             if not opp_ref.startswith("ghost:"):
                 opp_obj = self.players.get(opp_ref)
                 if opp_obj:

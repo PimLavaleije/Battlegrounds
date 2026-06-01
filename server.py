@@ -263,7 +263,10 @@ def _start_round(room_code: str):
     game.start_round()
     for sid, player in game.players.items():
         if not player.is_ai and player.alive:
-            socketio.emit("round_start", game.get_round_data_for(sid), to=sid)
+            round_data = game.get_round_data_for(sid)
+            socketio.emit("round_start", round_data, to=sid)
+            if round_data.get("egg_hatch_options"):
+                socketio.emit("triple_discover", {"options": round_data["egg_hatch_options"]}, to=sid)
     # Stuur opponents info naar alle spelers
     socketio.emit("opponents_update", game.get_all_players_public(), to=room_code)
 

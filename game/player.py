@@ -49,6 +49,11 @@ class Player:
         self.pass_free_used_this_turn = 0
         self.gold_spent_this_turn = 0
         self.last_combat_lost = False
+        self.eternal_knight_deaths = 0
+        self.sanlayn_scribe_deaths = 0
+        self.deathrattles_triggered_game = 0
+        self.spells_cast_game = 0
+        self.pending_egg_hatch: "Minion | None" = None
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -80,8 +85,38 @@ class Player:
             # Storm Splitter: reset per-turn flag
             if hasattr(m, '_storm_splitter_used'):
                 m._storm_splitter_used = False
+            # Zesty Shaker: reset eenmalige trigger
+            if hasattr(m, '_zesty_triggered'):
+                m._zesty_triggered = False
         self._update_transport_reactor()
         self._check_board_thresholds()
+        # Spellcraft: verwijder tijdelijke keywords van vorige beurt
+        for m in self.board:
+            for undo in getattr(m, "_temp_sc_keywords", []):
+                if "restore_deathrattle" in undo:
+                    m.deathrattle = undo["restore_deathrattle"]
+                    if undo.get("added_deathrattle_ability") and "deathrattle" in m.abilities:
+                        m.abilities.remove("deathrattle")
+                if undo.get("remove_taunt"):
+                    m.taunt = False
+                    if "taunt" in m.abilities:
+                        m.abilities.remove("taunt")
+                if undo.get("remove_windfury"):
+                    m.windfury = False
+                    if "windfury" in m.abilities:
+                        m.abilities.remove("windfury")
+                if undo.get("remove_divine_shield"):
+                    m.divine_shield = False
+                    if "divine_shield" in m.abilities:
+                        m.abilities.remove("divine_shield")
+            m._temp_sc_keywords = []
+        # Egg of the Endtimes: beurt-teller bijhouden
+        self.pending_egg_hatch = None
+        for item in self.hand:
+            if isinstance(item, Minion) and item.id == "egg_of_the_endtimes":
+                item._turns_in_hand = getattr(item, "_turns_in_hand", 0) + 1
+                if item._turns_in_hand >= 2 and self.pending_egg_hatch is None:
+                    self.pending_egg_hatch = item
 
     def _apply_start_of_round_hero(self):
         if not self.hero:
@@ -124,7 +159,7 @@ class Player:
         elif effect == "graveyard_shift":
             # Lich Bazhial: take self_damage HP, gain that much gold
             dmg = ab.get("self_damage", 2)
-            self.hp -= dmg
+            self._on_hero_damaged(dmg)
             self.gold = min(self.gold + dmg, self.MAX_GOLD)
             return {"success": True, "effect": "graveyard_shift", "hp": self.hp, "gold": self.gold}
 
@@ -189,6 +224,7 @@ class Player:
         self.gold -= 3
         self._on_gold_spent(3)
         self.hand.append(minion)
+        self._apply_game_counter_buff(minion)
 
         # Triple check
         triple_result = self._track_triple(minion)
@@ -309,7 +345,15 @@ class Player:
 
     def add_discover_minion(self, minion_id: str) -> dict:
         minion = Minion.from_id(minion_id)
+        if self.pending_egg_hatch is not None:
+            egg = self.pending_egg_hatch
+            self.pending_egg_hatch = None
+            if egg in self.hand:
+                self.hand.remove(egg)
+            if egg.golden:
+                minion.make_golden()
         self.hand.append(minion)
+        self._apply_game_counter_buff(minion)
         return {"success": True}
 
     def _remove_from_triple(self, minion: Minion):
@@ -614,9 +658,15 @@ class Player:
         elif sid == "sc_surf_n_surf":
             t = _target()
             if t:
+                prev_dr = t.deathrattle
+                had_dr_ability = "deathrattle" in t.abilities
                 t.deathrattle = {"type": "summon", "token": "crab"}
-                if "deathrattle" not in t.abilities:
+                if not had_dr_ability:
                     t.abilities.append("deathrattle")
+                if not hasattr(t, "_temp_sc_keywords"):
+                    t._temp_sc_keywords = []
+                t._temp_sc_keywords.append({"restore_deathrattle": prev_dr,
+                                             "added_deathrattle_ability": not had_dr_ability})
         elif sid == "sc_lava_lurker":
             t = _target()
             if t:
@@ -633,7 +683,13 @@ class Player:
         elif sid == "sc_deep_sea_angler":
             t = _target()
             if t:
-                t.attack += 2; t.health += 6; t.max_health += 6; _give_taunt(t)
+                t.attack += 2; t.health += 6; t.max_health += 6
+                had_taunt = t.taunt
+                _give_taunt(t)
+                if not had_taunt:
+                    if not hasattr(t, "_temp_sc_keywords"):
+                        t._temp_sc_keywords = []
+                    t._temp_sc_keywords.append({"remove_taunt": True})
         elif sid == "sc_private_chef":
             t = _target()
             if t and t.types:
@@ -658,6 +714,9 @@ class Player:
                     t.windfury = True
                     if "windfury" not in t.abilities:
                         t.abilities.append("windfury")
+                    if not hasattr(t, "_temp_sc_keywords"):
+                        t._temp_sc_keywords = []
+                    t._temp_sc_keywords.append({"remove_windfury": True})
         elif sid == "sc_zesty_shaker":
             if self.board:
                 t = _r.choice(self.board)
@@ -671,9 +730,14 @@ class Player:
         elif sid == "sc_glowscale":
             t = _target()
             if t:
+                had_ds = t.divine_shield
                 t.divine_shield = True
                 if "divine_shield" not in t.abilities:
                     t.abilities.append("divine_shield")
+                if not had_ds:
+                    if not hasattr(t, "_temp_sc_keywords"):
+                        t._temp_sc_keywords = []
+                    t._temp_sc_keywords.append({"remove_divine_shield": True})
         elif sid == "sc_tranquil_meditative":
             for m in self.board:
                 m.health += 2; m.max_health += 2
@@ -681,6 +745,16 @@ class Player:
             if self.board:
                 t = _r.choice(self.board)
                 t.attack += 3; t.health += 3; t.max_health += 3
+
+        # Zesty Shaker: als een spellcraft spreuk op hem gespeeld wordt, geef een kopie (1x/beurt)
+        if spell.get("id", "").startswith("sc_") and target_index is not None:
+            t = _target()
+            if t and t.passive and t.passive.get("type") == "on_spellcraft_target_get_copy":
+                if not getattr(t, "_zesty_triggered", False):
+                    t._zesty_triggered = True
+                    copies = 2 if t.golden else 1
+                    for _ in range(copies):
+                        self.hand.append({**spell, "type": "spell"})
 
         # Pas spell stat bonus toe op minions die gebuffed werden door de spreuk
         _ab, _hb = self._get_spell_stat_bonus()
@@ -936,7 +1010,7 @@ class Player:
                        "description": m.get("description", ""), "abilities": m.get("abilities", []),
                        "golden": False} for m in chosen],
                       "self_damage_tier": True}
-            self.hp -= minion.tier
+            self._on_hero_damaged(minion.tier)
             return result
 
         if effect == "destroy_undead_get_copy":
@@ -1070,9 +1144,7 @@ class Player:
                 m.health += m.passive.get("health", 1)
                 m.max_health += m.passive.get("health", 1)
                 dmg = m.passive.get("self_damage", 1)
-                self.hp = max(0, self.hp - dmg)
-                if self.hp == 0:
-                    self.alive = False
+                self._on_hero_damaged(dmg)
                 events.append({"type": "play_passive", "uid": m.uid, "attack": m.attack, "health": m.health, "self_damage": dmg})
 
             elif ptype == "on_battlecry_self" and battlecry_fired:
@@ -1388,6 +1460,7 @@ class Player:
 
     def _trigger_spell_cast_passives(self) -> list[dict]:
         """Triggert passives die afvuren als een tavern spreuk gecast wordt."""
+        self.spells_cast_game += 1
         events = []
         for m in self.board:
             if not m.passive:
@@ -1460,7 +1533,83 @@ class Player:
                         shop_m.max_health += hp
                 events.append({"type": "spell_cast_passive", "uid": m.uid})
 
+            elif ptype == "has_per_spell_cast":
+                atk = m.passive.get("attack", 1) * mult
+                hp = m.passive.get("health", 1) * mult
+                m.attack += atk; m.health += hp; m.max_health += hp
+                events.append({"type": "spell_cast_passive", "uid": m.uid})
+
+        for item in self.hand:
+            if isinstance(item, Minion) and item.passive and item.passive.get("type") == "has_per_spell_cast":
+                mult = 2 if item.golden else 1
+                item.attack += item.passive.get("attack", 1) * mult
+                item.health += item.passive.get("health", 1) * mult
+                item.max_health += item.passive.get("health", 1) * mult
+
         return events
+
+    def _on_hero_damaged(self, amount: int):
+        """Verlaagt held-HP en triggert Floating Watcher passives."""
+        actual = min(amount, self.hp)
+        self.hp = max(0, self.hp - amount)
+        if self.hp == 0:
+            self.alive = False
+        if actual > 0:
+            for m in self.board:
+                if m.passive and m.passive.get("type") == "on_hero_damage_buff_self":
+                    mult = 2 if m.golden else 1
+                    m.attack += m.passive.get("attack", 2) * mult
+                    m.health += m.passive.get("health", 2) * mult
+                    m.max_health += m.passive.get("health", 2) * mult
+
+    def _apply_game_counter_buff(self, minion: Minion):
+        """Past historisch geaccumuleerde game-brede teller-buff toe op een nieuwe minion."""
+        if not minion.passive:
+            return
+        ptype = minion.passive.get("type")
+        mult = 2 if minion.golden else 1
+        if ptype == "has_per_ek_death" and self.eternal_knight_deaths > 0:
+            atk = minion.passive.get("attack", 2) * mult * self.eternal_knight_deaths
+            hp = minion.passive.get("health", 1) * mult * self.eternal_knight_deaths
+            minion.attack += atk; minion.health += hp; minion.max_health += hp
+        elif ptype == "has_per_ss_death" and self.sanlayn_scribe_deaths > 0:
+            atk = minion.passive.get("attack", 4) * mult * self.sanlayn_scribe_deaths
+            hp = minion.passive.get("health", 4) * mult * self.sanlayn_scribe_deaths
+            minion.attack += atk; minion.health += hp; minion.max_health += hp
+        elif ptype == "has_per_deathrattle_triggered" and self.deathrattles_triggered_game > 0:
+            atk = minion.passive.get("attack", 4) * mult * self.deathrattles_triggered_game
+            hp = minion.passive.get("health", 2) * mult * self.deathrattles_triggered_game
+            minion.attack += atk; minion.health += hp; minion.max_health += hp
+        elif ptype == "has_per_spell_cast" and self.spells_cast_game > 0:
+            atk = minion.passive.get("attack", 1) * mult * self.spells_cast_game
+            hp = minion.passive.get("health", 1) * mult * self.spells_cast_game
+            minion.attack += atk; minion.health += hp; minion.max_health += hp
+
+    def _on_game_counter_increment(self, counter: str, amount: int = 1):
+        """Verhoogt een game-brede teller en past de bijbehorende buff toe op alle minions."""
+        if counter == "eternal_knight_deaths":
+            self.eternal_knight_deaths += amount
+            ptype, atk_per, hp_per = "has_per_ek_death", 2, 1
+        elif counter == "sanlayn_scribe_deaths":
+            self.sanlayn_scribe_deaths += amount
+            ptype, atk_per, hp_per = "has_per_ss_death", 4, 4
+        elif counter == "deathrattles_triggered":
+            self.deathrattles_triggered_game += amount
+            ptype, atk_per, hp_per = "has_per_deathrattle_triggered", 4, 2
+        else:
+            return
+        for m in self.board:
+            if m.passive and m.passive.get("type") == ptype:
+                mult = 2 if m.golden else 1
+                m.attack += atk_per * mult * amount
+                m.health += hp_per * mult * amount
+                m.max_health += hp_per * mult * amount
+        for m in self.hand:
+            if isinstance(m, Minion) and m.passive and m.passive.get("type") == ptype:
+                mult = 2 if m.golden else 1
+                m.attack += atk_per * mult * amount
+                m.health += hp_per * mult * amount
+                m.max_health += hp_per * mult * amount
 
     def _create_blood_gem(self, bonus_keyword: str | None = None, bonus_tribe: str | None = None) -> dict:
         bg: dict = {"type": "blood_gem", "id": "blood_gem", "name": "Blood Gem",

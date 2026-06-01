@@ -69,7 +69,7 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
             if not p_board or not e_board:
                 break
             step = _do_attack(attacker, target, target_idx, side_name,
-                              atk_idx, p_board, e_board, current_side)
+                              atk_idx, p_board, e_board, current_side, post_rewards)
             steps.append(step)
 
             # Na aanval doden verwerken
@@ -147,7 +147,8 @@ def _choose_target(attacker: Minion, defender_board: list[Minion]) -> tuple[Mini
 
 def _do_attack(attacker: Minion, target: Minion, target_idx: int,
                side_name: str, atk_idx: int,
-               p_board: list, e_board: list, current_side: int) -> dict:
+               p_board: list, e_board: list, current_side: int,
+               post_rewards: dict | None = None) -> dict:
     step = {
         "type": "attack",
         "attacker_side": side_name,
@@ -161,6 +162,8 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
         "target_attack": target.attack,
         "events": [],
     }
+
+    target_pre_health = target.health  # voor excess damage berekening
 
     # Schade aan doelwit
     result_t = target.take_damage(attacker.attack if not attacker.poisonous else 9999)
@@ -191,6 +194,38 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
                     mult = 2 if ally.golden else 1
                     ally.health += ally.passive.get("health", 2) * mult
                     ally.max_health += ally.passive.get("health", 2) * mult
+
+        # Wyvern Outrider: gratis refresh als het zelf schade neemt (max 3/beurt)
+        if target.passive and target.passive.get("type") == "on_self_damage_free_refresh":
+            max_per_turn = target.passive.get("max_per_turn", 3)
+            triggered = getattr(target, "_wyvern_count", 0)
+            if triggered < max_per_turn:
+                target._wyvern_count = triggered + 1
+                count = 2 if target.golden else 1
+                if post_rewards is not None:
+                    defender_rewards = post_rewards["enemy" if current_side == 0 else "player"]
+                    defender_rewards.append({"type": "free_refreshes_post_combat", "count": count})
+
+    # Wildfire Elemental: excess damage naar aangrenzende vijandelijke minion(s) bij kill
+    if (attacker.passive and attacker.passive.get("type") == "after_kill_excess_damage"
+            and target.health <= 0 and not result_t.get("shielded", False)
+            and not attacker.poisonous):
+        excess = max(0, attacker.attack - target_pre_health)
+        if excess > 0:
+            defender_board_exc = e_board if current_side == 0 else p_board
+            adj_indices = [i for i in [target_idx - 1, target_idx + 1]
+                           if 0 <= i < len(defender_board_exc)]
+            if attacker.golden:
+                exc_targets = [defender_board_exc[i] for i in adj_indices
+                               if not defender_board_exc[i].dead]
+            else:
+                candidates = [defender_board_exc[i] for i in adj_indices
+                              if not defender_board_exc[i].dead]
+                exc_targets = [random.choice(candidates)] if candidates else []
+            for t_exc in exc_targets:
+                exc_res = t_exc.take_damage(excess)
+                step["events"].append({"type": "excess_damage", "uid": t_exc.uid,
+                                       "damage": exc_res["damage"]})
 
     # Tegenslag
     result_a = attacker.take_damage(target.attack if not target.poisonous else 9999)
@@ -306,6 +341,24 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                 amount = m.passive.get("amount", 1) * (2 if m.golden else 1)
                 side_rewards.append({"type": "blood_gem_attack_bonus_post_combat", "amount": amount, "golden": False})
 
+        # Game-brede dood-tellers (eternal_knight, sanlayn_scribe, old_soul)
+        if dead_side == "player":
+            if dead_minion.id == "eternal_knight":
+                for m in friendly_board:
+                    if m.dead or m.id != "eternal_knight":
+                        continue
+                    mult = 2 if m.golden else 1
+                    m.attack += 2 * mult; m.health += 1 * mult; m.max_health += 1 * mult
+                side_rewards.append({"type": "eternal_knight_died"})
+            elif dead_minion.id == "sanlayn_scribe":
+                for m in friendly_board:
+                    if m.dead or m.id != "sanlayn_scribe":
+                        continue
+                    mult = 2 if m.golden else 1
+                    m.attack += 4 * mult; m.health += 4 * mult; m.max_health += 4 * mult
+                side_rewards.append({"type": "sanlayn_scribe_died"})
+            side_rewards.append({"type": "old_soul_deaths", "count": 1})
+
         # Avenge – tel dood mee voor alle levende vriendelijke avenge-minions
         for m in friendly_board:
             if m.dead or not m.avenge:
@@ -363,6 +416,17 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                        post_rewards: list | None = None):
     dtype = dr.get("type")
     spawn_pos = _dead_idx(dead, friendly_board)  # insert tokens right after dead slot
+
+    # Falling Sky Golem: buff voor elke deathrattle die triggert
+    for _fsg in friendly_board:
+        if _fsg.dead or _fsg.id != "falling_sky_golem":
+            continue
+        _fsg_mult = 2 if _fsg.golden else 1
+        _fsg.attack += 4 * _fsg_mult
+        _fsg.health += 2 * _fsg_mult
+        _fsg.max_health += 2 * _fsg_mult
+    if post_rewards is not None:
+        post_rewards.append({"type": "deathrattle_triggered_game"})
 
     def _summon_token(token_id: str, overrides: dict | None = None) -> bool:
         from game.minion import Minion as M
@@ -670,6 +734,24 @@ def _apply_rally_effects(board: list[Minion], post_rewards: list):
             count = multiplier
             for _ in range(count):
                 post_rewards.append({"type": rtype})
+
+        elif rtype == "buff_tribe_permanent":
+            tribe = m.rally.get("tribe")
+            atk = m.rally.get("attack", 0)
+            hp = m.rally.get("health", 0)
+            if atk or hp:
+                post_rewards.append({"type": "rally_buff_tribe_permanent",
+                                     "tribe": tribe, "attack": atk * multiplier,
+                                     "health": hp * multiplier})
+
+        elif rtype == "chefs_choice_right_neighbor":
+            idx = next((i for i, a in enumerate(board) if a is m), -1)
+            if 0 <= idx < len(board) - 1:
+                neighbor = board[idx + 1]
+                if neighbor.types:
+                    for _ in range(multiplier):
+                        post_rewards.append({"type": "rally_chefs_choice",
+                                             "tribes": list(neighbor.types)})
 
 
 def _trigger_avenge(avenger: Minion, avenge: dict, friendly_board: list, enemy_board: list,
