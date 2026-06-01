@@ -106,6 +106,17 @@ const GameUI = {
         card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
         card.addEventListener("mousemove", moveTooltip);
+      } else if (item.type === "blood_gem") {
+        card = buildBloodGemCard(item);
+        card.dataset.handIndex = idx;
+        card.addEventListener("click", () => {
+          if (State.player?.board?.length > 0) {
+            SpellTarget.start(idx);
+          }
+        });
+        card.addEventListener("mouseenter", e => showBloodGemTooltip(item, e));
+        card.addEventListener("mouseleave", hideTooltip);
+        card.addEventListener("mousemove", moveTooltip);
       } else {
         card = buildShopCard(item, { showCost: false });
         card.dataset.handIndex = idx;
@@ -365,6 +376,21 @@ function buildShopCard(minion, opts = {}) {
   return wrapper;
 }
 
+// ── Blood Gem kaart ──────────────────────────────────────────
+function buildBloodGemCard(gem) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "blood-gem-card";
+  wrapper.dataset.uid = gem.id;
+  const fb = document.createElement("div");
+  fb.className = "spell-card-fb";
+  fb.innerHTML = `
+    <div class="sfb-emoji">💎</div>
+    <div class="sfb-name">${escapeHtml(gem.name)}</div>
+    <div class="bgem-desc">${escapeHtml(gem.description || '+1/+1')}</div>`;
+  wrapper.appendChild(fb);
+  return wrapper;
+}
+
 // ── Spreuk kaart ─────────────────────────────────────────────
 function buildSpellCard(spell) {
   const wrapper = document.createElement("div");
@@ -394,6 +420,17 @@ function showSpellTooltip(spell, e) {
     <div class="tip-name">✨ ${escapeHtml(spell.name)}</div>
     <div class="tip-tribe">Spreuk · Tier ${spell.tier}</div>
     ${spell.description ? `<div class="tip-desc">${escapeHtml(spell.description)}</div>` : ""}
+  `;
+  tip.classList.remove("hidden");
+  moveTooltip(e);
+}
+
+function showBloodGemTooltip(gem, e) {
+  const tip = document.getElementById("minion-tooltip");
+  tip.innerHTML = `
+    <div class="tip-name">💎 ${escapeHtml(gem.name)}</div>
+    <div class="tip-tribe">Gratis · Klik op een board minion</div>
+    ${gem.description ? `<div class="tip-desc">${escapeHtml(gem.description)}</div>` : ""}
   `;
   tip.classList.remove("hidden");
   moveTooltip(e);

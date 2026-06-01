@@ -23,6 +23,7 @@ const SocketClient = {
   useHeroPower(targetIdx)    { socket.emit("use_hero_power", { target_index: targetIdx ?? null }); },
   playerReady()              { socket.emit("player_ready",   {}); },
   chooseDiscover(minionId)   { socket.emit("choose_discover", { minion_id: minionId }); },
+  chooseOne(choice)          { socket.emit("choose_one_choice", { choice }); },
 };
 
 // ── Verbinding ───────────────────────────────────────────────
@@ -115,6 +116,11 @@ socket.on("combat_result", data => {
 // ── Triple discover ──────────────────────────────────────────
 socket.on("triple_discover", data => {
   showTripleDiscover(data.options);
+});
+
+// ── Choose One ──────────────────────────────────────────────
+socket.on("choose_one", data => {
+  showChooseOne(data.options);
 });
 
 // ── Eliminations ─────────────────────────────────────────────

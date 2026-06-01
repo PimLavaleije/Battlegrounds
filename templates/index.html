@@ -98,21 +98,27 @@
 
       <!-- Hand / acties (onderin) -->
       <div class="hand-area">
-        <div class="hand-slots" id="hand-slots"></div>
-        <div class="shop-controls">
-          <button class="ctrl-btn upgrade" id="btn-upgrade">⬆️ <span id="upgrade-cost">5</span>💰</button>
-          <button class="ctrl-btn reroll"  id="btn-reroll">🔄 1💰</button>
-          <button class="ctrl-btn freeze"  id="btn-freeze">❄️ Bevries</button>
-          <div id="hero-power-area" class="hero-power-area hidden">
-            <button class="ctrl-btn hero-power" id="btn-hero-power">
-              <span id="hero-power-emoji">✨</span> <span id="hero-power-cost">2</span>💰
-            </button>
+        <div class="hand-main">
+          <div class="hand-slots" id="hand-slots"></div>
+          <div class="shop-controls">
+            <button class="ctrl-btn upgrade" id="btn-upgrade">⬆️ <span id="upgrade-cost">5</span>💰</button>
+            <button class="ctrl-btn reroll"  id="btn-reroll">🔄 1💰</button>
+            <button class="ctrl-btn freeze"  id="btn-freeze">❄️ Bevries</button>
+            <button class="ctrl-btn ready" id="btn-ready">✅ Klaar!</button>
           </div>
-          <button class="ctrl-btn ready" id="btn-ready">✅ Klaar!</button>
+          <div class="shop-meta">
+            <div class="shop-timer-bar"><div id="shop-timer-fill" class="timer-fill"></div></div>
+            <div id="ready-indicator" class="ready-indicator"></div>
+          </div>
         </div>
-        <div class="shop-meta">
-          <div class="shop-timer-bar"><div id="shop-timer-fill" class="timer-fill"></div></div>
-          <div id="ready-indicator" class="ready-indicator"></div>
+        <div id="hero-power-panel" class="hero-power-panel hidden">
+          <div class="hp-title">Heldvermogen</div>
+          <div class="hp-emoji" id="hero-power-emoji">✨</div>
+          <div class="hp-hero-name" id="hp-hero-name"></div>
+          <div class="hp-desc" id="hp-desc"></div>
+          <button class="hp-activate-btn" id="btn-hero-power">
+            Activeer · <span id="hero-power-cost">2</span>💰
+          </button>
         </div>
       </div>
 
@@ -176,6 +182,14 @@
     <div class="discover-title">✨ Triple! Kies een gratis minion</div>
     <div class="discover-subtitle">Wordt toegevoegd aan je winkel</div>
     <div id="discover-cards" class="discover-cards"></div>
+  </div>
+</div>
+
+<!-- ══ CHOOSE ONE ═══════════════════════════════════════════ -->
+<div id="choose-one-overlay" class="discover-overlay hidden">
+  <div class="discover-modal">
+    <div class="discover-title">⚔️ Kies Één</div>
+    <div id="choose-one-options" class="choose-one-options"></div>
   </div>
 </div>
 

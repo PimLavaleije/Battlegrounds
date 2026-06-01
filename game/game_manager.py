@@ -130,6 +130,16 @@ class GameManager:
             result["player"] = p.to_dict(include_shop=True)
         return result
 
+    def apply_choose_one(self, sid: str, room_code: str, choice: int) -> dict:
+        game = self.rooms.get(room_code)
+        if not game:
+            return {"success": False}
+        result = game.apply_choose_one(sid, choice)
+        if result.get("success"):
+            p = game.players[sid]
+            result["player"] = p.to_dict(include_shop=True)
+        return result
+
     def sell_from_hand(self, sid: str, room_code: str, hand_index: int) -> dict:
         game = self.rooms.get(room_code)
         if not game:

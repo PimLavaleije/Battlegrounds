@@ -54,6 +54,7 @@ class Player:
         self.deathrattles_triggered_game = 0
         self.spells_cast_game = 0
         self.pending_egg_hatch: "Minion | None" = None
+        self._pending_choose_one: dict | None = None
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -70,6 +71,7 @@ class Player:
         self.passes_this_turn = 0
         self.pass_free_used_this_turn = 0
         self.gold_spent_this_turn = 0
+        self._bloodbound_used = 0
         self._apply_start_of_round_hero()
         self._apply_start_of_turn_board()
         for m in self.board:
@@ -110,6 +112,12 @@ class Player:
                     if "divine_shield" in m.abilities:
                         m.abilities.remove("divine_shield")
             m._temp_sc_keywords = []
+        # Spellcraft: genereer spreuk voor elke Naga op het board
+        for m in self.board:
+            if "spellcraft" in m.abilities and m.spellcraft:
+                sc_spell = self._generate_spellcraft_spell(m)
+                if sc_spell:
+                    self.hand.append(sc_spell)
         # Egg of the Endtimes: beurt-teller bijhouden
         self.pending_egg_hatch = None
         for item in self.hand:
@@ -140,66 +148,154 @@ class Player:
         effect = ab.get("effect")
         self.gold -= cost
 
+        # ── Targeted effects ──────────────────────────────────────
         if effect == "give_divine_shield":
-            # George the Fallen: give a target minion Divine Shield
-            if self.board and target_index is not None and 0 <= target_index < len(self.board):
-                m = self.board[target_index]
-                m.divine_shield = True
-                if "divine_shield" not in m.abilities:
-                    m.abilities.append("divine_shield")
-                return {"success": True, "effect": "divine_shield", "target": m.to_dict()}
+            t = self.board[target_index] if (target_index is not None and 0 <= target_index < len(self.board)) else (self.board[0] if self.board else None)
+            if t:
+                t.divine_shield = True
+                if "divine_shield" not in t.abilities: t.abilities.append("divine_shield")
+            return {"success": True, "effect": "give_divine_shield"}
 
+        elif effect == "sharpen_blades":
+            atk = ab.get("attack", 2); hp = ab.get("health", 2)
+            t = self.board[target_index] if (target_index is not None and 0 <= target_index < len(self.board)) else (self.board[0] if self.board else None)
+            if t:
+                t.attack += atk; t.health += hp; t.max_health += hp
+            return {"success": True, "effect": "sharpen_blades"}
+
+        # ── Board-wide / random effects ───────────────────────────
         elif effect == "brick_by_brick":
-            # Pyramad: give a random minion +4 Health
             if self.board:
-                t = random.choice(self.board)
-                t.health += 4; t.max_health += 4
-                return {"success": True, "effect": "brick_by_brick", "target": t.to_dict()}
-
-        elif effect == "graveyard_shift":
-            # Lich Bazhial: take self_damage HP, gain that much gold
-            dmg = ab.get("self_damage", 2)
-            self._on_hero_damaged(dmg)
-            self.gold = min(self.gold + dmg, self.MAX_GOLD)
-            return {"success": True, "effect": "graveyard_shift", "hp": self.hp, "gold": self.gold}
-
-        elif effect == "blessing_nine_frogs":
-            # Doctor Holli'dae: get a random Tavern spell
-            import random as _r
-            stat_spells = [s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells
-                           if s["tier"] <= self.tavern_tier]
-            if stat_spells:
-                chosen = _r.choice(stat_spells)
-                spell = {**chosen, "type": "spell", "cost": chosen.get("cost", 3)}
-                self.hand.append(spell)
-                return {"success": True, "effect": "blessing_nine_frogs", "spell": spell}
-
-        elif effect == "smart_savings":
-            # Gallywix: next reroll is free
-            self.free_refreshes_available += 1
-            return {"success": True, "effect": "smart_savings"}
-
-        elif effect == "lucky_roll":
-            # Snake Eyes: add a random minion of current tier to hand
-            from game.data.minions import MINIONS as _MINS
-            tier_pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
-            if tier_pool:
-                self.hand.append(Minion.from_id(random.choice(tier_pool)))
-            return {"success": True, "effect": "lucky_roll"}
+                t = random.choice(self.board); t.health += 4; t.max_health += 4
+            return {"success": True, "effect": "brick_by_brick"}
 
         elif effect == "tale_of_kings":
-            # The Rat King: give all friendly minions +2/+2
             for m in self.board:
                 m.attack += 2; m.health += 2; m.max_health += 2
             return {"success": True, "effect": "tale_of_kings"}
 
-        elif effect == "sharpen_blades":
-            # Edwin VanCleef: give a minion +1 Attack for each card in hand
-            if self.board and target_index is not None and 0 <= target_index < len(self.board):
-                bonus = len(self.hand)
-                m = self.board[target_index]
-                m.attack += bonus
-                return {"success": True, "effect": "sharpen_blades", "target": m.to_dict()}
+        elif effect == "conviction":
+            if self.board:
+                t = random.choice(self.board); t.attack += 1; t.health += 1; t.max_health += 1
+            return {"success": True, "effect": "conviction"}
+
+        elif effect == "saturday_cthuns":
+            # C'Thun: +1/+1 to a random minion (simplified; real = EOT)
+            if self.board:
+                t = random.choice(self.board); t.attack += 1; t.health += 1; t.max_health += 1
+            return {"success": True, "effect": "saturday_cthuns"}
+
+        # ── Gold / shop effects ───────────────────────────────────
+        elif effect == "graveyard_shift":
+            dmg = ab.get("self_damage", 2)
+            self._on_hero_damaged(dmg)
+            self.gold = min(self.gold + dmg, self.MAX_GOLD)
+            return {"success": True, "effect": "graveyard_shift"}
+
+        elif effect == "smart_savings":
+            self.free_refreshes_available += 1
+            return {"success": True, "effect": "smart_savings"}
+
+        elif effect == "temporal_tavern":
+            self.free_refreshes_available += 1
+            self.frozen = True
+            return {"success": True, "effect": "temporal_tavern"}
+
+        elif effect == "wisdom_of_ancients":
+            self.MAX_GOLD = min(self.MAX_GOLD + 1, 14)
+            return {"success": True, "effect": "wisdom_of_ancients"}
+
+        elif effect == "galakronds_greed":
+            # Replace leftmost shop minion with one of a higher tier
+            slot = next((i for i, m in enumerate(self.shop) if m and not isinstance(m, dict)), None)
+            if slot is not None:
+                current_tier = self.shop[slot].tier
+                higher_pool = [mid for mid, d in __import__("game.data.minions", fromlist=["MINIONS"]).MINIONS.items()
+                               if d["tier"] > current_tier]
+                if higher_pool:
+                    self.shop[slot] = Minion.from_id(random.choice(higher_pool))
+            return {"success": True, "effect": "galakronds_greed"}
+
+        elif effect == "bloodbound":
+            uses = ab.get("uses_per_turn", 2)
+            used = getattr(self, "_bloodbound_used", 0)
+            if used >= uses:
+                self.gold += cost  # refund
+                return {"success": False, "message": f"Al {uses}× gebruikt deze beurt."}
+            self._bloodbound_used = used + 1
+            count = ab.get("gems", 2) * (1 if not getattr(self, "double_bloodbound", False) else 2)
+            for _ in range(count):
+                self.hand.append(self._create_blood_gem())
+            return {"success": True, "effect": "bloodbound"}
+
+        elif effect == "galaxy_lens":
+            # Farseer Nobundo: copy last spell, reduce next cost by 1
+            if self.last_spell_cast:
+                spell = {**self.last_spell_cast, "type": "spell"}
+                self.hand.append(spell)
+            ab["cost"] = max(0, ab.get("cost", 3) - 1)
+            return {"success": True, "effect": "galaxy_lens"}
+
+        elif effect == "efficient_exchange":
+            # Swap attack/health of a random minion (simplified: +2 atk, another +2 hp)
+            if len(self.board) >= 2:
+                a, b = random.sample(self.board, 2)
+                a.attack += 2; b.health += 2; b.max_health += 2
+            elif self.board:
+                self.board[0].attack += 2
+            return {"success": True, "effect": "efficient_exchange"}
+
+        elif effect == "lucky_roll":
+            from game.data.minions import MINIONS as _MINS
+            tier_pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
+            if tier_pool: self.hand.append(Minion.from_id(random.choice(tier_pool)))
+            return {"success": True, "effect": "lucky_roll"}
+
+        # ── Spell / hand effects ──────────────────────────────────
+        elif effect == "blessing_nine_frogs":
+            stat_spells = [s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells
+                           if s["tier"] <= self.tavern_tier]
+            if stat_spells:
+                chosen = random.choice(stat_spells)
+                self.hand.append({**chosen, "type": "spell", "cost": chosen.get("cost", 3)})
+            return {"success": True, "effect": "blessing_nine_frogs"}
+
+        # ── Discover effects ──────────────────────────────────────
+        elif effect in ("discover_dragon", "lead_explorer", "pirate_parrrrty",
+                        "build_an_undead", "discover_magnetic_mech", "sign_new_artist",
+                        "buried_treasure"):
+            from game.data.minions import MINIONS as _MINS
+            if effect == "discover_dragon":
+                pool = [mid for mid, d in _MINS.items() if "Dragon" in d.get("types", []) and d["tier"] <= self.tavern_tier + 1]
+            elif effect == "lead_explorer":
+                pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
+            elif effect == "pirate_parrrrty":
+                pool = [mid for mid, d in _MINS.items() if "Pirate" in d.get("types", [])]
+            elif effect == "build_an_undead":
+                pool = [mid for mid, d in _MINS.items() if "Undead" in d.get("types", [])]
+            elif effect == "discover_magnetic_mech":
+                pool = [mid for mid, d in _MINS.items() if "Mech" in d.get("types", []) and d["tier"] <= self.tavern_tier + 1]
+            elif effect == "sign_new_artist":
+                pool = [mid for mid, d in _MINS.items() if d["tier"] <= self.tavern_tier]
+            elif effect == "buried_treasure":
+                uses = self.hero.get("_digs_done", 0)
+                max_digs = ab.get("digs_remaining", 4)
+                self.hero["_digs_done"] = uses + 1
+                if uses + 1 >= max_digs:
+                    pool = [mid for mid, d in _MINS.items() if d["tier"] <= self.tavern_tier]
+                    chosen = random.choice(pool) if pool else None
+                    if chosen:
+                        m = Minion.from_id(chosen); m.make_golden(); self.hand.append(m)
+                    return {"success": True, "effect": "buried_treasure_golden"}
+                else:
+                    return {"success": True, "effect": "buried_treasure_dig"}
+            else:
+                pool = [mid for mid, d in _MINS.items()]
+            if pool:
+                picks = random.sample(pool, min(3, len(pool)))
+                options = [Minion.from_id(p).to_dict() for p in picks]
+                return {"success": True, "effect": effect, "hero_power_discover": options}
+            return {"success": True}
 
         return {"success": True}
 
@@ -396,14 +492,56 @@ class Player:
             for _ in range(self.battlecry_triggers - 1):
                 self._apply_battlecry(minion)
 
-        # Spellcraft: Naga generates free spell when played to board
-        if "spellcraft" in minion.abilities and minion.spellcraft:
-            sc_spell = self._generate_spellcraft_spell(minion)
-            if sc_spell:
-                self.hand.append(sc_spell)
+        # Choose One battlecry
+        choose_one_options = None
+        if minion.choose_one:
+            mult = 2 if minion.golden else 1
+            self._pending_choose_one = {"uid": minion.uid, "effects": minion.choose_one, "mult": mult}
+            choose_one_options = [
+                {"index": i, "label": opt["label"]}
+                for i, opt in enumerate(minion.choose_one)
+            ]
 
         play_passives = self._trigger_play_passives(minion, battlecry_fired=bool(battlecry_result))
-        return {"success": True, "battlecry": battlecry_result, "play_passives": play_passives}
+        result = {"success": True, "battlecry": battlecry_result, "play_passives": play_passives}
+        if choose_one_options:
+            result["choose_one_options"] = choose_one_options
+        return result
+
+    def apply_choose_one(self, choice: int) -> dict:
+        pending = self._pending_choose_one
+        if not pending:
+            return {"success": False, "message": "Geen keuze in behandeling."}
+        effects = pending["effects"]
+        if choice < 0 or choice >= len(effects):
+            return {"success": False, "message": "Ongeldige keuze."}
+        effect = effects[choice]
+        mult = pending["mult"]
+        uid = pending["uid"]
+        self._pending_choose_one = None
+
+        minion = next((m for m in self.board if m.uid == uid), None)
+        etype = effect["type"]
+
+        if etype == "beast_reborn_buff":
+            beasts = [m for m in self.board if "Beast" in m.types]
+            target = random.choice(beasts) if beasts else minion
+            if target:
+                target.attack += effect.get("attack", 1) * mult
+                target.health += effect.get("health", 1) * mult
+                target.max_health += effect.get("health", 1) * mult
+                target.reborn = True
+                if "reborn" not in target.abilities:
+                    target.abilities.append("reborn")
+
+        elif etype == "self_attack_windfury":
+            if minion:
+                minion.attack += effect.get("attack", 4) * mult
+                minion.windfury = True
+                if "windfury" not in minion.abilities:
+                    minion.abilities.append("windfury")
+
+        return {"success": True}
 
     # ── Spreuken ─────────────────────────────────────────────────
     def _cast_spell_from_shop(self, shop_index: int, target_index: int | None = None) -> dict:
@@ -739,8 +877,9 @@ class Player:
                         t._temp_sc_keywords = []
                     t._temp_sc_keywords.append({"remove_divine_shield": True})
         elif sid == "sc_tranquil_meditative":
-            for m in self.board:
-                m.health += 2; m.max_health += 2
+            mult = 2 if any(m.id == "tranquil_meditative" and m.golden for m in self.board) else 1
+            self.spell_attack_bonus += 1 * mult
+            self.spell_health_bonus += 1 * mult
         elif sid == "sc_well_wisher":
             if self.board:
                 t = _r.choice(self.board)

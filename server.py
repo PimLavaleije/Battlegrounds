@@ -195,8 +195,20 @@ def on_play_from_hand(data):
         emit("player_update", result["player"])
         if result.get("battlecry_discover"):
             emit("triple_discover", {"options": result["battlecry_discover"]})
+        if result.get("choose_one_options"):
+            emit("choose_one", {"options": result["choose_one_options"]})
     else:
         emit("error", {"message": result.get("message", "Kan niet spelen.")})
+
+
+@socketio.on("choose_one_choice")
+def on_choose_one_choice(data):
+    room_code = manager.get_player_room(request.sid)
+    if not room_code:
+        return
+    result = manager.apply_choose_one(request.sid, room_code, data.get("choice", 0))
+    if result.get("success"):
+        emit("player_update", result["player"])
 
 
 @socketio.on("sell_from_hand")
@@ -234,6 +246,8 @@ def on_use_hero_power(data):
     result = manager.use_hero_power(request.sid, room_code, data.get("target_index"))
     if result["success"]:
         emit("player_update", result["player"])
+        if result.get("hero_power_discover"):
+            emit("triple_discover", {"options": result["hero_power_discover"]})
     else:
         emit("error", {"message": result.get("message", "Held-spreuk mislukt.")})
 

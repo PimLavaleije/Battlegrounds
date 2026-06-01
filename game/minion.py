@@ -47,6 +47,7 @@ class Minion:
         self.rally = copy.deepcopy(data.get("rally"))
         self.spellcraft = copy.deepcopy(data.get("spellcraft"))
         self.avenge = copy.deepcopy(data.get("avenge"))
+        self.choose_one = copy.deepcopy(data.get("choose_one"))
 
         self.description = data.get("description", "")
         self.golden_description = data.get("golden_description", "")

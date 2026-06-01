@@ -411,6 +411,14 @@ class GameState:
             result["battlecry_discover"] = bc["discover_options"]
         return result
 
+    def apply_choose_one(self, sid: str, choice: int) -> dict:
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return {"success": False}
+        result = p.apply_choose_one(choice)
+        result["player"] = p.to_dict()
+        return result
+
     def sell_from_hand(self, sid: str, hand_index: int) -> dict:
         p = self.players.get(sid)
         if not p or not p.alive:

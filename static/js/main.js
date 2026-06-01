@@ -186,12 +186,14 @@ function renderOpponentsSidebar(opponents) {
 }
 
 function setupHeroPower(hero) {
-  const area = document.getElementById("hero-power-area");
+  const panel = document.getElementById("hero-power-panel");
   if (!hero?.ability || hero.ability.type !== "hero_power") {
-    area.classList.add("hidden"); return;
+    panel.classList.add("hidden"); return;
   }
-  area.classList.remove("hidden");
+  panel.classList.remove("hidden");
   document.getElementById("hero-power-emoji").textContent = hero.emoji || "✨";
+  document.getElementById("hp-hero-name").textContent     = hero.name || "";
+  document.getElementById("hp-desc").textContent          = hero.description || "";
   document.getElementById("hero-power-cost").textContent  = hero.ability.cost ?? 2;
 }
 
@@ -255,6 +257,24 @@ document.getElementById("btn-play-again").addEventListener("click", () => {
   Object.assign(State, { playerName:"", roomCode:"", isHost:false, player:null });
   showScreen("screen-landing");
 });
+
+// ── Choose One overlay ────────────────────────────────────────
+function showChooseOne(options) {
+  const overlay = document.getElementById("choose-one-overlay");
+  const container = document.getElementById("choose-one-options");
+  container.innerHTML = "";
+  options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "choose-one-btn";
+    btn.textContent = opt.label;
+    btn.addEventListener("click", () => {
+      overlay.classList.add("hidden");
+      SocketClient.chooseOne(opt.index);
+    });
+    container.appendChild(btn);
+  });
+  overlay.classList.remove("hidden");
+}
 
 // ── Triple discover overlay ───────────────────────────────────
 function showTripleDiscover(options) {
