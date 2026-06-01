@@ -149,9 +149,20 @@ function renderGame(data) {
 
 function updateHUD(player, roundNum) {
   document.getElementById("hud-round").textContent = roundNum || State.roundNum;
-  document.getElementById("hud-hp").textContent    = player.hp;
+
+  // HP flash bij schade
+  const hpEl = document.getElementById("hud-hp");
+  const prevHp = parseInt(hpEl.textContent) || player.hp;
+  hpEl.textContent = player.hp;
+  if (player.hp < prevHp) { hpEl.classList.remove("anim-hp-damage"); void hpEl.offsetWidth; hpEl.classList.add("anim-hp-damage"); setTimeout(() => hpEl.classList.remove("anim-hp-damage"), 500); }
+
+  // Gold flash bij winst
+  const goldEl = document.getElementById("hud-gold");
+  const prevGold = parseInt(goldEl.textContent) || player.gold;
+  goldEl.textContent = player.gold;
+  if (player.gold > prevGold) { goldEl.classList.remove("anim-gold-flash"); void goldEl.offsetWidth; goldEl.classList.add("anim-gold-flash"); setTimeout(() => goldEl.classList.remove("anim-gold-flash"), 500); }
+
   document.getElementById("hud-tier").textContent  = player.tavern_tier;
-  document.getElementById("hud-gold").textContent  = player.gold;
   document.getElementById("board-count").textContent = `(${player.board.length}/7)`;
   if (player.hero) {
     const heroEmoji = document.getElementById("hud-hero-emoji");

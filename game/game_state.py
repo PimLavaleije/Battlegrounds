@@ -386,7 +386,7 @@ class GameState:
         if result["success"]:
             self.shop_manager.return_shop_to_pool(p.shop)
             p.shop = self.shop_manager.generate_shop(p.tavern_tier, p.hero)
-        return {**result, "shop": [m.to_dict() if m else None for m in p.shop]}
+        return {**result, "shop": [(m if isinstance(m, dict) else m.to_dict()) if m else None for m in p.shop]}
 
     def freeze(self, sid: str) -> dict:
         p = self.players.get(sid)

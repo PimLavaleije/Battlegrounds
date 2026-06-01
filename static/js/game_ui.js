@@ -66,7 +66,8 @@ const GameUI = {
       } else if (item.type === "spell") {
         const card = buildSpellCard(item);
         card.dataset.shopIndex = idx;
-        // Kopen = gaat naar hand; spelen vanuit hand om te casten
+        card.style.animationDelay = `${idx * 50}ms`;
+        card.classList.add("anim-card-appear");
         card.addEventListener("click", () => SocketClient.buyMinion(idx));
         card.addEventListener("mouseenter", e => showSpellTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
@@ -75,6 +76,8 @@ const GameUI = {
       } else {
         const card = buildShopCard(item);
         card.dataset.shopIndex = idx;
+        card.style.animationDelay = `${idx * 50}ms`;
+        card.classList.add("anim-card-appear");
         card.addEventListener("click", () => SocketClient.buyMinion(idx));
         card.addEventListener("mouseenter", e => showTooltip(item, e));
         card.addEventListener("mouseleave", hideTooltip);
