@@ -69,6 +69,13 @@ templates/
 - `portraits.js` bevat `PORTRAITS` dict: `{ emoji, cardId, bg }`
 - Als `cardId` null is → emoji fallback. Bij afbeelding-fout → ook emoji fallback.
 
+### Frontend / UI
+- Fonts: **Cinzel** (serif, voor titels/namen) + **Nunito** (sans-serif, voor UI) via Google Fonts `<link>` in `index.html`
+- `style.css` bevat alle visuele styling; `animations.css` bevat alle `@keyframes` en utility-klassen
+- Utility animatieklassen: `anim-bounce-in`, `anim-card-appear`, `anim-takehit`, `anim-death`, `anim-attack-right/left`, `anim-gold-flash`, `anim-hp-damage`, etc.
+- Shop-kaarten krijgen `anim-card-appear` met staggered `animationDelay` bij elke render
+- HUD-stats: HP flash bij schade (`anim-hp-damage`), goud flash bij toename (`anim-gold-flash`)
+
 ### Minion pool
 - Gebruik **alleen de actuele BG-pool** van [hearthstone.wiki.gg/wiki/Battlegrounds](https://hearthstone.wiki.gg/wiki/Battlegrounds)
 - De BG-pool wordt via de speciale queryurl opgehaald: `https://hearthstone.wiki.gg/wiki/Battlegrounds/{Minion_Name}` voor individuele stats
@@ -119,6 +126,13 @@ templates/
 - **Pass mechanic** (Fase 4): `pass_minion()` in player; 1 goud kost; gratis via wanderer_cho; passenger, puddle_prancer, mantid_king, mirror_monster, storm_splitter, jumping_jack, transport_reactor
 - **Magnetic mechanic** (Fase 5): `magnetize()` in player; stats + keywords + deathrattle overnemen; cross-tribe voor technical_element en prosthetic_hand
 - **Spellcraft** (Fase 12): alle `sc_*` effecten geïmplementeerd; tijdelijke keyword-reversal (surf_n_surf deathrattle, deep_sea_angler taunt, waverider windfury, glowscale divine_shield) omgekeerd bij `start_turn`; Zesty Shaker `on_spellcraft_target_get_copy` passive
+- **Spellcraft generatie**: Nagas op het board genereren hun spreuk aan het begin van elke beurt (`start_turn`), niet eenmalig bij spelen
+- **Tranquil Meditative** spellcraft: buffed permanent `spell_attack_bonus` en `spell_health_bonus` (was: +2 health alle minions)
+- **Blood Gems in hand**: eigen `blood-gem-card` kaarttype; klik triggert `SpellTarget` targeting mode → klik op board-minion om te targeten
+- **Choose One mechanic**: geïmplementeerd voor Sprightly Scarab; `choose_one` veld op Minion; `choose_one_choice` socket event; modal met optieknoppen; `apply_choose_one()` in player
+- **Hero power UI**: verplaatst naar eigen zijpaneel rechts van de hand met held-naam, beschrijving en activeerknop
+- **Hero powers geïmplementeerd**: `bloodbound` (Death Speaker Blackthorn, max 2×/beurt), `conviction`, `saturday_cthuns`, `temporal_tavern`, `wisdom_of_ancients`, `galakronds_greed`, `galaxy_lens`, `efficient_exchange`, `discover_dragon`, `lead_explorer`, `pirate_parrrrty`, `build_an_undead`, `discover_magnetic_mech`, `buried_treasure`; discover-based powers hergebruiken `triple_discover` modal
+- **Bugfix**: `game_state.reroll` crashte bij spelcontaining wanneer winkel een spreuk bevatte (`dict.to_dict()` → AttributeError)
 
 ## Taal
 - **Alle UI-tekst is Nederlands**
@@ -126,13 +140,13 @@ templates/
 - Variabelenamen zijn Engels
 
 ## Nog niet geïmplementeerd (stubs)
-- `Choose One` mechanic
 - **Duos-only**: `loyal_mobster`, `doting_dracthyr`, `support_system`, `dark_dazzler`, `friendly_saloonkeeper`, `gathering_stormer`, `magnanimoose`, `selfless_sightseer`
 - `ring_bearer`: combat aanvals-teller → cast Shiny Ring elke 2 aanvallen
 - `storm_hammer` rally "geef Beasts deze Rally" (contagious effect)
 - `lava_lurker` "eerste twee spellcraft per beurt permanent" per-minion tracking
 - Floating Watcher in combat (held-schade mid-combat niet bijgehouden)
 - Trinkets (trinkets.py aanwezig maar niet gekoppeld)
+- Hero powers nog niet geïmplementeerd: `ill_take_that` (Rafaam), `saturday_cthuns` (C'Thun, vereenvoudigd), `sign_new_artist` (ETC), `imprison`, `friendly_wager`, `i_spy`, en diverse passive-type helden
 
 ## GitHub
 Remote: `https://github.com/PimLavaleije/Battlegrounds.git`
