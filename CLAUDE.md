@@ -83,14 +83,24 @@ templates/
 - Deathrattle types: `summon`, `summon_two`, `summon_count`, `give_attack_random`, `deal_damage_all`, `summon_random_deathrattle`, `summon_equal_attack`, `buff_tribe_attack`, `give_divine_shield_deathrattles`, `summon_random_elemental`, en meer
 - Post-combat deathrattles: `give_blood_gems_post_combat`, `blood_gem_attack_bonus_post_combat`
 - Passives bij dood: `beast_dies_buff`, `mech_dies_buff`, `demon_dies_damage`, `dragon_dies_buff`, `deathrattle_played_buff`, `taunt_dies_blood_gem`, `on_deathrattle_death_bg_bonus`
+- Game-brede dood-tellers: `eternal_knight_died`, `sanlayn_scribe_died`, `deathrattle_triggered_game`, `old_soul_deaths`
 - Aura's bij combat start: `murloc_aura`, `pirate_aura`, `demon_aura`
 - Schild-pop passives: `dragon_shield_pop`, `any_shield_pop`
 - Aanvals-passives: `on_dragon_attack_buff_it` (roaring_recruiter)
-- Schade-passives: `on_self_damaged`, `on_beast_damage_buff_other_beast` (iridescent_skyblazer), `on_beast_damage_buff_self_health` (trigore)
+- Schade-passives: `on_self_damaged`, `on_beast_damage_buff_other_beast` (iridescent_skyblazer), `on_beast_damage_buff_self_health` (trigore), `on_self_damage_free_refresh` (wyvern_outrider → gratis refresh)
 - Summon-passives: `on_mech_summon_buff_self` (deflect_o_bot)
+- Overkill: `after_kill_excess_damage` (wildfire_elemental) — excess damage naar aangrenzend(e) minion(s)
+- Falling Sky Golem: mid-combat +4/+2 per deathrattle + post-combat permanente counter
 - Titus Rivendare / Baron: deathrattles 2× triggeren
 - Zapp Slywick: valt altijd laagste aanval aan
-- **Avenge** (Fase 3): `_avenge_counter` per minion; threshold-based; types: `avenge_summon`, `avenge_self_buff`, `avenge_divine_shield`, `avenge_blood_gems_tribe`, `avenge_chromadrake`, `avenge_spell`, `avenge_blood_gem_bonus`, `avenge_get_undead`, `avenge_teammate_minion`
+- **Avenge** (Fase 3): `_avenge_counter` per minion; threshold-based; 9 types
+- **Rally** (Fase 11): `buff_tribe_random`, `buff_tribe_all`, `buff_tribe_permanent` (dustbone_devastator, game-wide), `trigger_leftmost_deathrattle`, `give_tribe_keyword`, `cast_queens_command`, `give_random_bounty_post_combat`, `give_random_magnetic_mech_post_combat`, `chefs_choice_right_neighbor` (seafloor_recruiter)
+- Expert Aviator rally: `summon_leftmost_hand` — pre-combat in game_state; permanent buff handminion
+
+### game_state.py (Fases 9-10)
+- **Tarecgosa** (Fase 9): combat-gewonnen stats/keywords bewaard op echt board na combat
+- **Persistent Poet** (Fase 9): aangrenzende Dragons bewaren combat stats
+- **Egg of the Endtimes** (Fase 10): 2-beurt handteller → `triple_discover` modal → T6 Dragon keuze
 
 ### Shop (player.py)
 - Kopen, verkopen, reroll, freeze, tavern upgraden
@@ -98,14 +108,17 @@ templates/
 - Battlecry types: `summon`, `buff_tribe`, `buff_three_tribes`, `give_blood_gems`, `blood_gem_health_bonus`, `blood_gems_all_board`, `blood_gem_with_keyword_tribe`, `get_slimy_shields`, `discover_tribe`, `discover_tribe_self_damage`, `destroy_undead_get_copy`, `buff_tribe_by_gold_spent`, `buff_random_board_by_spells`, en meer
 - Brann: battlecries 2×; battlecry_discover via bestaande discover modal
 - Hero powers
-- Goud-drempel passives: `on_gold_spent_threshold` → `buff_tribe`, `buff_two_random_tribe`, `blood_gems_tribe`, `get_spell` (gunpowder_courier, darkgaze_elder, air_revenant, dual_wield_corsair)
+- Goud-drempel passives: `on_gold_spent_threshold` → `buff_tribe`, `buff_two_random_tribe`, `blood_gems_tribe`, `get_spell`
 - Stat-drempel passives: `attack_threshold_divine_shield` (scarlet_survivor)
-- On-attack-gain passives: `on_attack_gained_health` (defiant_shipwright, via blood gems)
+- **Game-brede tellers** (Fase 7): `eternal_knight_deaths`, `sanlayn_scribe_deaths`, `deathrattles_triggered_game`, `spells_cast_game`; passive types: `has_per_ek_death`, `has_per_ss_death`, `has_per_deathrattle_triggered`, `has_per_spell_cast`
+- **Held-schade hook** (Fase 8): `_on_hero_damaged()` triggert Floating Watcher (`on_hero_damage_buff_self`); wired voor graveyard_shift, on_demon_bought, discover_tribe_self_damage
+- **Wrath Weaver**: volledig geïmplementeerd (buff + held-schade via `_on_hero_damaged`)
 - Sell passives: `on_sell_if_lost_bonus_gold` (tortollan_blue_shell)
 - **Blood Gems** (Fase 2): `blood_gem_extra_cast` (hot_air_surveyor), `eot_blood_gem_all_minions` (earthsong_shaman), `blood_gems_tribe_post_combat` (three_lil_quilboar)
-- **EOT effecten** (Fase 1+6): `eot_blood_gem_all_minions`, `eot_demon_consume_tavern` (famished_felbat); Drakkari verdubbeling via `double_eot` passive
+- **EOT effecten**: `eot_blood_gem_all_minions`, `eot_demon_consume_tavern` (famished_felbat); Drakkari verdubbeling via `double_eot`
 - **Pass mechanic** (Fase 4): `pass_minion()` in player; 1 goud kost; gratis via wanderer_cho; passenger, puddle_prancer, mantid_king, mirror_monster, storm_splitter, jumping_jack, transport_reactor
 - **Magnetic mechanic** (Fase 5): `magnetize()` in player; stats + keywords + deathrattle overnemen; cross-tribe voor technical_element en prosthetic_hand
+- **Spellcraft** (Fase 12): alle `sc_*` effecten geïmplementeerd; tijdelijke keyword-reversal (surf_n_surf deathrattle, deep_sea_angler taunt, waverider windfury, glowscale divine_shield) omgekeerd bij `start_turn`; Zesty Shaker `on_spellcraft_target_get_copy` passive
 
 ## Taal
 - **Alle UI-tekst is Nederlands**
@@ -113,14 +126,13 @@ templates/
 - Variabelenamen zijn Engels
 
 ## Nog niet geïmplementeerd (stubs)
-- `Spellcraft` logica — data aanwezig, mechanic ontbreekt
-- `Rally` logica — data aanwezig, mechanic ontbreekt
 - `Choose One` mechanic
-- **Game-brede tellers** (vereisen nieuwe Player-velden): `eternal_knight`, `sanlayn_scribe`, `falling_sky_golem`, `abyssal_bruiser`, `old_soul`
 - **Duos-only**: `loyal_mobster`, `doting_dracthyr`, `support_system`, `dark_dazzler`, `friendly_saloonkeeper`, `gathering_stormer`, `magnanimoose`, `selfless_sightseer`
-- **Complex mechanics**: `egg_of_the_endtimes` (2-beurt hatch), `tarecgosa` (permanente combat keywords), `persistent_poet` (adjacent Dragon keyword persistence), `ring_bearer` (aanvals-teller), `floating_watcher` (held-schade in combat)
-- Herald of Flame ketting-schade (combat)
-- Wrath Weaver held-schade bij Demon spelen (shop)
+- `ring_bearer`: combat aanvals-teller → cast Shiny Ring elke 2 aanvallen
+- `storm_hammer` rally "geef Beasts deze Rally" (contagious effect)
+- `lava_lurker` "eerste twee spellcraft per beurt permanent" per-minion tracking
+- Floating Watcher in combat (held-schade mid-combat niet bijgehouden)
+- Trinkets (trinkets.py aanwezig maar niet gekoppeld)
 
 ## GitHub
 Remote: `https://github.com/PimLavaleije/Battlegrounds.git`
