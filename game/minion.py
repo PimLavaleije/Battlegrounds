@@ -184,6 +184,12 @@ class Minion:
         m.start_of_turn = copy.deepcopy(d.get("start_of_turn", data.get("start_of_turn")))
         m.spellcraft = copy.deepcopy(d.get("spellcraft", data.get("spellcraft")))
         m.avenge = copy.deepcopy(d.get("avenge", data.get("avenge")))
+        # Overschrijf deathrattle en abilities vanuit d zodat tijdelijke effecten
+        # (bijv. spellcraft-deathrattle) bewaard blijven bij clone/combat.
+        if "deathrattle" in d:
+            m.deathrattle = copy.deepcopy(d["deathrattle"])
+        if "abilities" in d:
+            m.abilities = list(d["abilities"])
         return m
 
     def clone(self) -> "Minion":
