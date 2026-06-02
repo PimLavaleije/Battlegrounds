@@ -166,7 +166,13 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
     target_pre_health = target.health  # voor excess damage berekening
 
     # Schade aan doelwit
-    result_t = target.take_damage(attacker.attack if not attacker.poisonous else 9999)
+    # Poisonous (oud mechanic): vernietigt elk target
+    # Venomous (Season 13): vernietigt alleen het EERSTE target per combat
+    _venom_active = attacker.venomous and not getattr(attacker, '_venomous_used', False)
+    _kill_damage  = attacker.poisonous or _venom_active
+    result_t = target.take_damage(9999 if _kill_damage else attacker.attack)
+    if _venom_active and result_t.get("damage", 0) > 0:
+        attacker._venomous_used = True   # verbruikt voor rest van dit combat
     step["target_damage"] = result_t["damage"]
     step["target_shield_broken"] = result_t.get("shield_broken", False)
     if result_t.get("damage", 0) > 0 and target.health <= 0:
@@ -281,6 +287,8 @@ def _collect_deaths(p_board: list[Minion], e_board: list[Minion]) -> list[tuple[
         if m.is_dead() and not m.dead:
             m.dead = True
             deaths.append((m, "enemy"))
+    # Officiële BG: deathrattles triggeren in volgorde van inkomst (oudste eerst)
+    deaths.sort(key=lambda x: x[0].play_order)
     return deaths
 
 

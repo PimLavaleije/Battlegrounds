@@ -19,7 +19,8 @@ class Player:
         self.hp = 30
         self.armor = 0
         self.tavern_tier = 1
-        self.upgrade_cost = 5
+        # Start op 6 zodat start_turn ronde 1 het naar 5 brengt (officiële BG: ronde 1 kost 5 goud)
+        self.upgrade_cost = 6
         self.gold = 0
         self.board: list[Minion] = []
         self.shop: list[Minion | None] = []
@@ -56,6 +57,7 @@ class Player:
         self.spells_cast_game = 0
         self.pending_egg_hatch: "Minion | None" = None
         self._pending_choose_one: dict | None = None
+        self.trinkets: list[dict] = []  # actieve trofeeën van de speler
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -532,10 +534,11 @@ class Player:
         self.gold -= cost_paid
         self._on_gold_spent(cost_paid)
         self.tavern_tier += 1
-        # Nieuwe upgrade kost voor volgende tier
-        tier_costs = {2: 5, 3: 7, 4: 8, 5: 9, 6: 10}
+        # Reset naar basiskost voor volgende tier; start_turn verlaagt daarna 1/ronde
+        # Officiële BG basiskost: T2→T3=7, T3→T4=8, T4→T5=9, T5→T6=10
+        tier_costs = {3: 7, 4: 8, 5: 9, 6: 10}
         next_tier = self.tavern_tier + 1
-        self.upgrade_cost = max(0, tier_costs.get(next_tier, 10) - (self.tavern_tier - 1))
+        self.upgrade_cost = tier_costs.get(next_tier, 0)
         # Forest Warden Omu: gain gold after leveling
         if self.hero and self.hero.get("ability", {}).get("effect") == "everbloom":
             gain = self.hero["ability"].get("gold_gain", 2)
@@ -1968,6 +1971,49 @@ class Player:
         if kw not in minion.abilities:
             minion.abilities.append(kw)
 
+    # ── Trofeeën (Trinkets) ─────────────────────────────────
+    def acquire_trinket(self, trinket: dict) -> dict:
+        """Voeg trofee toe en pas onmiddellijke effecten toe."""
+        self.trinkets.append(trinket)
+        effect = trinket.get("effect", "")
+        # Eénmalige goud-effecten
+        if effect == "gain_gold":
+            self.gold = min(self.gold + trinket.get("amount", 0), self.MAX_GOLD)
+        elif effect == "gain_gold_and_max":
+            gain = trinket.get("amount", 0)
+            self.gold = min(self.gold + gain, self.MAX_GOLD)
+            self.MAX_GOLD += trinket.get("max_bonus", 0)
+        # Eénmalige board-buff
+        elif effect == "buff_tribe":
+            tribe = trinket.get("tribe")
+            atk = trinket.get("attack", 0)
+            hp  = trinket.get("health", 0)
+            for m in self.board:
+                if tribe is None or tribe in m.types:
+                    m.attack += atk; m.health += hp; m.max_health += hp
+        return {"success": True}
+
+    def apply_trinket_start_of_turn(self):
+        """Passive trofee-effecten die elke beurt triggeren."""
+        for t in self.trinkets:
+            effect = t.get("effect", "")
+            if effect == "passive_tribe_attack":
+                tribe = t.get("tribe")
+                bonus = t.get("attack", 0)
+                for m in self.board:
+                    if tribe is None or tribe in m.types:
+                        m.attack = max(m.attack, m.base_attack + bonus)
+                        # Store as permanent bonus to survive board changes
+            elif effect == "passive_tribe_stats":
+                tribe = t.get("tribe")
+                atk  = t.get("attack", 0)
+                hp   = t.get("health", 0)
+                for m in self.board:
+                    if tribe is None or tribe in m.types:
+                        if not getattr(m, f'_trinket_{t["id"]}_applied', False):
+                            m.attack += atk; m.health += hp; m.max_health += hp
+                            setattr(m, f'_trinket_{t["id"]}_applied', True)
+
     # ── Schade ──────────────────────────────────────────────
     def take_damage(self, amount: int):
         armor_absorbed = min(amount, self.armor)
@@ -2133,6 +2179,7 @@ class Player:
             "pass_free_available": self._free_passes_available(),
             "passes_this_turn": self.passes_this_turn,
             "total_passes_game": self.total_passes_game,
+            "trinkets": self.trinkets,
         }
         if include_shop:
             d["shop"] = [

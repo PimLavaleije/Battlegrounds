@@ -1,6 +1,14 @@
 import copy
 from game.data.minions import ALL_MINIONS, TOKENS
 
+# Globale teller voor inkomstvolgorde (officiële BG: deathrattles in play-order)
+_play_order_counter = 0
+
+def _next_play_order() -> int:
+    global _play_order_counter
+    _play_order_counter += 1
+    return _play_order_counter
+
 
 def _safe_stat(value, default=0):
     """Return an int-like stat value. Spreadsheet blanks/None become 0 so gameplay code does not crash."""
@@ -32,8 +40,10 @@ class Minion:
         self.taunt = "taunt" in self.abilities
         self.divine_shield = "divine_shield" in self.abilities
         self.reborn = "reborn" in self.abilities
-        self.poisonous = "poisonous" in self.abilities or "venomous" in self.abilities
-        self.venomous = "venomous" in self.abilities
+        # Poisonous: vernietigt elk aangevallen target (oud mechanic, uit de shoppool gehaald in patch 26.2)
+        # Venomous: vernietigt alleen het EERSTE target per combat (Season 13 vervanging)
+        self.poisonous = "poisonous" in self.abilities
+        self.venomous  = "venomous"  in self.abilities
         self.windfury = "windfury" in self.abilities
         self.cleave = "cleave" in self.abilities
         self.zapp = "zapp_targeting" in self.abilities
@@ -55,6 +65,8 @@ class Minion:
         self.dead = data.get("dead", False)
         self.reborn_used = data.get("reborn_used", False)
         self.uid = data.get("uid", id(self))  # uniek id voor frontend tracking
+        # play_order: officiële BG deathrattle-volgorde (laagste = eerst ingekomen)
+        self.play_order = data.get("play_order", _next_play_order())
 
     # ── Schade & leven ──────────────────────────────────────
     def take_damage(self, amount: int) -> dict:
@@ -84,11 +96,8 @@ class Minion:
         if self.golden_description:
             self.description = self.golden_description
 
-        # Windfury → mega-windfury (4 aanvallen)
-        if self.windfury:
-            self.megawindfury = True
-            if "megawindfury" not in self.abilities:
-                self.abilities.append("megawindfury")
+        # Megawindfury is verwijderd uit BG in patch 26.2 (mei 2023).
+        # Golden Windfury geeft GEEN megawindfury meer — gewoon 2 aanvallen.
 
         # Verdubbel numerieke waarden in deathrattle-effecten voor legacy structured effects.
         if self.deathrattle:
@@ -147,6 +156,7 @@ class Minion:
             "golden_description": self.golden_description,
             "dead": self.dead,
             "reborn_used": self.reborn_used,
+            "play_order": self.play_order,
         }
 
     @staticmethod
@@ -171,8 +181,8 @@ class Minion:
         m.divine_shield = d.get("divine_shield", "divine_shield" in data.get("abilities", []))
         m.taunt = d.get("taunt", "taunt" in data.get("abilities", []))
         m.reborn = d.get("reborn", "reborn" in data.get("abilities", []))
-        m.poisonous = d.get("poisonous", "poisonous" in data.get("abilities", []) or "venomous" in data.get("abilities", []))
-        m.venomous = d.get("venomous", "venomous" in data.get("abilities", []))
+        m.poisonous = d.get("poisonous", "poisonous" in data.get("abilities", []))
+        m.venomous  = d.get("venomous",  "venomous"  in data.get("abilities", []))
         m.windfury = d.get("windfury", "windfury" in data.get("abilities", []))
         m.megawindfury = d.get("megawindfury", "megawindfury" in data.get("abilities", []))
         m.cleave = d.get("cleave", "cleave" in data.get("abilities", []))
@@ -180,6 +190,7 @@ class Minion:
         m.dead = d.get("dead", False)
         m.reborn_used = d.get("reborn_used", False)
         m.uid = d.get("uid", id(m))
+        m.play_order = d.get("play_order", m.play_order)
         m.rally = copy.deepcopy(d.get("rally", data.get("rally")))
         m.start_of_turn = copy.deepcopy(d.get("start_of_turn", data.get("start_of_turn")))
         m.spellcraft = copy.deepcopy(d.get("spellcraft", data.get("spellcraft")))

@@ -263,6 +263,19 @@ def on_use_hero_power(data):
         emit("error", {"message": result.get("message", "Held-spreuk mislukt.")})
 
 
+@socketio.on("select_trinket")
+def on_select_trinket(data):
+    room_code = manager.get_player_room(request.sid)
+    if not room_code:
+        return
+    result = manager.select_trinket(request.sid, room_code, data.get("trinket_id", ""))
+    if result["success"]:
+        emit("player_update", result["player"])
+        emit("notification", {"message": f"🏆 Trofee gekozen!"})
+    else:
+        emit("error", {"message": result.get("message", "Onbekende trofee.")})
+
+
 @socketio.on("player_ready")
 def on_player_ready(data):
     room_code = manager.get_player_room(request.sid)

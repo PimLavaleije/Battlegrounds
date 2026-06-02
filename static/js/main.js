@@ -192,6 +192,7 @@ function updateHUD(player, roundNum) {
   if (player.tavern_tier >= 6) upBtn.textContent = "⬆️ MAX";
 
   updateHeroBoardDisplay(player);
+  renderTrinketBar(player.trinkets);
 }
 
 function updateHeroBoardDisplay(player) {
@@ -399,6 +400,51 @@ function showTripleDiscover(options) {
   });
 
   overlay.classList.remove("hidden");
+}
+
+// ── Trinket offer overlay ─────────────────────────────────────
+function showTrinketOffer(offer) {
+  const overlay = document.getElementById("trinket-overlay");
+  const container = document.getElementById("trinket-cards");
+  const title = document.getElementById("trinket-offer-title");
+  const subtitle = document.getElementById("trinket-offer-subtitle");
+  container.innerHTML = "";
+
+  const isGreater = offer.grade === "greater";
+  title.textContent = isGreater ? "🏆 Kies een Grote Trofee" : "🎖️ Kies een Kleine Trofee";
+  subtitle.textContent = isGreater ? "Ronde 9 — Grote Trofee: krachtige permanente bonus" : "Ronde 6 — Kleine Trofee: permanente bonus";
+
+  offer.options.forEach(trinket => {
+    const card = document.createElement("div");
+    card.className = `trinket-card ${isGreater ? "greater" : "lesser"}`;
+    card.innerHTML = `
+      <div class="trinket-card-icon">${isGreater ? "🏆" : "🎖️"}</div>
+      <div class="trinket-card-name">${escapeHtml(trinket.name)}</div>
+      <div class="trinket-card-desc">${escapeHtml(trinket.description)}</div>
+      <button class="trinket-pick-btn">Kiezen</button>
+    `;
+    card.querySelector(".trinket-pick-btn").addEventListener("click", () => {
+      overlay.classList.add("hidden");
+      SocketClient.selectTrinket(trinket.id);
+    });
+    container.appendChild(card);
+  });
+
+  overlay.classList.remove("hidden");
+}
+
+function renderTrinketBar(trinkets) {
+  const bar = document.getElementById("trinket-bar");
+  if (!trinkets || trinkets.length === 0) {
+    bar.classList.add("hidden");
+    return;
+  }
+  bar.classList.remove("hidden");
+  bar.innerHTML = trinkets.map(t => `
+    <div class="trinket-chip" title="${escapeHtml(t.description || '')}">
+      🏆 <span>${escapeHtml(t.name)}</span>
+    </div>
+  `).join("");
 }
 
 // ── Hulp ──────────────────────────────────────────────────────

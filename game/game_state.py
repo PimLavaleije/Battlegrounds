@@ -3,6 +3,7 @@ import time
 from game.player import Player
 from game.shop import ShopManager
 from game.combat import simulate_combat, calculate_damage
+from game.data.trinkets import TRINKETS
 from game.matchmaking import make_matchups
 from game.data.heroes import HEROES_LIST
 from game.minion import Minion
@@ -171,8 +172,12 @@ AI_NAMES = [
 
 
 class GameState:
-    SHOP_TIMER = 45  # seconden
+    # Shop timer: ronde 1 = 60s, +15s per ronde, max 120s (officiële BG-regels)
     HERO_SELECT_TIMER = 30
+
+    @staticmethod
+    def shop_timer_for_round(round_num: int) -> int:
+        return min(60 + (round_num - 1) * 15, 120)
 
     def __init__(self, room_code: str):
         self.room_code = room_code
@@ -263,7 +268,7 @@ class GameState:
             "round_num": self.round_num,
             "player": p.to_dict(include_shop=True),
             "opponents": [op.public_dict() for op in self.players.values() if op.sid != sid],
-            "timer": self.SHOP_TIMER,
+            "timer": self.shop_timer_for_round(self.round_num),
         }
         if p.pending_egg_hatch is not None:
             from game.data.minions import MINIONS
@@ -276,6 +281,10 @@ class GameState:
                                            "golden": is_golden,
                                            "description": m.get("golden_description" if is_golden else "description", ""),
                                            "abilities": m.get("abilities", [])} for m in chosen]
+        # Trinket aanbod op ronde 6 (Lesser) en ronde 9 (Greater)
+        trinket_offer = self.get_trinket_offer_for(sid)
+        if trinket_offer:
+            data["trinket_offer"] = trinket_offer
         return data
 
     # ── Shop acties ─────────────────────────────────────────
@@ -438,6 +447,43 @@ class GameState:
         if not p or not p.alive:
             return {"success": False}
         return p.sell_from_hand(hand_index)
+
+    # ── Trofeeën (Trinkets) ──────────────────────────────────
+    TRINKET_ROUNDS = {6: "lesser", 9: "greater"}
+
+    def _trinket_options_for_player(self, p: "Player", grade: str) -> list[dict]:
+        """Genereer 4 trofee-opties; filter al bezeten IDs."""
+        owned_ids = {t["id"] for t in p.trinkets}
+        all_t = list(TRINKETS.values())
+        # Eenvoudige lesser/greater scheiding: ID's met _1 = lesser, _2 = greater, rest middenmoot
+        if grade == "lesser":
+            pool = [t for t in all_t if not t["id"].endswith("_2") and t["id"] not in owned_ids]
+        else:
+            pool = [t for t in all_t if not t["id"].endswith("_1") and t["id"] not in owned_ids]
+        if not pool:
+            pool = [t for t in all_t if t["id"] not in owned_ids]
+        return random.sample(pool, min(4, len(pool)))
+
+    def get_trinket_offer_for(self, sid: str) -> dict | None:
+        """Geeft trinket-aanbod als dit een trinket-ronde is, anders None."""
+        grade = self.TRINKET_ROUNDS.get(self.round_num)
+        if not grade:
+            return None
+        p = self.players.get(sid)
+        if not p or not p.alive:
+            return None
+        options = self._trinket_options_for_player(p, grade)
+        return {"grade": grade, "options": options}
+
+    def select_trinket(self, sid: str, trinket_id: str) -> dict:
+        p = self.players.get(sid)
+        if not p:
+            return {"success": False}
+        trinket = TRINKETS.get(trinket_id)
+        if not trinket:
+            return {"success": False, "message": "Onbekende trofee."}
+        p.acquire_trinket(trinket)
+        return {"success": True, "player": p.to_dict(include_shop=True)}
 
     def move_minion(self, sid: str, from_idx: int, to_idx: int) -> dict:
         p = self.players.get(sid)

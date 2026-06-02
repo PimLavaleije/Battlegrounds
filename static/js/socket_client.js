@@ -21,6 +21,7 @@ const SocketClient = {
   passMinion(handIdx)        { socket.emit("pass_minion",    { hand_index: handIdx }); },
   magnetize(handIdx, boardIdx) { socket.emit("magnetize",    { hand_index: handIdx, board_index: boardIdx }); },
   useHeroPower(targetIdx)    { socket.emit("use_hero_power", { target_index: targetIdx ?? null }); },
+  selectTrinket(trinketId)   { socket.emit("select_trinket", { trinket_id: trinketId }); },
   playerReady()              { socket.emit("player_ready",   {}); },
   chooseDiscover(minionId)   { socket.emit("choose_discover", { minion_id: minionId }); },
   chooseOne(choice)          { socket.emit("choose_one_choice", { choice }); },
@@ -78,6 +79,11 @@ socket.on("round_start", data => {
   document.getElementById("ready-indicator").textContent = "";
 
   renderGame(data);
+
+  // Trinket aanbod op ronde 6 (Lesser) en 9 (Greater)
+  if (data.trinket_offer) {
+    showTrinketOffer(data.trinket_offer);
+  }
 });
 
 socket.on("opponents_update", players => {

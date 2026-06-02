@@ -190,6 +190,12 @@ class GameManager:
             result["player"] = p.to_dict(include_shop=True)
         return result
 
+    def select_trinket(self, sid: str, room_code: str, trinket_id: str) -> dict:
+        game = self.rooms.get(room_code)
+        if not game:
+            return {"success": False}
+        return game.select_trinket(sid, trinket_id)
+
     def player_ready(self, sid: str, room_code: str) -> dict:
         game = self.rooms.get(room_code)
         if not game:
