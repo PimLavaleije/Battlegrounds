@@ -499,6 +499,13 @@ class GameState:
                 enemy_board = [m.clone() for m in opp.board]
                 opp_name = opp.name
                 opp_tavern = opp.tavern_tier
+                # Flighty Scout van tegenstander: voeg kopie toe aan vijandelijk board
+                for item in opp.hand:
+                    if isinstance(item, Minion) and item.id == "flighty_scout" and len(enemy_board) < opp.MAX_BOARD:
+                        scout = item.clone()
+                        if item.golden:
+                            scout.attack *= 2; scout.health *= 2; scout.max_health *= 2
+                        enemy_board.append(scout)
 
             # Pas uitgestelde spreuk-effecten toe op vijandelijk board
             for spell_id in player.pending_combat_spells:
@@ -513,16 +520,13 @@ class GameState:
             # Clone board voor combat (muteert nooit het echte board)
             combat_board = [m.clone() for m in player.board]
 
-            # Flighty Scout: als in hand, voeg kopie toe aan combat board
+            # Flighty Scout: voor elke kopie in hand, voeg een kopie toe aan combat board
             for item in player.hand:
                 if isinstance(item, Minion) and item.id == "flighty_scout" and len(combat_board) < player.MAX_BOARD:
                     scout = item.clone()
                     if item.golden:
-                        scout.attack *= 2
-                        scout.health *= 2
-                        scout.max_health *= 2
+                        scout.attack *= 2; scout.health *= 2; scout.max_health *= 2
                     combat_board.append(scout)
-                    break
 
             # Hero passives at combat start (op de clone, niet het echte board)
             _apply_hero_combat_auras(combat_board, enemy_board, player.hero)

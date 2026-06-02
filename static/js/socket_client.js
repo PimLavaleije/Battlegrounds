@@ -82,7 +82,7 @@ socket.on("round_start", data => {
 
 socket.on("opponents_update", players => {
   State.opponents = players.filter(p => p.sid !== State.mySid);
-  renderOpponents(State.opponents);
+  renderOpponentsSidebar(State.opponents);
 });
 
 // ── Shop updates ─────────────────────────────────────────────

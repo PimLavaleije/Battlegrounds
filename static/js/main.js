@@ -218,10 +218,21 @@ function renderOpponentsSidebar(opponents) {
   opponents.forEach(opp => {
     const div = document.createElement("div");
     div.className = `opp-portrait ${opp.alive ? "" : "dead"}`;
+    const imgUrl = opp.hero?.id ? getHeroImageUrl(opp.hero.id) : null;
+    let portraitContent;
+    if (!opp.alive) {
+      portraitContent = `<span style="font-size:1.3rem">💀</span>`;
+    } else if (imgUrl) {
+      portraitContent = `<img src="${imgUrl}" alt="${escapeHtml(opp.hero?.name || '')}"
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%"
+        onerror="this.outerHTML='<span style=\\'font-size:1.2rem\\'>${(opp.hero?.emoji||'⚔️').replace(/'/g,"\\'")}</span>'">`;
+    } else {
+      portraitContent = `<span style="font-size:1.2rem">${opp.hero?.emoji || "⚔️"}</span>`;
+    }
     div.innerHTML = `
-      ${opp.alive ? (opp.hero?.emoji || "⚔️") : "💀"}
+      ${portraitContent}
       <span class="opp-hp-badge">❤️${opp.hp}</span>
-      <div class="opp-name-tip">${escapeHtml(opp.name)} | T${opp.tavern_tier}</div>
+      <div class="opp-name-tip">${escapeHtml(opp.name)} | T${opp.tavern_tier}${opp.hero?.name ? ` · ${escapeHtml(opp.hero.name)}` : ''}</div>
     `;
     sidebar.appendChild(div);
   });

@@ -462,8 +462,8 @@ HEROES = {
     },
     "shudderwock": {
         "id": "shudderwock", "name": "Shudderwock", "armor": 10, "emoji": "👹",
-        "description": "Trigger a friendly minion's Battlecry. (Unlocks on Turn 3.)",
-        "ability": {"type": "passive", "effect": "snicker_snack", "unlock_turn": 3},
+        "description": "Trigger een Battlecry van een vriendelijke minion. (Beschikbaar vanaf beurt 3.)",
+        "ability": {"type": "hero_power", "cost": 2, "effect": "snicker_snack", "unlock_turn": 3, "targeted": True},
     },
     "silas_darkmoon": {
         "id": "silas_darkmoon", "name": "Silas Darkmoon", "armor": 14, "emoji": "🎡",

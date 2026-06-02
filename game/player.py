@@ -58,6 +58,7 @@ class Player:
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
+        self._current_round = round_num
         base_gold = min(3 + round_num - 1, self.MAX_GOLD)
         bonus = self.gold_next_turn_bonus
         self.gold_next_turn_bonus = 0
@@ -111,6 +112,11 @@ class Player:
                     m.divine_shield = False
                     if "divine_shield" in m.abilities:
                         m.abilities.remove("divine_shield")
+                if "restore_stats" in undo:
+                    rs = undo["restore_stats"]
+                    m.attack = rs["attack"]
+                    m.health = min(m.health, rs["health"])
+                    m.max_health = rs["max_health"]
             m._temp_sc_keywords = []
         # Spellcraft: genereer spreuk voor elke Naga op het board
         for m in self.board:
@@ -145,6 +151,9 @@ class Player:
         unlock_tier = ab.get("unlock_tier")
         if unlock_tier and self.tavern_tier < unlock_tier:
             return {"success": False, "message": f"Beschikbaar vanaf Taverne Tier {unlock_tier}."}
+        unlock_turn = ab.get("unlock_turn")
+        if unlock_turn and getattr(self, "_current_round", 1) < unlock_turn:
+            return {"success": False, "message": f"Beschikbaar vanaf beurt {unlock_turn}."}
         cost = ab.get("cost", 2)
         if self.gold < cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
@@ -402,6 +411,19 @@ class Player:
                 self.shop.append(Minion.from_id(p))
             return {"success": True, "effect": "bobs_burgles"}
 
+        elif effect == "snicker_snack":
+            # Shudderwock: trigger een battlecry van een boardminion
+            if target_index is None or not (0 <= target_index < len(self.board)):
+                self.gold += cost
+                return {"success": False, "message": "Kies een boardminion om de Battlecry te triggeren."}
+            target_m = self.board[target_index]
+            if not target_m.battlecry:
+                self.gold += cost
+                return {"success": False, "message": f"{target_m.name} heeft geen Battlecry."}
+            self._apply_battlecry(target_m)
+            return {"success": True, "effect": "snicker_snack",
+                    "player": self.to_dict(include_shop=True)}
+
         # Stubs voor complexe effecten die opponent data of combat tracking vereisen
         elif effect in ("ill_take_that", "reclaimed_souls", "friendly_wager",
                          "i_spy", "imprison", "spawning_pool"):
@@ -600,6 +622,12 @@ class Player:
             self.board.append(minion)
         self.cards_played_this_turn += 1
         self._recalculate_board_passives()
+
+        # Deep Blue Crooner: pas gestapelde "improve" bonus toe
+        if minion.id == "deep_blue_crooner":
+            improve = getattr(self, "_deep_blue_improve", 0)
+            if improve:
+                minion.attack += improve; minion.health += improve; minion.max_health += improve
 
         battlecry_result = None
         if minion.battlecry:
@@ -932,7 +960,15 @@ class Player:
         elif sid == "sc_deep_blue_crooner":
             t = _target()
             if t:
-                t.attack += 2; t.health += 3; t.max_health += 3
+                mult = 2 if any(m.id == "deep_blue_crooner" and m.golden for m in self.board) else 1
+                atk_buff = 2 * mult + self.spell_attack_bonus
+                hp_buff = 3 * mult + self.spell_health_bonus
+                prev_atk = t.attack; prev_hp = t.health; prev_max = t.max_health
+                t.attack += atk_buff; t.health += hp_buff; t.max_health += hp_buff
+                if not hasattr(t, "_temp_sc_keywords"):
+                    t._temp_sc_keywords = []
+                t._temp_sc_keywords.append({"restore_stats": {"attack": prev_atk, "health": prev_hp, "max_health": prev_max}})
+                self._deep_blue_improve = getattr(self, "_deep_blue_improve", 0) + (2 if mult == 2 else 1)
         elif sid == "sc_deep_sea_angler":
             t = _target()
             if t:

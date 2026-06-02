@@ -342,22 +342,21 @@ def _process_deaths(deaths: list, p_board: list[Minion], e_board: list[Minion], 
                 side_rewards.append({"type": "blood_gem_attack_bonus_post_combat", "amount": amount, "golden": False})
 
         # Game-brede dood-tellers (eternal_knight, sanlayn_scribe, old_soul)
-        if dead_side == "player":
-            if dead_minion.id == "eternal_knight":
-                for m in friendly_board:
-                    if m.dead or m.id != "eternal_knight":
-                        continue
-                    mult = 2 if m.golden else 1
-                    m.attack += 2 * mult; m.health += 1 * mult; m.max_health += 1 * mult
-                side_rewards.append({"type": "eternal_knight_died"})
-            elif dead_minion.id == "sanlayn_scribe":
-                for m in friendly_board:
-                    if m.dead or m.id != "sanlayn_scribe":
-                        continue
-                    mult = 2 if m.golden else 1
-                    m.attack += 4 * mult; m.health += 4 * mult; m.max_health += 4 * mult
-                side_rewards.append({"type": "sanlayn_scribe_died"})
-            side_rewards.append({"type": "old_soul_deaths", "count": 1})
+        if dead_minion.id == "eternal_knight":
+            for m in friendly_board:
+                if m.dead or m.id != "eternal_knight":
+                    continue
+                mult = 2 if m.golden else 1
+                m.attack += 2 * mult; m.health += 1 * mult; m.max_health += 1 * mult
+            side_rewards.append({"type": "eternal_knight_died"})
+        elif dead_minion.id == "sanlayn_scribe":
+            for m in friendly_board:
+                if m.dead or m.id != "sanlayn_scribe":
+                    continue
+                mult = 2 if m.golden else 1
+                m.attack += 4 * mult; m.health += 4 * mult; m.max_health += 4 * mult
+            side_rewards.append({"type": "sanlayn_scribe_died"})
+        side_rewards.append({"type": "old_soul_deaths", "count": 1})
 
         # Avenge – tel dood mee voor alle levende vriendelijke avenge-minions
         for m in friendly_board:
