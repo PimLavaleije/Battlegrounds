@@ -8,10 +8,11 @@ class ShopManager:
     """Beheert de gedeelde minion pool voor één game."""
 
     def __init__(self):
-        # Pool: {minion_id: count}
+        # Pool: {minion_id: count} — Duos-only minions worden overgeslagen
         self.pool: dict[str, int] = {}
         for mid, data in MINIONS.items():
-            self.pool[mid] = POOL_SIZE.get(data["tier"], 15)
+            if not data.get("duo_only", False):
+                self.pool[mid] = POOL_SIZE.get(data["tier"], 15)
 
     # ── Pool beheer ─────────────────────────────────────────
     def take_from_pool(self, minion_id: str) -> bool:

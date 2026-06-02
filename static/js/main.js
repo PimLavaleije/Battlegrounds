@@ -217,22 +217,31 @@ function renderOpponentsSidebar(opponents) {
   sidebar.innerHTML = "";
   opponents.forEach(opp => {
     const div = document.createElement("div");
-    div.className = `opp-portrait ${opp.alive ? "" : "dead"}`;
+    div.className = `opp-entry ${opp.alive ? "" : "dead"}`;
+
     const imgUrl = opp.hero?.id ? getHeroImageUrl(opp.hero.id) : null;
     let portraitContent;
     if (!opp.alive) {
-      portraitContent = `<span style="font-size:1.3rem">💀</span>`;
+      portraitContent = `<span>💀</span>`;
     } else if (imgUrl) {
+      const fallbackEmoji = opp.hero?.emoji || "⚔️";
       portraitContent = `<img src="${imgUrl}" alt="${escapeHtml(opp.hero?.name || '')}"
-        style="width:100%;height:100%;object-fit:cover;border-radius:50%"
-        onerror="this.outerHTML='<span style=\\'font-size:1.2rem\\'>${(opp.hero?.emoji||'⚔️').replace(/'/g,"\\'")}</span>'">`;
+        onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span>${fallbackEmoji}</span>')">`;
     } else {
-      portraitContent = `<span style="font-size:1.2rem">${opp.hero?.emoji || "⚔️"}</span>`;
+      portraitContent = `<span>${opp.hero?.emoji || "⚔️"}</span>`;
     }
+
+    const hp = opp.hp ?? "?";
+    const hpClass = (typeof hp === "number" && hp > 20) ? "opp-hp-row high-hp" : "opp-hp-row";
+
     div.innerHTML = `
-      ${portraitContent}
-      <span class="opp-hp-badge">❤️${opp.hp}</span>
-      <div class="opp-name-tip">${escapeHtml(opp.name)} | T${opp.tavern_tier}${opp.hero?.name ? ` · ${escapeHtml(opp.hero.name)}` : ''}</div>
+      <div class="opp-mini-portrait">${portraitContent}</div>
+      <div class="opp-info">
+        <div class="opp-name-text">${escapeHtml(opp.name)}</div>
+        ${opp.hero?.name ? `<div class="opp-hero-text">${escapeHtml(opp.hero.name)}</div>` : ""}
+        <div class="${hpClass}">❤️ ${hp}</div>
+      </div>
+      <div class="opp-tier-badge">T${opp.tavern_tier}</div>
     `;
     sidebar.appendChild(div);
   });

@@ -88,18 +88,19 @@ const CombatReplay = {
     }
     for (const ev of (step.events || [])) {
       await this._sleep(this.EVENT_DELAY);
-      this._processEvent(ev);
+      this._processEvent(ev, step.side);
     }
   },
 
-  _processEvent(ev) {
+  _processEvent(ev, side = "player") {
     const pc = document.getElementById("combat-player-board");
     const ec = document.getElementById("combat-enemy-board");
+    const friendlyBoard = side === "player" ? pc : ec;
 
     if (ev.type === "summon" && ev.token) {
       const card = buildCombatCard(ev.token);
       card.classList.add("anim-bounce-in");
-      pc.appendChild(card);
+      friendlyBoard.appendChild(card);
       this._log(`✨ ${ev.token.name} wordt opgeroepen`);
     }
     if (ev.type === "buff") {
