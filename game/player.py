@@ -646,6 +646,13 @@ class Player:
             ]
 
         play_passives = self._trigger_play_passives(minion, battlecry_fired=bool(battlecry_result))
+
+        # Spellcraft: Naga gespeeld → direct spreuk in hand voor deze beurt
+        if "spellcraft" in minion.abilities and minion.spellcraft:
+            sc_spell = self._generate_spellcraft_spell(minion)
+            if sc_spell:
+                self.hand.append(sc_spell)
+
         result = {"success": True, "battlecry": battlecry_result, "play_passives": play_passives}
         if choose_one_options:
             result["choose_one_options"] = choose_one_options
