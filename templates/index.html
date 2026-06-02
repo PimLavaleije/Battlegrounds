@@ -15,7 +15,8 @@
 <!-- ══ LANDING ══════════════════════════════════════════════ -->
 <div id="screen-landing" class="screen active">
   <div class="landing-container">
-    <h1 class="game-title">⚔️ Battlegrounds</h1>
+    <div class="game-title-emoji">⚔️</div>
+    <h1 class="game-title">Battlegrounds</h1>
     <p class="game-subtitle">Auto-battle voor 2–8 spelers</p>
     <div class="form-card">
       <div class="form-group">
@@ -65,17 +66,29 @@
 <!-- ══ GAME (SHOP FASE) ═════════════════════════════════════ -->
 <div id="screen-game" class="screen">
 
-  <!-- Dunne HUD balk -->
+  <!-- HUD balk -->
   <div class="game-hud">
     <div class="hud-hero">
-      <span id="hud-hero-emoji">⚔️</span>
-      <span id="hud-hero-name">Held</span>
+      <div class="hud-hero-portrait" id="hud-hero-emoji">⚔️</div>
+      <span class="hud-hero-name" id="hud-hero-name">Held</span>
+    </div>
+    <div class="hud-center-block">
+      <span class="hud-round-label">RONDE</span>
+      <span class="hud-round-num" id="hud-round">1</span>
     </div>
     <div class="hud-stats">
-      <span class="hud-stat">Ronde <strong id="hud-round">1</strong></span>
-      <span class="hud-stat hp">❤️ <strong id="hud-hp">40</strong></span>
-      <span class="hud-stat tier">🍺 T<strong id="hud-tier">1</strong></span>
-      <span class="hud-stat gold">💰 <strong id="hud-gold">3</strong>/10</span>
+      <div class="hud-stat hp">
+        <span class="hud-stat-icon">❤️</span>
+        <strong id="hud-hp">40</strong>
+      </div>
+      <div class="hud-stat tier">
+        <span class="hud-stat-icon">🍺</span>
+        <strong id="hud-tier">1</strong>
+      </div>
+      <div class="hud-stat gold">
+        <span class="hud-stat-icon">💰</span>
+        <strong id="hud-gold">3</strong><span class="hud-gold-sep">/10</span>
+      </div>
     </div>
   </div>
 
@@ -88,25 +101,36 @@
     <!-- Arena -->
     <div class="arena">
 
-      <!-- Winkel kaarten (bovenin) -->
-      <div class="shop-card-row">
-        <div class="shop-row" id="shop-slots"></div>
+      <!-- Winkel sectie (bovenin) -->
+      <div class="shop-section">
+        <div class="shop-section-header">
+          <div class="taverne-label">🍺 Taverne</div>
+          <div class="shop-header-actions">
+            <button class="ctrl-btn upgrade" id="btn-upgrade">⬆️ <span id="upgrade-cost">5</span>💰</button>
+            <button class="ctrl-btn reroll"  id="btn-reroll">🔄 1💰</button>
+            <button class="ctrl-btn freeze"  id="btn-freeze">❄️ Bevries</button>
+          </div>
+        </div>
+        <div class="shop-card-row">
+          <div class="shop-row" id="shop-slots"></div>
+        </div>
       </div>
 
-      <!-- Jouw board (midden) -->
+      <!-- Board (midden) -->
       <div class="board-area">
-        <div class="board-label">Jouw Board <span id="board-count">(0/7)</span></div>
+        <div class="board-banner">
+          <div class="board-banner-line"></div>
+          <div class="board-label">Jouw Board <span id="board-count">(0/7)</span></div>
+          <div class="board-banner-line"></div>
+        </div>
         <div class="board-slots" id="board-slots"></div>
       </div>
 
-      <!-- Hand / acties (onderin) -->
+      <!-- Hand + acties (onderin) -->
       <div class="hand-area">
         <div class="hand-main">
           <div class="hand-slots" id="hand-slots"></div>
           <div class="shop-controls">
-            <button class="ctrl-btn upgrade" id="btn-upgrade">⬆️ <span id="upgrade-cost">5</span>💰</button>
-            <button class="ctrl-btn reroll"  id="btn-reroll">🔄 1💰</button>
-            <button class="ctrl-btn freeze"  id="btn-freeze">❄️ Bevries</button>
             <button class="ctrl-btn ready" id="btn-ready">✅ Klaar!</button>
           </div>
           <div class="shop-meta">

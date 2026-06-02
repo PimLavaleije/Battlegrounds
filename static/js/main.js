@@ -164,6 +164,8 @@ function updateHUD(player, roundNum) {
 
   document.getElementById("hud-tier").textContent  = player.tavern_tier;
   document.getElementById("board-count").textContent = `(${player.board.length}/7)`;
+  const taverneEl = document.querySelector(".taverne-label");
+  if (taverneEl) taverneEl.textContent = `🍺 Taverne · Tier ${player.tavern_tier}`;
   if (player.hero) {
     const heroEmoji = document.getElementById("hud-hero-emoji");
     const imgUrl = getHeroImageUrl(player.hero.id);
