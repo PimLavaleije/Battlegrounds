@@ -156,6 +156,15 @@ function updateHUD(player, roundNum) {
   hpEl.textContent = player.hp;
   if (player.hp < prevHp) { hpEl.classList.remove("anim-hp-damage"); void hpEl.offsetWidth; hpEl.classList.add("anim-hp-damage"); setTimeout(() => hpEl.classList.remove("anim-hp-damage"), 500); }
 
+  // Armor update
+  const armorEl = document.getElementById("hud-armor");
+  const armorStat = document.getElementById("hud-armor-stat");
+  const prevArmor = parseInt(armorEl.textContent) || 0;
+  const newArmor = player.armor ?? 0;
+  armorEl.textContent = newArmor;
+  if (armorStat) armorStat.style.display = newArmor > 0 ? "" : "none";
+  if (newArmor < prevArmor) { armorEl.classList.remove("anim-hp-damage"); void armorEl.offsetWidth; armorEl.classList.add("anim-hp-damage"); setTimeout(() => armorEl.classList.remove("anim-hp-damage"), 500); }
+
   // Gold flash bij winst
   const goldEl = document.getElementById("hud-gold");
   const prevGold = parseInt(goldEl.textContent) || player.gold;
@@ -197,6 +206,20 @@ function updateHeroBoardDisplay(player) {
   // Low HP glow
   if (gem) gem.classList.toggle("low-hp", player.hp <= 15);
 
+  // Armor gem
+  const armorGem = document.getElementById("hbd-armor-gem");
+  const armorValEl = document.getElementById("hbd-armor-val");
+  if (armorGem && armorValEl) {
+    const newArmor = player.armor ?? 0;
+    const prevArmor = parseInt(armorValEl.textContent) || 0;
+    armorValEl.textContent = newArmor;
+    armorGem.style.display = newArmor > 0 ? "flex" : "none";
+    if (newArmor < prevArmor) {
+      armorGem.classList.remove("anim-hp-damage"); void armorGem.offsetWidth; armorGem.classList.add("anim-hp-damage");
+      setTimeout(() => armorGem.classList.remove("anim-hp-damage"), 600);
+    }
+  }
+
   const nameEl = document.getElementById("hbd-name-display");
   if (nameEl && player.hero) nameEl.textContent = player.hero.name || "";
 
@@ -232,14 +255,16 @@ function renderOpponentsSidebar(opponents) {
     }
 
     const hp = opp.hp ?? "?";
+    const armor = opp.armor ?? 0;
     const hpClass = (typeof hp === "number" && hp > 20) ? "opp-hp-row high-hp" : "opp-hp-row";
+    const armorHtml = armor > 0 ? `<span class="opp-armor-badge">🛡️${armor}</span>` : "";
 
     div.innerHTML = `
       <div class="opp-mini-portrait">${portraitContent}</div>
       <div class="opp-info">
         <div class="opp-name-text">${escapeHtml(opp.name)}</div>
         ${opp.hero?.name ? `<div class="opp-hero-text">${escapeHtml(opp.hero.name)}</div>` : ""}
-        <div class="${hpClass}">❤️ ${hp}</div>
+        <div class="${hpClass}">❤️ ${hp}${armorHtml}</div>
       </div>
       <div class="opp-tier-badge">T${opp.tavern_tier}</div>
     `;
@@ -253,7 +278,21 @@ function setupHeroPower(hero) {
     panel.classList.add("hidden"); return;
   }
   panel.classList.remove("hidden");
-  document.getElementById("hero-power-emoji").textContent = hero.emoji || "✨";
+
+  // Portretafbeelding
+  const portraitEl = document.getElementById("hp-portrait");
+  const imgUrl = getHeroImageUrl(hero.id);
+  if (imgUrl) {
+    const fallback = (hero.emoji || "✨").replace(/'/g, "\\'");
+    portraitEl.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(hero.name)}"
+      onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span>${fallback}</span>')">`;
+  } else {
+    portraitEl.textContent = hero.emoji || "✨";
+  }
+
+  // Power naam afgeleid van description (eerste zin)
+  const powerName = hero.ability?.name || (hero.description?.split(".")[0] || hero.name);
+  document.getElementById("hp-power-name").textContent    = powerName;
   document.getElementById("hp-hero-name").textContent     = hero.name || "";
   document.getElementById("hp-desc").textContent          = hero.description || "";
   document.getElementById("hero-power-cost").textContent  = hero.ability.cost ?? 2;

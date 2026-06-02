@@ -227,6 +227,8 @@ class GameState:
         hero = next((h for h in p.hero_options if h["id"] == hero_id), None)
         if hero:
             p.hero = hero
+            p.hp = hero.get("hp_override", 30)
+            p.armor = hero.get("armor", 0)
             if hero["id"] == "the_lich_king":
                 p.double_deathrattle = True
             if hero["id"] == "dinotamer_brann":

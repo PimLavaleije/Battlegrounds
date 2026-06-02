@@ -16,7 +16,8 @@ class Player:
         self.sid = sid
         self.name = name
         self.is_ai = is_ai
-        self.hp = 40
+        self.hp = 30
+        self.armor = 0
         self.tavern_tier = 1
         self.upgrade_cost = 5
         self.gold = 0
@@ -1846,9 +1847,12 @@ class Player:
         return events
 
     def _on_hero_damaged(self, amount: int):
-        """Verlaagt held-HP en triggert Floating Watcher passives."""
-        actual = min(amount, self.hp)
-        self.hp = max(0, self.hp - amount)
+        """Verlaagt held-HP (armor eerst) en triggert Floating Watcher passives."""
+        armor_absorbed = min(amount, self.armor)
+        self.armor -= armor_absorbed
+        remaining = amount - armor_absorbed
+        actual = min(remaining, self.hp)
+        self.hp = max(0, self.hp - remaining)
         if self.hp == 0:
             self.alive = False
         if actual > 0:
@@ -1966,7 +1970,9 @@ class Player:
 
     # ── Schade ──────────────────────────────────────────────
     def take_damage(self, amount: int):
-        self.hp = max(0, self.hp - amount)
+        armor_absorbed = min(amount, self.armor)
+        self.armor -= armor_absorbed
+        self.hp = max(0, self.hp - (amount - armor_absorbed))
         if self.hp == 0:
             self.alive = False
 
@@ -2114,6 +2120,7 @@ class Player:
             "name": self.name,
             "is_ai": self.is_ai,
             "hp": self.hp,
+            "armor": self.armor,
             "tavern_tier": self.tavern_tier,
             "upgrade_cost": self.upgrade_cost,
             "gold": self.gold,
@@ -2140,6 +2147,7 @@ class Player:
             "sid": self.sid,
             "name": self.name,
             "hp": self.hp,
+            "armor": self.armor,
             "tavern_tier": self.tavern_tier,
             "alive": self.alive,
             "hero": self.hero,

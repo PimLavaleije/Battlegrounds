@@ -79,7 +79,11 @@
     <div class="hud-stats">
       <div class="hud-stat hp">
         <span class="hud-stat-icon">❤️</span>
-        <strong id="hud-hp">40</strong>
+        <strong id="hud-hp">30</strong>
+      </div>
+      <div class="hud-stat armor" id="hud-armor-stat">
+        <span class="hud-stat-icon">🛡️</span>
+        <strong id="hud-armor">0</strong>
       </div>
       <div class="hud-stat tier">
         <span class="hud-stat-icon">🍺</span>
@@ -136,7 +140,10 @@
           <div class="hbd-sub">Jouw held</div>
         </div>
         <div class="hbd-hp-gem">
-          <span class="hbd-hp-val" id="hbd-hp-val">40</span>
+          <span class="hbd-hp-val" id="hbd-hp-val">30</span>
+        </div>
+        <div class="hbd-armor-gem" id="hbd-armor-gem">
+          <span class="hbd-armor-val" id="hbd-armor-val">0</span>
         </div>
       </div>
 
@@ -153,12 +160,15 @@
           </div>
         </div>
         <div id="hero-power-panel" class="hero-power-panel hidden">
-          <div class="hp-title">Heldvermogen</div>
-          <div class="hp-emoji" id="hero-power-emoji">✨</div>
+          <div class="hp-portrait-wrap">
+            <div class="hp-portrait" id="hp-portrait">✨</div>
+            <div class="hp-power-name" id="hp-power-name"></div>
+            <div class="hp-cost-badge"><span id="hero-power-cost">2</span>💰</div>
+          </div>
           <div class="hp-hero-name" id="hp-hero-name"></div>
           <div class="hp-desc" id="hp-desc"></div>
           <button class="hp-activate-btn" id="btn-hero-power">
-            Activeer · <span id="hero-power-cost">2</span>💰
+            Activeer
           </button>
         </div>
       </div>

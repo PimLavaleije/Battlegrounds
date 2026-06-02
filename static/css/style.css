@@ -446,9 +446,10 @@ html, body {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .hud-stat-icon { font-size: 0.85rem; }
-.hud-stat.hp   { color: #ff6060; border-color: rgba(210,40,40,0.35); background: linear-gradient(135deg,rgba(30,6,6,0.9),rgba(20,4,4,0.95)); }
-.hud-stat.gold { color: var(--gold); border-color: rgba(190,130,20,0.35); background: linear-gradient(135deg,rgba(24,16,4,0.9),rgba(16,10,2,0.95)); }
-.hud-stat.tier { color: #e09030; border-color: rgba(170,100,20,0.35); background: linear-gradient(135deg,rgba(20,12,4,0.9),rgba(14,8,2,0.95)); }
+.hud-stat.hp    { color: #ff6060; border-color: rgba(210,40,40,0.35); background: linear-gradient(135deg,rgba(30,6,6,0.9),rgba(20,4,4,0.95)); }
+.hud-stat.armor { color: #88ccff; border-color: rgba(40,100,200,0.35); background: linear-gradient(135deg,rgba(6,14,30,0.9),rgba(4,10,22,0.95)); }
+.hud-stat.gold  { color: var(--gold); border-color: rgba(190,130,20,0.35); background: linear-gradient(135deg,rgba(24,16,4,0.9),rgba(16,10,2,0.95)); }
+.hud-stat.tier  { color: #e09030; border-color: rgba(170,100,20,0.35); background: linear-gradient(135deg,rgba(20,12,4,0.9),rgba(14,8,2,0.95)); }
 .hud-gold-sep  { color: rgba(130,95,25,0.6); font-size: 0.75rem; font-weight: 600; }
 
 /* ── Hoofd layout ───────────────────────────────────────── */
@@ -510,6 +511,10 @@ html, body {
   color: #f88;
 }
 .opp-hp-row.high-hp { color: #7ddb7d; }
+.opp-armor-badge {
+  font-size: 0.62rem; color: #88ccff; font-weight: 700;
+  margin-left: 4px;
+}
 .opp-tier-badge {
   font-size: 0.55rem; color: rgba(180,150,80,0.8);
   background: rgba(0,0,0,0.4);
@@ -777,6 +782,30 @@ html, body {
   max-width: 120px;
   text-shadow: 0 0 8px rgba(180,120,15,0.25);
 }
+/* Armor gem naast HP gem */
+.hbd-armor-gem {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  position: relative;
+  background:
+    radial-gradient(circle at 38% 28%, rgba(160,210,255,0.7) 0%, transparent 45%),
+    radial-gradient(circle at 65% 75%, rgba(40,100,200,0.5) 0%, transparent 55%),
+    linear-gradient(135deg, #0c2a5a 0%, #040e1e 100%);
+  border: 2px solid rgba(70,140,220,0.55);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.7),
+    0 0 18px rgba(40,120,220,0.35);
+  display: flex; align-items: center; justify-content: center;
+  cursor: default; margin-left: 4px;
+}
+.hbd-armor-val {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem; font-weight: 900;
+  color: #aadeff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(80,160,255,0.5);
+  position: relative; z-index: 1;
+}
 
 /* ══════════════════════════════════════════════════════════
    HAND + CONTROLS
@@ -843,10 +872,39 @@ html, body {
     inset 0 1px 0 rgba(255,255,255,0.05),
     inset 0 0 30px rgba(40,15,100,0.3);
 }
-.hp-title { font-size: 0.55rem; color: rgba(190,130,255,0.6); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
-.hp-emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(190,130,255,0.5)); }
-.hp-hero-name { font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 700; color: #eedcff; text-align: center; }
-.hp-desc { font-size: 0.6rem; color: rgba(200,165,240,0.82); text-align: center; line-height: 1.4; }
+/* Hero power portrait blok */
+.hp-portrait-wrap {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  margin-bottom: 4px;
+}
+.hp-portrait {
+  width: 72px; height: 72px;
+  border-radius: 10px; overflow: hidden;
+  border: 2px solid rgba(150,70,255,0.6);
+  box-shadow: 0 0 18px rgba(120,50,220,0.45);
+  background: rgba(15,5,35,0.9);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem;
+}
+.hp-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.hp-power-name {
+  font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: 700;
+  color: #d8b8ff; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 130px;
+}
+.hp-cost-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: linear-gradient(135deg,#c8880a,#8a5502);
+  border: 1px solid rgba(220,160,20,0.7);
+  border-radius: 50%; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 800; color: #ffe680;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+.hp-hero-name { font-family: 'Cinzel', serif; font-size: 0.65rem; font-weight: 700; color: #eedcff; text-align: center; }
+.hp-desc { font-size: 0.58rem; color: rgba(200,165,240,0.82); text-align: center; line-height: 1.4; }
 .hp-activate-btn {
   width: 100%; padding: 8px 6px;
   font-family: 'Nunito', sans-serif; font-size: 0.8rem; font-weight: 800;

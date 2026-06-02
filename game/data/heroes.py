@@ -403,7 +403,7 @@ HEROES = {
         "ability": {"type": "hero_power", "cost": 3, "effect": "pirate_parrrrty"},
     },
     "patchwerk": {
-        "id": "patchwerk", "name": "Patchwerk", "armor": 0, "hp_override": 70, "emoji": "🪡",
+        "id": "patchwerk", "name": "Patchwerk", "armor": 0, "hp_override": 60, "emoji": "🪡",
         "description": "Start the game with 30 extra Health.",
         "ability": {"type": "passive", "effect": "all_patched_up", "bonus_hp": 30},
     },
