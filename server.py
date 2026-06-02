@@ -248,6 +248,17 @@ def on_use_hero_power(data):
         emit("player_update", result["player"])
         if result.get("hero_power_discover"):
             emit("triple_discover", {"options": result["hero_power_discover"]})
+        # Speciale feedback aan de speler
+        effect = result.get("effect")
+        if effect == "lucky_roll":
+            emit("notification", {"message": f"🎲 Je gooide een {result.get('roll', '?')}!"})
+        elif effect == "buried_treasure_dig":
+            remaining = result.get("digs_remaining", "?")
+            emit("notification", {"message": f"⛏️ Gegraven! Nog {remaining} keer tot een Gouden minion!"})
+        elif effect == "the_perfect_crime":
+            emit("notification", {"message": "🎩 Alle tavern kaarten gestolen!"})
+        elif effect == "temporal_tavern":
+            emit("notification", {"message": "⏰ Tavern refresht met hogere-tier kaarten!"})
     else:
         emit("error", {"message": result.get("message", "Held-spreuk mislukt.")})
 

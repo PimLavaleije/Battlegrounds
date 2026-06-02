@@ -141,6 +141,10 @@ class Player:
         ab = self.hero.get("ability", {})
         if ab.get("type") != "hero_power":
             return {"success": False, "message": "Geen actieve held-spreuk."}
+        # Unlock tier check
+        unlock_tier = ab.get("unlock_tier")
+        if unlock_tier and self.tavern_tier < unlock_tier:
+            return {"success": False, "message": f"Beschikbaar vanaf Taverne Tier {unlock_tier}."}
         cost = ab.get("cost", 2)
         if self.gold < cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
@@ -165,13 +169,30 @@ class Player:
 
         # ── Board-wide / random effects ───────────────────────────
         elif effect == "brick_by_brick":
-            if self.board:
-                t = random.choice(self.board); t.health += 4; t.max_health += 4
+            # Pyramad: steel random tavern minion + verdubbel z'n health
+            candidates = [(i, m) for i, m in enumerate(self.shop)
+                          if m is not None and isinstance(m, Minion)]
+            if candidates:
+                idx, stolen = random.choice(candidates)
+                self.shop[idx] = None
+                stolen.health *= 2; stolen.max_health *= 2
+                self.hand.append(stolen)
             return {"success": True, "effect": "brick_by_brick"}
 
         elif effect == "tale_of_kings":
-            for m in self.board:
-                m.attack += 2; m.health += 2; m.max_health += 2
+            # The Rat King: discover van wisselende tribe
+            from game.data.minions import MINIONS as _MINS
+            tribes = ["Beast", "Demon", "Dragon", "Elemental", "Mech",
+                      "Murloc", "Naga", "Pirate", "Quilboar", "Undead"]
+            idx_t = self.hero.get("_rat_tribe_idx", 0)
+            tribe = tribes[idx_t % len(tribes)]
+            self.hero["_rat_tribe_idx"] = (idx_t + 1) % len(tribes)
+            pool = [mid for mid, d in _MINS.items() if tribe in d.get("types", [])]
+            if pool:
+                picks = random.sample(pool, min(3, len(pool)))
+                options = [Minion.from_id(p).to_dict() for p in picks]
+                return {"success": True, "effect": "tale_of_kings",
+                        "hero_power_discover": options, "tribe": tribe}
             return {"success": True, "effect": "tale_of_kings"}
 
         elif effect == "conviction":
@@ -187,18 +208,26 @@ class Player:
 
         # ── Gold / shop effects ───────────────────────────────────
         elif effect == "graveyard_shift":
+            # Lich Baz'hial: steel een tavern kaart, neem 2 schade
             dmg = ab.get("self_damage", 2)
             self._on_hero_damaged(dmg)
-            self.gold = min(self.gold + dmg, self.MAX_GOLD)
+            candidates = [(i, m) for i, m in enumerate(self.shop)
+                          if m is not None and isinstance(m, Minion)]
+            if candidates:
+                idx, stolen = random.choice(candidates)
+                self.shop[idx] = None
+                self.hand.append(stolen)
             return {"success": True, "effect": "graveyard_shift"}
 
         elif effect == "smart_savings":
-            self.free_refreshes_available += 1
+            # Gallywix: stel in dat de volgende verkoop +1 goud volgende beurt geeft
+            self._smart_savings_active = True
             return {"success": True, "effect": "smart_savings"}
 
         elif effect == "temporal_tavern":
+            # Infinite Toki: gratis refresh, inclusief 2 kaarten van hogere tier
             self.free_refreshes_available += 1
-            self.frozen = True
+            self._temporal_tavern_bonus = True  # game_state.reroll() voegt hogere tier toe
             return {"success": True, "effect": "temporal_tavern"}
 
         elif effect == "wisdom_of_ancients":
@@ -237,19 +266,22 @@ class Player:
             return {"success": True, "effect": "galaxy_lens"}
 
         elif effect == "efficient_exchange":
-            # Swap attack/health of a random minion (simplified: +2 atk, another +2 hp)
-            if len(self.board) >= 2:
-                a, b = random.sample(self.board, 2)
-                a.attack += 2; b.health += 2; b.max_health += 2
-            elif self.board:
-                self.board[0].attack += 2
+            # Madam Goya: wissel een hand-minion met een tavern-minion
+            hand_minions = [(i, m) for i, m in enumerate(self.hand) if isinstance(m, Minion)]
+            shop_minions = [(i, m) for i, m in enumerate(self.shop)
+                            if m is not None and isinstance(m, Minion)]
+            if hand_minions and shop_minions:
+                hi, hm = random.choice(hand_minions)
+                si, sm = random.choice(shop_minions)
+                self.hand[hi] = sm
+                self.shop[si] = hm
             return {"success": True, "effect": "efficient_exchange"}
 
         elif effect == "lucky_roll":
-            from game.data.minions import MINIONS as _MINS
-            tier_pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
-            if tier_pool: self.hand.append(Minion.from_id(random.choice(tier_pool)))
-            return {"success": True, "effect": "lucky_roll"}
+            # Snake Eyes: gooi d6, krijg dat veel goud
+            roll = random.randint(1, 6)
+            self.gold = min(self.gold + roll, self.MAX_GOLD)
+            return {"success": True, "effect": "lucky_roll", "roll": roll}
 
         # ── Spell / hand effects ──────────────────────────────────
         elif effect == "blessing_nine_frogs":
@@ -268,6 +300,8 @@ class Player:
             if effect == "discover_dragon":
                 pool = [mid for mid, d in _MINS.items() if "Dragon" in d.get("types", []) and d["tier"] <= self.tavern_tier + 1]
             elif effect == "lead_explorer":
+                # Kost stijgt +1 na elk gebruik
+                ab["cost"] = ab.get("cost", 1) + 1
                 pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
             elif effect == "pirate_parrrrty":
                 pool = [mid for mid, d in _MINS.items() if "Pirate" in d.get("types", [])]
@@ -281,14 +315,16 @@ class Player:
                 uses = self.hero.get("_digs_done", 0)
                 max_digs = ab.get("digs_remaining", 4)
                 self.hero["_digs_done"] = uses + 1
-                if uses + 1 >= max_digs:
+                digs_done = uses + 1
+                if digs_done >= max_digs:
                     pool = [mid for mid, d in _MINS.items() if d["tier"] <= self.tavern_tier]
                     chosen = random.choice(pool) if pool else None
                     if chosen:
                         m = Minion.from_id(chosen); m.make_golden(); self.hand.append(m)
                     return {"success": True, "effect": "buried_treasure_golden"}
                 else:
-                    return {"success": True, "effect": "buried_treasure_dig"}
+                    return {"success": True, "effect": "buried_treasure_dig",
+                            "digs_done": digs_done, "digs_remaining": max_digs - digs_done}
             else:
                 pool = [mid for mid, d in _MINS.items()]
             if pool:
@@ -296,6 +332,81 @@ class Player:
                 options = [Minion.from_id(p).to_dict() for p in picks]
                 return {"success": True, "effect": effect, "hero_power_discover": options}
             return {"success": True}
+
+        # ── Nieuw geïmplementeerde effecten ───────────────────────
+
+        elif effect == "rune_of_damnation":
+            # The Jailer: vernietig een Undead, krijg random Undead
+            from game.data.minions import MINIONS as _MINS
+            undead = [m for m in self.board if "Undead" in m.types]
+            if undead:
+                target = random.choice(undead)
+                self.board.remove(target)
+                pool = [mid for mid, d in _MINS.items() if "Undead" in d.get("types", [])]
+                if pool:
+                    self.hand.append(Minion.from_id(random.choice(pool)))
+            return {"success": True, "effect": "rune_of_damnation"}
+
+        elif effect == "see_the_light":
+            # Xyrella: steel tavern minion, set stats naar 2/2
+            candidates = [(i, m) for i, m in enumerate(self.shop)
+                          if m is not None and isinstance(m, Minion)]
+            if candidates:
+                idx, chosen = (
+                    (target_index, self.shop[target_index])
+                    if (target_index is not None and 0 <= target_index < len(self.shop)
+                        and isinstance(self.shop[target_index], Minion))
+                    else random.choice(candidates)
+                )
+                self.shop[idx] = None
+                chosen.attack = 2; chosen.health = 2; chosen.max_health = 2
+                self.hand.append(chosen)
+            return {"success": True, "effect": "see_the_light"}
+
+        elif effect == "the_perfect_crime":
+            # Togwaggle: steel alle tavern kaarten, kosten zakken 1 per beurt
+            for i in range(len(self.shop)):
+                if self.shop[i] is not None and isinstance(self.shop[i], Minion):
+                    self.hand.append(self.shop[i])
+                    self.shop[i] = None
+            ab["cost"] = max(0, ab.get("cost", 11) - 1)
+            return {"success": True, "effect": "the_perfect_crime"}
+
+        elif effect == "three_wishes":
+            # Zephrys: als je 2 kopieën hebt van een minion, geef de derde
+            candidates = [(mid, copies) for mid, copies in self.triple_tracker.items()
+                          if len(copies) == 2]
+            if candidates:
+                mid, _ = candidates[0]
+                m = Minion.from_id(mid)
+                self.hand.append(m)
+                triple = self._track_triple(m)
+                return {"success": True, "effect": "three_wishes", "triple": triple}
+            self.gold += cost  # geen kandidaten, refund
+            return {"success": False, "message": "Geen minion met 2 kopieën gevonden."}
+
+        elif effect == "embrace_your_rage":
+            # Y'Shaarj: voeg een minion van jouw tier toe aan hand (vereenvoudigd; eigenlijk start-of-combat)
+            from game.data.minions import MINIONS as _MINS
+            pool = [mid for mid, d in _MINS.items() if d["tier"] == self.tavern_tier]
+            if pool:
+                self.hand.append(Minion.from_id(random.choice(pool)))
+            return {"success": True, "effect": "embrace_your_rage"}
+
+        elif effect == "bobs_burgles":
+            # Tess: vereenvoudigd — geef 3 random minions van jouw tier (real: kopieën tegenstander)
+            from game.data.minions import MINIONS as _MINS
+            pool = [mid for mid, d in _MINS.items() if d["tier"] <= self.tavern_tier]
+            picks = random.sample(pool, min(3, len(pool)))
+            for p in picks:
+                self.shop.append(Minion.from_id(p))
+            return {"success": True, "effect": "bobs_burgles"}
+
+        # Stubs voor complexe effecten die opponent data of combat tracking vereisen
+        elif effect in ("ill_take_that", "reclaimed_souls", "friendly_wager",
+                         "i_spy", "imprison", "spawning_pool"):
+            self.gold += cost  # refund
+            return {"success": False, "message": "Dit heldvermogen is nog niet geïmplementeerd."}
 
         return {"success": True}
 
@@ -369,6 +480,10 @@ class Player:
         self._remove_from_triple(minion)
         self._recalculate_board_passives()
         sell_passive = self._trigger_sell_passive(minion)
+        # Gallywix smart_savings: volgende beurt +1 goud
+        if getattr(self, "_smart_savings_active", False):
+            self._smart_savings_active = False
+            self.gold_next_turn_bonus += 1
         return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
 
     def reroll(self) -> dict:

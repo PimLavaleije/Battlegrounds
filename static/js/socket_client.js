@@ -55,6 +55,10 @@ socket.on("error", data => {
   showNotification(data.message);
 });
 
+socket.on("notification", data => {
+  showNotification(data.message, 3500);
+});
+
 // ── Hero selectie ────────────────────────────────────────────
 socket.on("hero_selection", data => {
   renderHeroSelection(data.heroes, data.timeout);

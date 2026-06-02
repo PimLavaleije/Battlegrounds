@@ -386,6 +386,18 @@ class GameState:
         if result["success"]:
             self.shop_manager.return_shop_to_pool(p.shop)
             p.shop = self.shop_manager.generate_shop(p.tavern_tier, p.hero)
+            # Infinite Toki: vervang 2 random slots door hogere-tier kaarten
+            if getattr(p, "_temporal_tavern_bonus", False):
+                p._temporal_tavern_bonus = False
+                higher_tier = min(p.tavern_tier + 1, 6)
+                from game.data.minions import MINIONS as _MINS
+                import random as _r
+                higher_pool = [mid for mid, d in _MINS.items() if d["tier"] == higher_tier]
+                if higher_pool:
+                    slots = [i for i, m in enumerate(p.shop)
+                             if m is not None and not isinstance(m, dict)]
+                    for i in _r.sample(slots, min(2, len(slots))):
+                        p.shop[i] = Minion.from_id(_r.choice(higher_pool))
         return {**result, "shop": [(m if isinstance(m, dict) else m.to_dict()) if m else None for m in p.shop]}
 
     def freeze(self, sid: str) -> dict:
