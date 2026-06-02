@@ -117,6 +117,12 @@
   to   { filter: drop-shadow(0 0 40px rgba(240,180,40,0.7)) brightness(1.08); }
 }
 
+/* Hero portret ring gloed */
+@keyframes hero-ring-glow {
+  from { box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 0 4px rgba(100,60,8,0.5), 0 0 22px rgba(200,140,30,0.5), 0 0 44px rgba(160,100,20,0.25), inset 0 2px 0 rgba(255,240,150,0.18), inset 0 0 14px rgba(0,0,0,0.6); }
+  to   { box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 0 4px rgba(120,75,10,0.6), 0 0 30px rgba(240,170,40,0.7), 0 0 60px rgba(200,130,25,0.35), inset 0 2px 0 rgba(255,240,150,0.25), inset 0 0 14px rgba(0,0,0,0.5); }
+}
+
 /* Targeting pulseren */
 @keyframes target-pulse {
   0%,100% { outline-color: rgba(200,100,255,0.5); box-shadow: none; }

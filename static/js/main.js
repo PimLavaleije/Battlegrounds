@@ -165,7 +165,7 @@ function updateHUD(player, roundNum) {
   document.getElementById("hud-tier").textContent  = player.tavern_tier;
   document.getElementById("board-count").textContent = `(${player.board.length}/7)`;
   const taverneEl = document.querySelector(".taverne-label");
-  if (taverneEl) taverneEl.textContent = `🍺 Taverne · Tier ${player.tavern_tier}`;
+  if (taverneEl) taverneEl.textContent = `Taverne · Tier ${player.tavern_tier}`;
   if (player.hero) {
     const heroEmoji = document.getElementById("hud-hero-emoji");
     const imgUrl = getHeroImageUrl(player.hero.id);
@@ -181,6 +181,35 @@ function updateHUD(player, roundNum) {
   document.getElementById("upgrade-cost").textContent = player.upgrade_cost;
   upBtn.disabled = player.tavern_tier >= 6;
   if (player.tavern_tier >= 6) upBtn.textContent = "⬆️ MAX";
+
+  updateHeroBoardDisplay(player);
+}
+
+function updateHeroBoardDisplay(player) {
+  const hpValEl = document.getElementById("hbd-hp-val");
+  const prevHp = parseInt(hpValEl.textContent) || player.hp;
+  hpValEl.textContent = player.hp;
+  const gem = hpValEl.closest(".hbd-hp-gem");
+  if (gem && player.hp < prevHp) {
+    gem.classList.remove("anim-hp-damage"); void gem.offsetWidth; gem.classList.add("anim-hp-damage");
+    setTimeout(() => gem.classList.remove("anim-hp-damage"), 600);
+  }
+  // Low HP glow
+  if (gem) gem.classList.toggle("low-hp", player.hp <= 15);
+
+  const nameEl = document.getElementById("hbd-name-display");
+  if (nameEl && player.hero) nameEl.textContent = player.hero.name || "";
+
+  const portraitEl = document.getElementById("hbd-portrait");
+  if (portraitEl && player.hero && !portraitEl.dataset.loaded) {
+    const imgUrl = getHeroImageUrl(player.hero.id);
+    if (imgUrl) {
+      portraitEl.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(player.hero.name)}" onerror="this.parentElement.textContent='${(player.hero.emoji||'⚔️').replace(/'/g,"\\'")}';this.parentElement.dataset.loaded=''">`;
+    } else {
+      portraitEl.textContent = player.hero.emoji || "⚔️";
+    }
+    portraitEl.dataset.loaded = "1";
+  }
 }
 
 function renderOpponentsSidebar(opponents) {
