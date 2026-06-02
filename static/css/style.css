@@ -2,29 +2,37 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #060402;
-  --bg2:        #0e0a05;
-  --bg3:        #1a1208;
-  --gold:       #f4b942;
-  --gold2:      #ffd166;
-  --gold-dim:   #7a5008;
-  --gold-dark:  #3a2004;
+  /* BG-authentieke donker blauw-paars-bruin palet */
+  --bg:         #06070f;
+  --bg2:        #0c0e1a;
+  --bg3:        #141830;
+  --bg-warm:    #100a04;
+  --gold:       #f0b030;
+  --gold2:      #ffd060;
+  --gold-dim:   #7a5808;
+  --gold-dark:  #3a2a08;
   --hp-red:     #e03535;
   --atk-orange: #e07a10;
-  --text:       #f0e8d4;
-  --text-dim:   #7a6040;
-  --purple:     #8b3fe0;
+  --text:       #f0e8d8;
+  --text-dim:   #7a6848;
+  --purple:     #6030d0;
+  --purple2:    #9060f0;
   --green:      #18903a;
   --amber:      #c07010;
   --shadow:     0 8px 48px rgba(0,0,0,0.97);
   --card-radius:10px;
-  --tavern-glow: rgba(160,80,10,0.35);
+  --stone-border: rgba(80,65,40,0.55);
+  --gold-border:  rgba(190,140,30,0.5);
 }
 
 html, body {
   height: 100%; width: 100%;
   font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
-  background: var(--bg);
+  /* BG's kenmerkende donker blauw-zwart achtergrond */
+  background:
+    radial-gradient(ellipse 200% 200% at 50% 0%,   rgba(40,20,80,0.6)  0%, transparent 55%),
+    radial-gradient(ellipse 200% 200% at 50% 100%, rgba(60,25,5,0.5)   0%, transparent 50%),
+    #06070f;
   color: var(--text);
   overflow: hidden;
   user-select: none;
@@ -43,80 +51,86 @@ html, body {
   position: relative; overflow: hidden;
 }
 .btn::after {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.14), transparent);
-  pointer-events: none;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 45%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.16), transparent);
+  pointer-events: none; border-radius: inherit;
 }
 .btn:hover  { filter: brightness(1.22); transform: translateY(-2px); }
 .btn:active { transform: translateY(0); filter: brightness(0.9); }
 .btn-primary {
-  background: linear-gradient(160deg, #9a46e0, #5a18b0);
+  background: linear-gradient(160deg, #8040d0, #4a10a0);
   color: #fff;
-  box-shadow: 0 4px 20px rgba(110,30,200,0.55);
-  border: 1px solid rgba(160,80,255,0.4);
+  box-shadow: 0 4px 20px rgba(90,20,180,0.6);
+  border: 1px solid rgba(160,80,255,0.45);
 }
 .btn-secondary {
   background: linear-gradient(160deg, #1e1c3a, #120e28);
   color: var(--text);
-  border: 1px solid rgba(90,70,160,0.4);
+  border: 1px solid rgba(90,70,160,0.45);
 }
 .btn-row { display: flex; gap: 12px; justify-content: center; }
 
+/* Controle knoppen — BG tavern stijl (bruin/goud) */
 .ctrl-btn {
   padding: 8px 14px;
   border: none; border-radius: 8px; cursor: pointer;
   font-family: 'Nunito', sans-serif;
-  font-size: 0.82rem; font-weight: 800; color: #fff;
+  font-size: 0.82rem; font-weight: 800; color: #fff8e8;
   transition: transform 0.1s, filter 0.1s, box-shadow 0.1s;
   position: relative; overflow: hidden; white-space: nowrap;
 }
 .ctrl-btn::after {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 45%;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.14), transparent);
   pointer-events: none;
 }
 .ctrl-btn:hover  { filter: brightness(1.22); transform: translateY(-2px); }
 .ctrl-btn:active { transform: translateY(0); filter: brightness(0.88); }
-.ctrl-btn:disabled { opacity: 0.28; cursor: not-allowed; transform: none !important; filter: none !important; }
+.ctrl-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none !important; filter: none !important; }
+
+/* Upgrade — rijke goud-amber */
 .ctrl-btn.upgrade {
-  background: linear-gradient(160deg, #d08020, #8a4800);
-  box-shadow: 0 3px 14px rgba(200,110,20,0.45);
-  border: 1px solid rgba(230,160,50,0.35);
+  background: linear-gradient(160deg, #c87818, #7a3e00);
+  box-shadow: 0 3px 16px rgba(180,100,10,0.55);
+  border: 1px solid rgba(240,170,50,0.4);
   font-size: 0.88rem; padding: 9px 16px;
 }
+/* Reroll — donker blauw BG-stijl */
 .ctrl-btn.reroll {
-  background: linear-gradient(160deg, #304080, #1a2250);
-  border: 1px solid rgba(80,110,220,0.35);
-  box-shadow: 0 3px 10px rgba(30,60,180,0.3);
+  background: linear-gradient(160deg, #1e3070, #0e1840);
+  border: 1px solid rgba(60,100,210,0.4);
+  box-shadow: 0 3px 12px rgba(20,50,170,0.35);
 }
+/* Freeze — ijs blauw */
 .ctrl-btn.freeze {
-  background: linear-gradient(160deg, #1c4ea0, #0c2660);
-  border: 1px solid rgba(60,120,230,0.4);
-  box-shadow: 0 3px 10px rgba(20,80,200,0.3);
+  background: linear-gradient(160deg, #144888, #082450);
+  border: 1px solid rgba(50,120,220,0.45);
+  box-shadow: 0 3px 12px rgba(15,70,190,0.3);
 }
 .ctrl-btn.freeze.active {
-  background: linear-gradient(160deg, #3a88d8, #1c58b0);
-  box-shadow: 0 0 20px rgba(80,170,255,0.7);
-  border-color: rgba(100,190,255,0.5);
+  background: linear-gradient(160deg, #2878c8, #104890);
+  box-shadow: 0 0 22px rgba(60,160,255,0.75);
+  border-color: rgba(80,180,255,0.55);
 }
+/* Klaar — helder groen */
 .ctrl-btn.ready {
-  background: linear-gradient(160deg, #1ab04a, #0a6028);
+  background: linear-gradient(160deg, #18a040, #086a20);
   font-size: 1rem; padding: 11px 32px;
-  box-shadow: 0 4px 18px rgba(20,180,70,0.5);
-  border: 1px solid rgba(50,220,100,0.35);
+  box-shadow: 0 4px 20px rgba(15,170,60,0.55);
+  border: 1px solid rgba(40,220,90,0.38);
   letter-spacing: 0.5px;
 }
-.ctrl-btn.ready:hover { box-shadow: 0 0 28px rgba(50,230,100,0.65); }
+.ctrl-btn.ready:hover { box-shadow: 0 0 30px rgba(40,230,90,0.7); }
 
 /* ── Formulier ───────────────────────────────────────────── */
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
 .form-group label {
-  font-size: 0.72rem; color: rgba(180,150,90,0.75);
+  font-size: 0.72rem; color: rgba(200,160,80,0.75);
   text-transform: uppercase; letter-spacing: 2px; font-weight: 700;
 }
 .form-group input {
-  background: rgba(8,5,2,0.96);
-  border: 1px solid rgba(140,90,20,0.35);
+  background: rgba(6,7,18,0.98);
+  border: 1px solid rgba(120,100,45,0.4);
   border-radius: 10px;
   color: var(--text); padding: 12px 16px;
   font-size: 1rem; font-family: 'Nunito', sans-serif;
@@ -124,39 +138,47 @@ html, body {
 }
 .form-group input:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(200,130,20,0.2);
+  box-shadow: 0 0 0 3px rgba(200,140,20,0.2), 0 0 12px rgba(180,120,15,0.15);
 }
 .error-msg { color: #e04040; text-align: center; font-size: 0.9rem; margin-top: 12px; }
 .hidden    { display: none !important; }
 
 /* ══════════════════════════════════════════════════════════
-   LANDING SCHERM
+   LANDING SCHERM — Episch BG welkomstscherm
 ══════════════════════════════════════════════════════════ */
 #screen-landing {
   align-items: center; justify-content: center; overflow: hidden;
   background:
-    radial-gradient(ellipse 130% 100% at 50% 110%, rgba(120,50,0,0.6) 0%, transparent 50%),
-    radial-gradient(ellipse 80% 60% at 20% 15%, rgba(60,20,100,0.5) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 50% at 80% 5%, rgba(80,25,140,0.4) 0%, transparent 50%),
-    radial-gradient(ellipse 100% 70% at 50% 50%, rgba(40,15,5,0.8) 0%, transparent 70%),
-    #06030101;
+    /* Goud-ambergloed van onder */
+    radial-gradient(ellipse 120% 70% at 50% 115%, rgba(160,80,0,0.65)    0%, transparent 48%),
+    /* Paarse mystieke gloed links */
+    radial-gradient(ellipse 70%  60% at 5%   20%, rgba(50,15,110,0.55)   0%, transparent 52%),
+    /* Paarse mystieke gloed rechts */
+    radial-gradient(ellipse 70%  55% at 95%  15%, rgba(70,20,140,0.45)   0%, transparent 50%),
+    /* Diepe middelnacht blauw */
+    radial-gradient(ellipse 110% 80% at 50%  50%, rgba(8,5,18,0.9)       0%, transparent 75%),
+    /* Fundamentele kleur */
+    linear-gradient(180deg, #04050e 0%, #08060f 50%, #0c0804 100%);
 }
+/* Sterrenhemel */
 #screen-landing::before {
   content: '';
   position: absolute; inset: 0;
   background-image:
-    radial-gradient(circle at 8%  20%, rgba(255,220,80,0.8)  0, rgba(255,220,80,0.8)  1.5px, transparent 1.5px),
-    radial-gradient(circle at 33% 10%, rgba(200,170,255,0.7) 0, rgba(200,170,255,0.7) 1px,   transparent 1px),
-    radial-gradient(circle at 68% 7%,  rgba(255,230,100,0.9) 0, rgba(255,230,100,0.9) 2px,   transparent 2px),
-    radial-gradient(circle at 85% 28%, rgba(180,160,255,0.6) 0, rgba(180,160,255,0.6) 1px,   transparent 1px),
-    radial-gradient(circle at 4%  65%, rgba(255,240,140,0.7) 0, rgba(255,240,140,0.7) 1px,   transparent 1px),
-    radial-gradient(circle at 52% 82%, rgba(200,180,255,0.6) 0, rgba(200,180,255,0.6) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 91% 72%, rgba(255,210,60,0.7)  0, rgba(255,210,60,0.7)  1px,   transparent 1px),
-    radial-gradient(circle at 24% 88%, rgba(255,255,180,0.6) 0, rgba(255,255,180,0.6) 1px,   transparent 1px),
-    radial-gradient(circle at 60% 40%, rgba(180,140,255,0.5) 0, rgba(180,140,255,0.5) 1px,   transparent 1px),
-    radial-gradient(circle at 44% 60%, rgba(255,220,80,0.6)  0, rgba(255,220,80,0.6)  1.5px, transparent 1.5px),
-    radial-gradient(circle at 77% 55%, rgba(255,255,200,0.4) 0, rgba(255,255,200,0.4) 1px,   transparent 1px),
-    radial-gradient(circle at 15% 50%, rgba(200,160,255,0.4) 0, rgba(200,160,255,0.4) 1px,   transparent 1px);
+    radial-gradient(circle at 8%  18%, rgba(255,230,100,0.85) 0, rgba(255,230,100,0.85) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 33%  8%, rgba(210,180,255,0.75) 0, rgba(210,180,255,0.75) 1px,   transparent 1px),
+    radial-gradient(circle at 68%  6%, rgba(255,240,110,0.95) 0, rgba(255,240,110,0.95) 2px,   transparent 2px),
+    radial-gradient(circle at 87% 25%, rgba(190,165,255,0.65) 0, rgba(190,165,255,0.65) 1px,   transparent 1px),
+    radial-gradient(circle at 4%  62%, rgba(255,245,150,0.75) 0, rgba(255,245,150,0.75) 1px,   transparent 1px),
+    radial-gradient(circle at 52% 80%, rgba(210,190,255,0.65) 0, rgba(210,190,255,0.65) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 93% 70%, rgba(255,218,60,0.75)  0, rgba(255,218,60,0.75)  1px,   transparent 1px),
+    radial-gradient(circle at 22% 85%, rgba(255,255,190,0.65) 0, rgba(255,255,190,0.65) 1px,   transparent 1px),
+    radial-gradient(circle at 60% 38%, rgba(190,155,255,0.55) 0, rgba(190,155,255,0.55) 1px,   transparent 1px),
+    radial-gradient(circle at 44% 58%, rgba(255,228,85,0.65)  0, rgba(255,228,85,0.65)  1.5px, transparent 1.5px),
+    radial-gradient(circle at 77% 52%, rgba(255,255,210,0.45) 0, rgba(255,255,210,0.45) 1px,   transparent 1px),
+    radial-gradient(circle at 15% 46%, rgba(210,170,255,0.45) 0, rgba(210,170,255,0.45) 1px,   transparent 1px),
+    radial-gradient(circle at 38% 30%, rgba(255,230,90,0.5)   0, rgba(255,230,90,0.5)   1px,   transparent 1px),
+    radial-gradient(circle at 72% 85%, rgba(220,200,255,0.5)  0, rgba(220,200,255,0.5)  1.5px, transparent 1.5px);
   animation: star-twinkle 5s ease-in-out infinite alternate;
   pointer-events: none; z-index: 0;
 }
@@ -166,16 +188,17 @@ html, body {
   position: relative; z-index: 1;
 }
 .game-title-emoji {
-  font-size: 4rem; line-height: 1;
-  margin-bottom: 4px;
-  filter: drop-shadow(0 0 24px rgba(240,180,40,0.7));
+  font-size: 4.5rem; line-height: 1;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 0 30px rgba(240,190,40,0.8)) drop-shadow(0 0 60px rgba(180,90,0,0.5));
   animation: title-glow 3s ease-in-out infinite alternate;
 }
 .game-title {
   font-family: 'Cinzel', serif;
   font-size: clamp(1.5rem, 4vw, 2.4rem);
   font-weight: 900;
-  background: linear-gradient(160deg, #ffd166 0%, #f4b942 35%, #d07010 65%, #f4b942 100%);
+  background: linear-gradient(160deg,
+    #ffe080 0%, #f0b030 25%, #c07820 50%, #f0b030 75%, #ffe080 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 30px rgba(240,180,40,0.6));
   animation: title-glow 3s ease-in-out infinite alternate;
@@ -183,17 +206,25 @@ html, body {
   word-break: keep-all; white-space: nowrap;
 }
 .game-subtitle {
-  color: rgba(180,140,80,0.6);
-  margin-bottom: 36px; font-size: 0.85rem; letter-spacing: 2px;
+  color: rgba(190,150,70,0.55);
+  margin-bottom: 36px; font-size: 0.85rem; letter-spacing: 3px;
   text-transform: uppercase;
 }
+/* Perkament-stijl formulierkaart — BG's kenmerkende donker paneel */
 .form-card {
-  background: rgba(8,5,2,0.97);
-  border: 1px solid rgba(160,100,20,0.35);
+  background:
+    linear-gradient(160deg, rgba(12,10,22,0.98), rgba(8,7,16,0.99));
+  border: 1px solid rgba(160,120,30,0.4);
   border-radius: 20px; padding: 30px 28px;
-  box-shadow: var(--shadow), 0 0 80px rgba(120,60,10,0.12),
-              inset 0 1px 0 rgba(255,255,255,0.04),
-              inset 0 -1px 0 rgba(0,0,0,0.3);
+  box-shadow:
+    var(--shadow),
+    0 0 80px rgba(100,60,10,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 0 40px rgba(30,20,60,0.4),
+    inset 0 -1px 0 rgba(0,0,0,0.4);
+  /* Subtiele binnenrand als steen-gravure */
+  outline: 1px solid rgba(40,30,80,0.5);
+  outline-offset: -4px;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -201,32 +232,39 @@ html, body {
 ══════════════════════════════════════════════════════════ */
 #screen-lobby {
   align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at 50% 60%, #120a04 0%, #06040202 100%);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(20,10,50,0.7) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 100%, rgba(100,50,0,0.4) 0%, transparent 50%),
+    #06070f;
 }
 .lobby-container { width: 100%; max-width: 520px; padding: 32px 24px; text-align: center; }
 .lobby-container h2 {
   font-family: 'Cinzel', serif; font-size: 2rem;
   color: var(--gold); margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(200,130,20,0.5);
 }
 .room-code-display {
   font-family: 'Cinzel', serif; font-size: 3rem; font-weight: 900;
   color: var(--gold); letter-spacing: 14px;
   margin: 20px 0; padding: 18px 24px;
-  background: rgba(10,6,2,0.98);
+  background: linear-gradient(160deg, rgba(10,8,22,0.99), rgba(8,6,18,0.99));
   border-radius: 14px;
-  border: 1px solid rgba(180,110,20,0.4);
-  box-shadow: 0 0 40px rgba(160,100,20,0.15), inset 0 1px 0 rgba(255,255,255,0.03);
+  border: 1px solid rgba(180,130,25,0.45);
+  box-shadow:
+    0 0 40px rgba(150,95,15,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    inset 0 0 30px rgba(20,15,50,0.5);
 }
 .lobby-hint { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 20px; }
 .player-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
 .player-item {
   display: flex; align-items: center; gap: 12px;
-  background: rgba(14,9,3,0.97);
+  background: linear-gradient(135deg, rgba(14,12,28,0.97), rgba(10,8,20,0.97));
   border-radius: 10px; padding: 12px 20px;
-  border: 1px solid rgba(100,65,15,0.3);
+  border: 1px solid rgba(90,70,30,0.35);
 }
 .host-badge {
-  background: linear-gradient(135deg, var(--gold), #a06000);
+  background: linear-gradient(135deg, var(--gold), #a06500);
   color: #000; padding: 2px 10px; border-radius: 6px;
   font-size: 0.68rem; font-weight: 800;
 }
@@ -239,8 +277,10 @@ html, body {
 #screen-hero-select {
   align-items: center; justify-content: center;
   background:
-    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(80,35,5,0.6) 0%, transparent 55%),
-    radial-gradient(ellipse at center, #100a04 0%, #060402 100%);
+    radial-gradient(ellipse 100% 60% at 50% 0%,   rgba(70,30,5,0.55)    0%, transparent 50%),
+    radial-gradient(ellipse 80%  50% at 0%   50%,  rgba(40,10,80,0.45)   0%, transparent 50%),
+    radial-gradient(ellipse 80%  50% at 100% 50%,  rgba(40,10,80,0.45)   0%, transparent 50%),
+    radial-gradient(ellipse at center,              rgba(10,8,20,0.95)    0%, #06070f       100%);
 }
 .hero-select-container { width: 100%; max-width: 1000px; padding: 28px 24px; text-align: center; }
 .hero-select-container h2 {
@@ -248,36 +288,37 @@ html, body {
   background: linear-gradient(135deg, var(--gold2), var(--gold));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   margin-bottom: 8px;
+  text-shadow: none; filter: drop-shadow(0 0 20px rgba(200,140,20,0.35));
 }
 .hero-cards-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
 .hero-card {
   width: 200px;
-  background: linear-gradient(170deg, #1c1208, #0e0a04);
-  border: 1px solid rgba(150,90,20,0.45);
+  background: linear-gradient(170deg, #121024, #0a0818);
+  border: 1px solid rgba(140,100,25,0.5);
   border-radius: 18px; padding: 22px 16px; cursor: pointer;
   transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s;
   text-align: center;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.75);
+  box-shadow: 0 6px 28px rgba(0,0,0,0.8), inset 0 0 30px rgba(20,15,50,0.4);
 }
 .hero-card:hover {
   transform: translateY(-10px) scale(1.03);
-  border-color: rgba(220,150,40,0.7);
-  box-shadow: 0 16px 48px rgba(160,80,10,0.5), 0 0 0 1px rgba(220,150,40,0.2);
+  border-color: rgba(230,160,40,0.75);
+  box-shadow: 0 16px 50px rgba(140,80,10,0.5), 0 0 0 1px rgba(230,160,40,0.22), inset 0 0 40px rgba(60,40,120,0.3);
 }
 .hero-card-portrait {
   width: 120px; height: 120px; border-radius: 50%; overflow: hidden;
   margin: 0 auto 14px;
-  border: 2px solid rgba(180,110,25,0.6);
-  background: #0e0a04;
+  border: 2px solid rgba(190,130,30,0.65);
+  background: #0a0818;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 24px rgba(160,90,20,0.35);
+  box-shadow: 0 0 28px rgba(150,90,20,0.4), 0 0 0 3px rgba(20,15,50,0.8);
 }
 .hero-card-portrait img { width: 100%; height: 100%; object-fit: cover; }
 .hero-card-emoji { font-size: 2.8rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 .hero-card-name  { font-family: 'Cinzel', serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: var(--gold2); }
 .hero-card-desc  { font-size: 0.73rem; color: var(--text-dim); line-height: 1.6; }
 .timer-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin: 12px 0; }
-.timer-fill { height: 100%; background: linear-gradient(90deg, #1a8040, #60c040, var(--gold)); border-radius: 3px; transition: width 1s linear; box-shadow: 0 0 6px rgba(80,200,80,0.3); }
+.timer-fill { height: 100%; background: linear-gradient(90deg, #1a7838, #50b838, var(--gold)); border-radius: 3px; transition: width 1s linear; box-shadow: 0 0 6px rgba(70,190,70,0.35); }
 
 /* ══════════════════════════════════════════════════════════
    MINION KAART
@@ -301,8 +342,8 @@ html, body {
   position: absolute; top: 7px; left: 9px;
   width: 72px; height: 72px; border-radius: 50%; overflow: hidden;
   border: 3px solid #c8a030;
-  box-shadow: 0 0 0 2px #3a1a00, 0 3px 14px rgba(0,0,0,0.8);
-  z-index: 2; background: #1a0e04;
+  box-shadow: 0 0 0 2px #1a0e20, 0 3px 14px rgba(0,0,0,0.8);
+  z-index: 2; background: #100c1a;
 }
 .mc-portrait-img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; }
 .mc-portrait-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; }
@@ -310,7 +351,7 @@ html, body {
   position: absolute; bottom: 6px; left: -4px;
   width: 34px; height: 34px; border-radius: 50%;
   background: radial-gradient(circle at 35% 25%, #fff8b0, #e09000, #5a2e00);
-  border: 3px solid #2a1200; color: #1a0800;
+  border: 3px solid #1a0a00; color: #1a0800;
   font-weight: 900; font-size: 1rem;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 12px rgba(0,0,0,0.9); z-index: 10;
@@ -319,14 +360,14 @@ html, body {
   position: absolute; bottom: 6px; right: -4px;
   width: 34px; height: 34px; border-radius: 50%;
   background: radial-gradient(circle at 35% 25%, #ffaaaa, #c01818, #5a0000);
-  border: 3px solid #2a0000; color: #fff;
+  border: 3px solid #200000; color: #fff;
   font-weight: 900; font-size: 1rem;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 12px rgba(0,0,0,0.9); z-index: 10;
 }
-.minion-card.golden .mc-portrait { border-color: #f5d020; box-shadow: 0 0 0 2px #3a1a00, 0 0 22px rgba(245,197,24,0.95); animation: golden-shimmer 2.5s ease-in-out infinite; }
+.minion-card.golden .mc-portrait { border-color: #f5d020; box-shadow: 0 0 0 2px #1a0e20, 0 0 22px rgba(245,197,24,0.95); animation: golden-shimmer 2.5s ease-in-out infinite; }
 .minion-card.golden::before { background: radial-gradient(circle at center,#fff8a0 0%,#ffe840 28%,#f5c518 56%,#b07800 100%); filter: drop-shadow(0 0 8px rgba(255,220,40,0.9)); animation: golden-shimmer 2.5s ease-in-out infinite; }
-.minion-card.taunt-ring .mc-portrait { border-color: #e0b830; box-shadow: 0 0 0 2px #6a4000, 0 0 18px rgba(200,160,48,0.85); }
+.minion-card.taunt-ring .mc-portrait { border-color: #e0b830; box-shadow: 0 0 0 2px #5a3500, 0 0 18px rgba(200,160,48,0.85); }
 .minion-card.divine-glow .mc-portrait { border-color: rgba(255,255,220,0.98); box-shadow: 0 0 0 2px rgba(255,255,200,0.6), 0 0 26px rgba(255,255,150,0.9); animation: divine-pulse 1.8s ease-in-out infinite; }
 .minion-card.low-hp .mc-hp { animation: pulse-red 1s infinite; }
 
@@ -335,31 +376,49 @@ html, body {
 ══════════════════════════════════════════════════════════ */
 #screen-game { overflow: hidden; flex-direction: column; }
 
-/* ── HUD ─────────────────────────────────────────────────── */
+/* ── HUD — gesculpteerde steen plaat met goud ────────────── */
 .game-hud {
   display: flex; align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
-  height: 50px;
+  padding: 0 16px;
+  height: 52px;
+  /* BG's kenmerkende donker blauw-zwart HUD met subtiele steen textuur */
   background:
-    linear-gradient(to bottom, rgba(5,3,1,0.99), rgba(8,5,2,0.97));
-  border-bottom: 1px solid rgba(140,80,15,0.3);
+    linear-gradient(to bottom,
+      rgba(6,5,14,0.99) 0%,
+      rgba(8,7,18,0.98) 60%,
+      rgba(10,8,20,0.97) 100%);
+  border-bottom: 1px solid rgba(150,110,25,0.45);
   flex-shrink: 0; z-index: 10;
-  box-shadow: 0 3px 28px rgba(0,0,0,0.8), 0 1px 0 rgba(180,110,20,0.08);
+  box-shadow:
+    0 3px 30px rgba(0,0,0,0.85),
+    0 1px 0 rgba(200,150,25,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    inset 0 -1px 0 rgba(0,0,0,0.5);
   position: relative;
+}
+/* Subtiele horizontale scheidingslijn effect */
+.game-hud::after {
+  content: '';
+  position: absolute; bottom: 0; left: 5%; right: 5%; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(200,150,30,0.35) 25%, rgba(240,190,50,0.55) 50%,
+    rgba(200,150,30,0.35) 75%, transparent);
+  pointer-events: none;
 }
 .hud-hero { display: flex; align-items: center; gap: 9px; }
 .hud-hero-portrait {
-  width: 32px; height: 32px; border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 1.15rem;
-  border: 1px solid rgba(180,120,25,0.5);
-  background: rgba(20,12,4,0.8);
-  box-shadow: 0 0 8px rgba(140,80,10,0.3);
+  border: 2px solid rgba(190,140,30,0.55);
+  background: linear-gradient(135deg, rgba(18,14,32,0.9), rgba(10,8,20,0.9));
+  box-shadow: 0 0 10px rgba(150,100,15,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .hud-hero-name {
   font-family: 'Cinzel', serif; font-size: 0.82rem; font-weight: 700;
-  color: rgba(220,170,80,0.9);
+  color: rgba(230,180,80,0.95);
+  text-shadow: 0 0 10px rgba(200,140,20,0.3);
 }
 
 .hud-center-block {
@@ -367,132 +426,153 @@ html, body {
   position: absolute; left: 50%; transform: translateX(-50%);
 }
 .hud-round-label {
-  font-size: 0.52rem; letter-spacing: 3px;
-  color: rgba(160,120,60,0.45); text-transform: uppercase;
+  font-size: 0.5rem; letter-spacing: 3.5px;
+  color: rgba(170,130,55,0.45); text-transform: uppercase;
 }
 .hud-round-num {
-  font-family: 'Cinzel', serif; font-size: 1.35rem; font-weight: 900;
+  font-family: 'Cinzel', serif; font-size: 1.38rem; font-weight: 900;
   color: var(--gold); line-height: 1.05;
+  text-shadow: 0 0 14px rgba(210,150,20,0.45);
 }
 
 .hud-stats { display: flex; gap: 5px; align-items: center; }
 .hud-stat {
   display: flex; align-items: center; gap: 5px;
-  background: rgba(255,255,255,0.035);
-  border: 1px solid rgba(255,255,255,0.055);
+  /* BG-stijl donker glazen pil */
+  background: linear-gradient(135deg, rgba(20,16,38,0.85), rgba(12,10,24,0.9));
+  border: 1px solid rgba(100,80,30,0.35);
   border-radius: 20px; padding: 5px 12px;
   font-size: 0.9rem; font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .hud-stat-icon { font-size: 0.85rem; }
-.hud-stat.hp   { color: #ff6868; border-color: rgba(220,50,50,0.3); background: rgba(180,20,20,0.1); }
-.hud-stat.gold { color: var(--gold); border-color: rgba(200,130,20,0.3); background: rgba(150,90,8,0.1); }
-.hud-stat.tier { color: #e09030; border-color: rgba(180,100,20,0.3); background: rgba(130,65,8,0.08); }
-.hud-gold-sep  { color: var(--gold-dim); font-size: 0.75rem; font-weight: 600; }
+.hud-stat.hp   { color: #ff6060; border-color: rgba(210,40,40,0.35); background: linear-gradient(135deg,rgba(30,6,6,0.9),rgba(20,4,4,0.95)); }
+.hud-stat.gold { color: var(--gold); border-color: rgba(190,130,20,0.35); background: linear-gradient(135deg,rgba(24,16,4,0.9),rgba(16,10,2,0.95)); }
+.hud-stat.tier { color: #e09030; border-color: rgba(170,100,20,0.35); background: linear-gradient(135deg,rgba(20,12,4,0.9),rgba(14,8,2,0.95)); }
+.hud-gold-sep  { color: rgba(130,95,25,0.6); font-size: 0.75rem; font-weight: 600; }
 
 /* ── Hoofd layout ───────────────────────────────────────── */
 .game-layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
-/* ── Tegenstanders sidebar ──────────────────────────────── */
+/* ── Tegenstanders sidebar — donkere steen zuil ─────────── */
 .opponents-sidebar {
-  width: 64px;
+  width: 68px;
   background:
-    linear-gradient(to right, rgba(4,3,1,0.99), rgba(6,4,2,0.97));
-  border-right: 1px solid rgba(100,60,10,0.25);
+    linear-gradient(to right,
+      rgba(4,4,12,0.99) 0%,
+      rgba(6,5,14,0.97) 100%);
+  border-right: 1px solid rgba(80,65,25,0.3);
   display: flex; flex-direction: column;
   align-items: center; padding: 10px 4px; gap: 8px;
   overflow-y: auto; flex-shrink: 0;
+  box-shadow: 2px 0 20px rgba(0,0,0,0.5);
 }
 .opp-portrait {
-  width: 48px; height: 48px; border-radius: 50%;
-  background: linear-gradient(160deg, #1a1006, #0e0a04);
-  border: 2px solid rgba(120,75,15,0.5);
+  width: 50px; height: 50px; border-radius: 50%;
+  background: linear-gradient(160deg, #181228, #0c0a1a);
+  border: 2px solid rgba(130,95,20,0.55);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   font-size: 1.2rem; position: relative; cursor: default;
   transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.7);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.04);
   overflow: hidden;
 }
-.opp-portrait:hover { border-color: rgba(200,140,30,0.65); box-shadow: 0 0 18px rgba(160,100,15,0.35); }
-.opp-portrait.dead { opacity: 0.26; filter: grayscale(1); }
+.opp-portrait:hover {
+  border-color: rgba(220,160,40,0.75);
+  box-shadow: 0 0 20px rgba(170,110,20,0.4), 0 3px 12px rgba(0,0,0,0.75);
+}
+.opp-portrait.dead { opacity: 0.22; filter: grayscale(1); }
 .opp-portrait .opp-hp-badge {
   position: absolute; bottom: -7px;
-  background: linear-gradient(135deg, #be1818, #780a0a);
+  background: linear-gradient(135deg, #c01515, #720808);
   color: #fff; font-size: 0.57rem; font-weight: 800;
   padding: 2px 6px; border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.5);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  border: 1px solid rgba(0,0,0,0.6);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.8);
   white-space: nowrap;
 }
 .opp-portrait .opp-name-tip {
-  position: absolute; left: 60px; top: 50%;
+  position: absolute; left: 62px; top: 50%;
   transform: translateY(-50%);
-  background: rgba(6,4,1,0.99);
-  border: 1px solid rgba(140,90,15,0.4);
+  background: linear-gradient(160deg, rgba(8,6,18,0.99), rgba(6,5,14,0.99));
+  border: 1px solid rgba(150,110,25,0.45);
   border-radius: 8px; padding: 5px 11px;
   font-size: 0.75rem; white-space: nowrap;
   display: none; z-index: 50; pointer-events: none;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.85);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.9), 0 0 12px rgba(100,70,10,0.15);
+  color: var(--text);
 }
 .opp-portrait:hover .opp-name-tip { display: block; }
 
 /* ══════════════════════════════════════════════════════════
-   ARENA  —  DE TAVERN SPEELOMGEVING
+   ARENA — De Tavern Speelomgeving
+   Kenmerkend BG: donker blauw-paars randen, warme amber kern
 ══════════════════════════════════════════════════════════ */
 .arena {
   flex: 1; display: flex; flex-direction: column;
   overflow: hidden; min-height: 0; position: relative;
 
-  /* Rijke tavern atmosfeer: warme kaarsvlam + diepe duisternis aan de randen */
   background:
-    radial-gradient(ellipse 100% 55% at 50% 42%, rgba(140,65,8,0.45) 0%, transparent 60%),
-    radial-gradient(ellipse 80%  40% at 50% 20%, rgba(100,45,5,0.3)  0%, transparent 55%),
-    radial-gradient(ellipse 120% 60% at 50% 90%, rgba(80,35,4,0.35)  0%, transparent 55%),
-    radial-gradient(ellipse 60%  80% at 0%  50%, rgba(20,10,40,0.3)  0%, transparent 50%),
-    radial-gradient(ellipse 60%  80% at 100% 50%, rgba(20,10,40,0.3) 0%, transparent 50%),
-    linear-gradient(180deg, #0a0603 0%, #0e0904 40%, #080604 100%);
+    /* Warme kaarsgloed in het midden */
+    radial-gradient(ellipse 90%  50% at 50% 45%, rgba(140,70,8,0.42)   0%, transparent 58%),
+    /* Lichter amber accent boven midden */
+    radial-gradient(ellipse 70%  35% at 50% 22%, rgba(110,50,5,0.28)   0%, transparent 52%),
+    /* Paars-blauw mystiek donker links */
+    radial-gradient(ellipse 65%  90% at 0%  50%, rgba(20,8,50,0.7)     0%, transparent 55%),
+    /* Paars-blauw mystiek donker rechts */
+    radial-gradient(ellipse 65%  90% at 100% 50%, rgba(20,8,50,0.7)    0%, transparent 55%),
+    /* Donker boven */
+    radial-gradient(ellipse 100% 40% at 50% 0%,  rgba(5,4,14,0.85)     0%, transparent 50%),
+    /* Donker onder */
+    radial-gradient(ellipse 100% 40% at 50% 100%,rgba(5,4,14,0.75)     0%, transparent 50%),
+    /* Fundamentele kleur: BG's donker middernacht-blauw */
+    linear-gradient(180deg, #070810 0%, #0a0a14 35%, #0c0910 70%, #090710 100%);
 }
 
-/* Subtiele hout/steen textuur laag */
+/* Subtiele steen/hout grid textuur */
 .arena::before {
   content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
     repeating-linear-gradient(90deg,
-      rgba(255,200,100,0.012) 0, rgba(255,200,100,0.012) 1px,
-      transparent 1px, transparent 100px),
+      rgba(200,170,80,0.008) 0, rgba(200,170,80,0.008) 1px,
+      transparent 1px, transparent 120px),
     repeating-linear-gradient(0deg,
-      rgba(255,200,100,0.015) 0, rgba(255,200,100,0.015) 1px,
-      transparent 1px, transparent 70px);
+      rgba(200,170,80,0.01)  0, rgba(200,170,80,0.01)  1px,
+      transparent 1px, transparent 80px);
 }
 
-/* Gloeiende middenscheiding */
+/* Gloeiende BG-stijl scheidsstreep */
 .arena::after {
   content: '';
   position: absolute;
-  left: 5%; right: 5%;
+  left: 4%; right: 4%;
   top: calc(50% - 1px);
   height: 2px;
   background: linear-gradient(90deg,
     transparent,
-    rgba(180,100,20,0.2) 20%,
-    rgba(240,170,40,0.45) 50%,
-    rgba(180,100,20,0.2) 80%,
+    rgba(160,90,15,0.18) 15%,
+    rgba(230,170,40,0.5) 50%,
+    rgba(160,90,15,0.18) 85%,
     transparent);
-  box-shadow: 0 0 12px rgba(200,130,20,0.18);
+  box-shadow: 0 0 14px rgba(210,140,20,0.2), 0 0 28px rgba(160,100,10,0.1);
   pointer-events: none; z-index: 1;
 }
 
 /* ══════════════════════════════════════════════════════════
-   SHOP SECTIE
+   SHOP SECTIE — Warme tavern toog
 ══════════════════════════════════════════════════════════ */
 .shop-section {
   flex-shrink: 0; position: relative; z-index: 3;
   background:
-    linear-gradient(to bottom, rgba(4,3,1,0.99), rgba(8,5,2,0.96));
-  border-bottom: 1px solid rgba(160,90,15,0.3);
+    linear-gradient(to bottom,
+      rgba(4,4,12,0.99)  0%,
+      rgba(7,5,15,0.98) 50%,
+      rgba(9,6,16,0.97) 100%);
+  border-bottom: 1px solid rgba(150,105,20,0.38);
   box-shadow:
-    0 4px 30px rgba(0,0,0,0.7),
-    0 1px 0 rgba(200,120,20,0.06),
-    inset 0 -1px 0 rgba(120,70,10,0.12);
+    0 4px 32px rgba(0,0,0,0.75),
+    0 1px 0 rgba(200,140,20,0.07),
+    inset 0 -1px 0 rgba(100,70,15,0.14);
 }
 .shop-section-header {
   display: flex; align-items: center;
@@ -502,8 +582,9 @@ html, body {
 .taverne-label {
   font-family: 'Cinzel', serif;
   font-size: 0.78rem; font-weight: 700;
-  color: rgba(210,150,50,0.65);
+  color: rgba(220,160,55,0.65);
   letter-spacing: 2.5px; text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(180,120,15,0.2);
 }
 .shop-header-actions { display: flex; gap: 7px; align-items: center; }
 .shop-card-row { padding: 5px 12px 12px; display: flex; justify-content: center; }
@@ -527,31 +608,33 @@ html, body {
 }
 .board-banner-line {
   flex: 1; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(200,130,30,0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(200,145,30,0.38), transparent);
 }
 .board-label {
   font-family: 'Cinzel', serif;
   font-size: 0.68rem; font-weight: 700;
-  color: rgba(200,140,45,0.52);
+  color: rgba(210,155,45,0.48);
   text-transform: uppercase; letter-spacing: 3px;
   white-space: nowrap;
 }
 
-/* (board-with-hero verwijderd — hero staat nu in hero-row-area) */
-
-/* Board speelveld mat — één rij, geen wrap */
+/* Board speelveld — tavern houten tafel mat */
 .board-slots {
   display: flex; gap: 10px;
   align-items: center; justify-content: center;
   flex-wrap: nowrap;
   padding: 14px 20px;
-  background: rgba(0,0,0,0.28);
+  /* BG's vechtarena mat: donker hout met warme gloed */
+  background:
+    radial-gradient(ellipse 80% 100% at 50% 50%, rgba(80,45,8,0.18) 0%, transparent 65%),
+    rgba(4,4,12,0.55);
   border-radius: 16px;
-  border: 1px solid rgba(150,90,15,0.22);
+  border: 1px solid rgba(130,90,18,0.28);
   box-shadow:
-    inset 0 0 50px rgba(0,0,0,0.55),
-    inset 0 2px 0 rgba(200,130,20,0.06),
-    0 4px 20px rgba(0,0,0,0.5);
+    inset 0 0 60px rgba(0,0,0,0.6),
+    inset 0 2px 0 rgba(200,140,20,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.4),
+    0 4px 24px rgba(0,0,0,0.55);
   overflow-x: auto;
   scrollbar-width: none;
   max-width: 100%;
@@ -559,28 +642,28 @@ html, body {
 
 .board-empty-slot {
   width: 140px; height: 187px;
-  border: 1px dashed rgba(150,95,20,0.18);
+  border: 1px dashed rgba(130,90,20,0.16);
   border-radius: var(--card-radius);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   transition: border-color 0.2s, background 0.2s;
-  background: rgba(255,255,255,0.006);
+  background: rgba(255,255,255,0.005);
   position: relative;
 }
 .board-empty-slot::before {
   content: '+';
   font-size: 1.6rem; font-weight: 200;
-  color: rgba(160,100,30,0.13);
+  color: rgba(160,110,35,0.11);
   position: absolute;
 }
 .board-empty-slot.drag-over {
-  border-color: rgba(220,150,40,0.6);
-  background: rgba(180,110,20,0.08);
-  box-shadow: inset 0 0 24px rgba(180,110,20,0.1);
+  border-color: rgba(230,160,40,0.65);
+  background: rgba(160,100,15,0.09);
+  box-shadow: inset 0 0 28px rgba(160,100,15,0.1);
 }
 
 /* ══════════════════════════════════════════════════════════
-   HERO ROW — strook tussen board en hand (BG-stijl)
+   HERO ROW — Held-strook BG-stijl
 ══════════════════════════════════════════════════════════ */
 .hero-row-area {
   flex-shrink: 0;
@@ -590,33 +673,31 @@ html, body {
   position: relative; z-index: 3;
   background: linear-gradient(to bottom,
     rgba(0,0,0,0.0),
-    rgba(6,4,2,0.7) 60%,
-    rgba(6,4,2,0.88));
-  border-top: 1px solid rgba(150,85,12,0.18);
+    rgba(6,5,14,0.72) 55%,
+    rgba(8,6,16,0.9));
+  border-top: 1px solid rgba(130,90,15,0.2);
 }
 
-/* Info naast portret */
 .hbd-info {
   display: flex; flex-direction: column; gap: 2px;
 }
 
-/* Portret ring — rijk gouden frame (compacter voor de strip) */
+/* Portret ring — gouden Hearthstone-stijl frame */
 .hbd-portrait-ring {
   width: 62px; height: 62px;
   border-radius: 50%;
   position: relative;
-  /* Dubbele ring: buitenste goud, binnenste donker */
   background:
-    radial-gradient(circle at 35% 25%, rgba(255,230,120,0.25), transparent 60%),
-    radial-gradient(circle at center, #2a1a06, #1a0e04);
+    radial-gradient(circle at 35% 25%, rgba(255,230,120,0.22), transparent 60%),
+    radial-gradient(circle at center, #1e1530, #120c22);
   border: 3px solid var(--gold);
   box-shadow:
-    0 0 0 1px rgba(0,0,0,0.6),
-    0 0 0 4px rgba(100,60,8,0.5),
-    0 0 22px rgba(200,140,30,0.5),
-    0 0 44px rgba(160,100,20,0.25),
-    inset 0 2px 0 rgba(255,240,150,0.18),
-    inset 0 0 14px rgba(0,0,0,0.6);
+    0 0 0 1px rgba(0,0,0,0.7),
+    0 0 0 4px rgba(80,50,10,0.55),
+    0 0 22px rgba(200,140,30,0.55),
+    0 0 48px rgba(150,90,15,0.25),
+    inset 0 2px 0 rgba(255,240,150,0.15),
+    inset 0 0 16px rgba(0,0,0,0.65);
   overflow: hidden;
   cursor: default;
   animation: hero-ring-glow 4s ease-in-out infinite alternate;
@@ -628,45 +709,43 @@ html, body {
 }
 .hbd-portrait img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
-/* Innerlijk highlight glans op het portret */
 .hbd-portrait-ring::after {
   content: '';
   position: absolute; top: 4px; left: 10px; right: 10px; height: 32%;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
   border-radius: 50%; pointer-events: none;
 }
 
-/* HP gem — echte Hearthstone gem stijl */
+/* HP gem — authentieke Hearthstone gem */
 .hbd-hp-gem {
   width: 46px; height: 46px;
   border-radius: 50%;
   position: relative;
   background:
-    radial-gradient(circle at 38% 28%, rgba(255,180,180,0.7) 0%, transparent 45%),
-    radial-gradient(circle at center, #d01010, #7a0606);
+    radial-gradient(circle at 38% 28%, rgba(255,180,180,0.75) 0%, transparent 45%),
+    radial-gradient(circle at center, #c81010, #700505);
   border: 2px solid rgba(255,110,110,0.55);
   box-shadow:
-    0 0 0 1px rgba(0,0,0,0.5),
-    0 0 16px rgba(220,20,20,0.75),
-    0 0 32px rgba(180,10,10,0.4),
-    inset 0 2px 4px rgba(255,200,200,0.35);
+    0 0 0 1px rgba(0,0,0,0.6),
+    0 0 16px rgba(220,20,20,0.8),
+    0 0 36px rgba(180,10,10,0.42),
+    inset 0 2px 4px rgba(255,200,200,0.32);
   display: flex; align-items: center; justify-content: center;
   cursor: default;
   transition: box-shadow 0.3s;
 }
-/* Glans bolletje op de gem */
 .hbd-hp-gem::before {
   content: '';
   position: absolute; top: 5px; left: 10px; right: 10px; height: 30%;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.38), transparent);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.36), transparent);
   border-radius: 50%; pointer-events: none;
 }
 .hbd-hp-gem.low-hp {
   animation: pulse-red 0.9s ease-in-out infinite;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 0 26px rgba(255,30,30,0.9), 0 0 52px rgba(200,10,10,0.55);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 28px rgba(255,30,30,0.95), 0 0 56px rgba(200,10,10,0.6);
 }
 .hbd-sub {
-  font-size: 0.58rem; color: rgba(160,110,40,0.45);
+  font-size: 0.58rem; color: rgba(170,120,45,0.42);
   text-transform: uppercase; letter-spacing: 1px;
 }
 .hbd-hp-val {
@@ -679,10 +758,11 @@ html, body {
 .hbd-name {
   font-family: 'Cinzel', serif;
   font-size: 0.72rem; font-weight: 700;
-  color: rgba(220,170,70,0.8);
+  color: rgba(230,180,70,0.85);
   letter-spacing: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 120px;
+  text-shadow: 0 0 8px rgba(180,120,15,0.25);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -691,23 +771,26 @@ html, body {
 .hand-area {
   flex-shrink: 0; position: relative; z-index: 3;
   background:
-    linear-gradient(to top, rgba(4,3,1,0.99), rgba(6,4,2,0.96));
-  border-top: 1px solid rgba(150,85,12,0.28);
+    linear-gradient(to top,
+      rgba(4,4,12,0.99)  0%,
+      rgba(6,5,14,0.98) 50%,
+      rgba(8,6,16,0.96) 100%);
+  border-top: 1px solid rgba(140,95,18,0.32);
   padding: 0 12px 10px;
   display: flex; gap: 10px; align-items: flex-start;
-  box-shadow: 0 -4px 28px rgba(0,0,0,0.6), inset 0 1px 0 rgba(180,110,15,0.06);
+  box-shadow: 0 -4px 30px rgba(0,0,0,0.65), inset 0 1px 0 rgba(180,120,15,0.07);
 }
 .hand-main { flex: 1; min-width: 0; }
 .hand-slots {
   display: flex; gap: 10px; justify-content: flex-start;
   align-items: flex-end; padding: 10px 4px 6px;
   overflow-x: auto; min-height: 60px;
-  scrollbar-width: thin; scrollbar-color: rgba(160,100,25,0.3) transparent;
+  scrollbar-width: thin; scrollbar-color: rgba(160,110,28,0.3) transparent;
 }
 .hand-empty-msg {
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 40px;
-  color: rgba(120,80,20,0.28); font-size: 0.75rem; font-style: italic;
+  color: rgba(130,90,25,0.26); font-size: 0.75rem; font-style: italic;
 }
 .hand-slots .shop-card-full:hover { transform: translateY(-18px) scale(1.07); }
 
@@ -727,53 +810,57 @@ html, body {
 }
 .timer-fill {
   height: 100%;
-  background: linear-gradient(90deg, #1a8040, var(--gold));
+  background: linear-gradient(90deg, #157030, var(--gold));
   border-radius: 3px; transition: width 1s linear;
-  box-shadow: 0 0 6px rgba(60,200,60,0.3);
+  box-shadow: 0 0 6px rgba(50,190,60,0.3);
 }
 .ready-indicator { font-size: 0.72rem; color: var(--text-dim); }
 
-/* Hero power panel */
+/* Hero power panel — BG's paarse magie paneel */
 .hero-power-panel {
   width: 152px; flex-shrink: 0;
-  background: linear-gradient(160deg, rgba(20,10,50,0.98), rgba(8,4,22,0.97));
-  border: 1px solid rgba(120,60,220,0.4);
+  background:
+    linear-gradient(160deg, rgba(16,8,44,0.99), rgba(8,4,22,0.99));
+  border: 1px solid rgba(110,55,210,0.45);
   border-radius: 14px; padding: 11px 10px;
   display: flex; flex-direction: column;
   align-items: center; gap: 5px; margin-top: 8px;
-  box-shadow: 0 0 30px rgba(80,25,170,0.2), inset 0 1px 0 rgba(255,255,255,0.04);
+  box-shadow:
+    0 0 32px rgba(70,20,160,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 0 30px rgba(40,15,100,0.3);
 }
-.hp-title { font-size: 0.55rem; color: rgba(180,120,255,0.6); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
-.hp-emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 0 6px rgba(180,120,255,0.45)); }
-.hp-hero-name { font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 700; color: #e8d8ff; text-align: center; }
-.hp-desc { font-size: 0.6rem; color: rgba(190,155,235,0.8); text-align: center; line-height: 1.4; }
+.hp-title { font-size: 0.55rem; color: rgba(190,130,255,0.6); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+.hp-emoji { font-size: 1.9rem; line-height: 1; filter: drop-shadow(0 0 8px rgba(190,130,255,0.5)); }
+.hp-hero-name { font-family: 'Cinzel', serif; font-size: 0.68rem; font-weight: 700; color: #eedcff; text-align: center; }
+.hp-desc { font-size: 0.6rem; color: rgba(200,165,240,0.82); text-align: center; line-height: 1.4; }
 .hp-activate-btn {
   width: 100%; padding: 8px 6px;
   font-family: 'Nunito', sans-serif; font-size: 0.8rem; font-weight: 800;
-  background: linear-gradient(160deg, #6020d0, #380a90);
-  color: #eedeff; border: 1px solid rgba(160,80,255,0.5); border-radius: 8px;
+  background: linear-gradient(160deg, #5518c0, #300888);
+  color: #eedeff; border: 1px solid rgba(150,70,255,0.55); border-radius: 8px;
   cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
-  margin-top: 2px; box-shadow: 0 3px 14px rgba(70,15,170,0.45);
+  margin-top: 2px; box-shadow: 0 3px 14px rgba(60,10,160,0.5);
 }
-.hp-activate-btn:hover { transform: translateY(-2px); box-shadow: 0 0 22px rgba(160,80,255,0.65); border-color: rgba(200,120,255,0.7); }
-.hp-activate-btn:disabled { opacity: 0.28; cursor: not-allowed; transform: none; box-shadow: none; }
+.hp-activate-btn:hover { transform: translateY(-2px); box-shadow: 0 0 24px rgba(160,80,255,0.7); border-color: rgba(210,130,255,0.75); }
+.hp-activate-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; box-shadow: none; }
 .hero-power-area { display: contents; }
 
 /* Magnetize / spell targeting */
 .magnetize-target { box-shadow: 0 0 20px 6px #00d8ff !important; cursor: crosshair !important; outline: 2px solid rgba(0,220,255,0.55) !important; }
 .magnetize-targeting .board-empty-slot { pointer-events: none; opacity: 0.25; }
 #board-slots.spell-targeting .shop-card-full { outline: 2px dashed rgba(200,100,255,0.65); cursor: crosshair !important; animation: target-pulse 1.2s ease-in-out infinite; }
-#board-slots.spell-targeting .shop-card-full:hover { outline: 3px solid rgba(255,120,255,0.9); box-shadow: 0 0 26px rgba(255,100,255,0.7); }
+#board-slots.spell-targeting .shop-card-full:hover { outline: 3px solid rgba(255,120,255,0.9); box-shadow: 0 0 28px rgba(255,100,255,0.7); }
 
-/* Pass knop op handkaarten */
+/* Pass knop */
 .hand-pass-btn {
   position: absolute; bottom: 4px; right: 4px;
-  background: rgba(0,0,0,0.75); color: var(--gold);
+  background: rgba(0,0,0,0.8); color: var(--gold);
   border-radius: 5px; font-size: 0.58em;
   padding: 2px 5px; cursor: pointer; z-index: 6;
   user-select: none; pointer-events: all;
 }
-.hand-pass-btn:hover { background: rgba(100,60,0,0.92); color: #fff; }
+.hand-pass-btn:hover { background: rgba(80,50,5,0.95); color: #fff; }
 
 /* ══════════════════════════════════════════════════════════
    SHOP KAART (OVAL)
@@ -796,19 +883,19 @@ html, body {
 .shop-card .mc-portrait-fallback { font-size: 1.9rem; }
 .shop-card .mc-atk, .shop-card .mc-hp { width: 28px; height: 28px; font-size: 0.85rem; bottom: 4px; }
 .shop-card .mc-atk { left: -2px; } .shop-card .mc-hp { right: -2px; }
-.shop-card.golden .mc-portrait { border-color: #f5d020; box-shadow: 0 0 0 2px #3a1a00, 0 0 16px rgba(245,197,24,0.95); animation: golden-shimmer 2.5s ease-in-out infinite; }
+.shop-card.golden .mc-portrait { border-color: #f5d020; box-shadow: 0 0 0 2px #1a0e20, 0 0 16px rgba(245,197,24,0.95); animation: golden-shimmer 2.5s ease-in-out infinite; }
 .shop-card.golden::before { background: radial-gradient(circle at center,#fff8a0 0%,#ffe840 28%,#f5c518 56%,#b07800 100%); animation: golden-shimmer 2.5s ease-in-out infinite; }
-.shop-card.taunt-ring .mc-portrait { border-color: #e0b830; box-shadow: 0 0 0 2px #6a4000, 0 0 14px rgba(200,160,48,0.7); }
+.shop-card.taunt-ring .mc-portrait { border-color: #e0b830; box-shadow: 0 0 0 2px #5a3500, 0 0 14px rgba(200,160,48,0.7); }
 .shop-card.divine-glow .mc-portrait { border-color: rgba(255,255,220,0.98); box-shadow: 0 0 0 2px rgba(255,255,200,0.5), 0 0 18px rgba(255,255,150,0.75); }
 .shop-card-cost {
   position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(135deg, #e09810, #8a5800);
-  border: 2px solid #3a2000; color: #fff8e0;
+  background: linear-gradient(135deg, #d09010, #804800);
+  border: 2px solid #1e0e00; color: #fff8e0;
   font-weight: 900; font-size: 0.75rem;
   padding: 2px 9px; border-radius: 10px; white-space: nowrap;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.8); z-index: 20;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.85); z-index: 20;
 }
-.shop-empty { width: 78px; height: 90px; border: 1px dashed rgba(120,75,15,0.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: rgba(120,75,15,0.22); font-size: 1rem; flex-shrink: 0; }
+.shop-empty { width: 78px; height: 90px; border: 1px dashed rgba(110,80,18,0.16); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: rgba(110,80,18,0.2); font-size: 1rem; flex-shrink: 0; }
 
 /* ── Volledige wiki card ──────────────────────────────────── */
 .shop-card-full {
@@ -816,69 +903,69 @@ html, body {
   transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), filter 0.2s, box-shadow 0.2s;
   border-radius: var(--card-radius);
 }
-.shop-card-full:hover { transform: translateY(-16px) scale(1.07); filter: brightness(1.16); z-index: 20; box-shadow: 0 22px 48px rgba(0,0,0,0.8); }
+.shop-card-full:hover { transform: translateY(-16px) scale(1.07); filter: brightness(1.16); z-index: 20; box-shadow: 0 22px 50px rgba(0,0,0,0.85); }
 .shop-card-full.golden { filter: drop-shadow(0 0 14px rgba(245,197,24,0.95)) brightness(1.08); animation: golden-shimmer 2.5s ease-in-out infinite; }
 .shop-card-full.drag-over { outline: 2px dashed var(--gold); outline-offset: 3px; opacity: 0.7; }
-.shop-card-full.taunt-outline { outline: 3px solid #d0a820; outline-offset: 2px; box-shadow: 0 0 14px rgba(200,160,30,0.4); }
-.shop-card-full.divine-outline { outline: 3px solid rgba(255,255,200,0.95); outline-offset: 2px; box-shadow: 0 0 22px rgba(255,255,150,0.7); animation: divine-pulse 1.8s ease-in-out infinite; }
+.shop-card-full.taunt-outline { outline: 3px solid #d0a820; outline-offset: 2px; box-shadow: 0 0 16px rgba(200,160,30,0.42); }
+.shop-card-full.divine-outline { outline: 3px solid rgba(255,255,200,0.95); outline-offset: 2px; box-shadow: 0 0 24px rgba(255,255,150,0.72); animation: divine-pulse 1.8s ease-in-out infinite; }
 .shop-card-full-img { width: 100%; height: auto; display: block; pointer-events: none; border-radius: var(--card-radius); }
 .shop-card-full-fb {
   width: 140px; height: 187px;
-  background: linear-gradient(160deg, #1c1206, #0c0a04);
-  border: 1px solid rgba(140,85,20,0.45);
+  background: linear-gradient(160deg, #181030, #0c0820);
+  border: 1px solid rgba(130,90,22,0.48);
   border-radius: 50% 50% 45% 45% / 42% 42% 56% 56%;
   display: flex; flex-direction: column; align-items: center; justify-content: space-around;
   padding: 26px 12px 16px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 0 30px rgba(20,12,50,0.4);
 }
 .sfb-emoji { font-size: 3rem; line-height: 1; }
 .sfb-name { font-size: 0.7rem; font-weight: 700; text-align: center; color: var(--text); padding: 0 8px; line-height: 1.3; }
 .sfb-stats { display: flex; gap: 16px; }
-.sfb-atk { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 25%,#fff8b0,#e09000,#5a2e00); border: 2px solid #2a1200; color: #1a0800; font-weight: 900; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.8); }
-.sfb-hp  { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 25%,#ffaaaa,#c01818,#5a0000); border: 2px solid #2a0000; color: #fff; font-weight: 900; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.8); }
-.shop-empty-full { width: 140px; height: 187px; border: 1px dashed rgba(110,70,15,0.12); border-radius: var(--card-radius); flex-shrink: 0; }
+.sfb-atk { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 25%,#fff8b0,#e09000,#5a2e00); border: 2px solid #1a0a00; color: #1a0800; font-weight: 900; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+.sfb-hp  { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 25%,#ffaaaa,#c01818,#5a0000); border: 2px solid #200000; color: #fff; font-weight: 900; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+.shop-empty-full { width: 140px; height: 187px; border: 1px dashed rgba(100,70,18,0.12); border-radius: var(--card-radius); flex-shrink: 0; }
 
 /* ── Spreuk kaart ──────────────────────────────────────── */
 .spell-card-full {
   position: relative; width: 140px; height: 187px;
   border-radius: var(--card-radius);
-  background: linear-gradient(160deg, #1c0842, #080420);
-  border: 1px solid rgba(120,55,215,0.48);
+  background: linear-gradient(160deg, #180840, #080320);
+  border: 1px solid rgba(110,50,205,0.5);
   cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
-  box-shadow: 0 0 16px rgba(110,45,195,0.28);
+  box-shadow: 0 0 18px rgba(100,40,185,0.3), inset 0 0 30px rgba(30,10,80,0.4);
 }
-.spell-card-full:hover { transform: translateY(-10px) scale(1.07); box-shadow: 0 0 32px rgba(155,75,255,0.6), 0 16px 36px rgba(0,0,0,0.7); border-color: rgba(190,95,255,0.65); }
+.spell-card-full:hover { transform: translateY(-10px) scale(1.07); box-shadow: 0 0 36px rgba(155,75,255,0.65), 0 16px 38px rgba(0,0,0,0.75); border-color: rgba(190,95,255,0.7); }
 .spell-card-fb { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; text-align: center; }
 .spell-card-fb .sfb-emoji { font-size: 2.4rem; }
-.spell-card-fb .sfb-name { font-size: 0.7rem; font-weight: 700; color: #e8d0ff; line-height: 1.3; }
-.spell-tier-badge { font-size: 0.6rem; background: rgba(95,38,175,0.5); color: #d0a0ff; border-radius: 5px; padding: 2px 7px; border: 1px solid rgba(130,65,215,0.3); }
+.spell-card-fb .sfb-name { font-size: 0.7rem; font-weight: 700; color: #e8d4ff; line-height: 1.3; }
+.spell-tier-badge { font-size: 0.6rem; background: rgba(85,35,165,0.5); color: #d4a4ff; border-radius: 5px; padding: 2px 7px; border: 1px solid rgba(120,60,210,0.32); }
 
 /* ── Blood Gem kaart ────────────────────────────────────── */
 .blood-gem-card {
   position: relative; width: 140px; height: 187px;
   border-radius: var(--card-radius);
-  background: linear-gradient(160deg, #420808, #1c0404);
-  border: 1px solid rgba(175,38,38,0.48);
+  background: linear-gradient(160deg, #3a0606, #180404);
+  border: 1px solid rgba(165,35,35,0.5);
   cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
-  box-shadow: 0 0 16px rgba(175,28,28,0.28);
+  box-shadow: 0 0 18px rgba(165,22,22,0.3), inset 0 0 30px rgba(60,5,5,0.4);
 }
-.blood-gem-card:hover { transform: translateY(-10px) scale(1.07); box-shadow: 0 0 32px rgba(255,55,55,0.55), 0 16px 36px rgba(0,0,0,0.7); border-color: rgba(255,75,75,0.65); }
+.blood-gem-card:hover { transform: translateY(-10px) scale(1.07); box-shadow: 0 0 36px rgba(255,50,50,0.6), 0 16px 38px rgba(0,0,0,0.75); border-color: rgba(255,70,70,0.68); }
 .blood-gem-card .sfb-name { font-size: 0.7rem; font-weight: 700; color: #ffbbbb; line-height: 1.2; }
-.bgem-desc { font-size: 0.64rem; color: rgba(255,195,195,0.82); line-height: 1.4; text-align: center; }
+.bgem-desc { font-size: 0.64rem; color: rgba(255,195,195,0.85); line-height: 1.4; text-align: center; }
 
 /* ══════════════════════════════════════════════════════════
    TOOLTIP
 ══════════════════════════════════════════════════════════ */
 .minion-tooltip {
   position: fixed; z-index: 1000;
-  background: linear-gradient(160deg, rgba(8,5,2,0.99), rgba(5,3,1,0.99));
-  border: 1px solid rgba(160,95,18,0.45);
+  background: linear-gradient(160deg, rgba(8,6,18,0.99), rgba(5,4,14,0.99));
+  border: 1px solid rgba(160,110,22,0.48);
   border-radius: 14px; padding: 14px 16px; max-width: 215px;
-  box-shadow: var(--shadow), 0 0 32px rgba(120,70,10,0.18);
+  box-shadow: var(--shadow), 0 0 36px rgba(110,70,12,0.18);
   pointer-events: none; font-size: 0.82rem;
   backdrop-filter: blur(10px);
 }
@@ -886,7 +973,7 @@ html, body {
 .tip-tribe { color: var(--text-dim); font-size: 0.7rem; margin-bottom: 10px; }
 .tip-stats { display: flex; gap: 14px; margin-bottom: 8px; font-weight: 800; }
 .tip-stats .atk { color: #e07820; } .tip-stats .hp { color: #e03535; }
-.tip-kws   { font-size: 0.72rem; color: #c0a060; margin-bottom: 6px; }
+.tip-kws   { font-size: 0.72rem; color: #c0a860; margin-bottom: 6px; }
 .tip-desc  { color: var(--text-dim); font-size: 0.76rem; line-height: 1.6; }
 
 /* ══════════════════════════════════════════════════════════
@@ -894,13 +981,13 @@ html, body {
 ══════════════════════════════════════════════════════════ */
 .sell-zone {
   position: fixed; bottom: 0; left: 0; right: 0; height: 66px;
-  background: linear-gradient(to top, rgba(200,20,20,0.9), transparent);
-  border-top: 2px dashed rgba(240,50,50,0.55);
+  background: linear-gradient(to top, rgba(200,15,15,0.88), transparent);
+  border-top: 2px dashed rgba(235,45,45,0.55);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; font-weight: 800; color: #ff7070;
+  font-size: 1rem; font-weight: 800; color: #ff6868;
   z-index: 100; animation: sell-zone-breathe 1.5s ease-in-out infinite;
 }
-.sell-zone.drag-over { background: linear-gradient(to top, rgba(220,30,30,0.96), transparent); box-shadow: 0 -6px 30px rgba(215,28,28,0.55); }
+.sell-zone.drag-over { background: linear-gradient(to top, rgba(215,25,25,0.95), transparent); box-shadow: 0 -6px 32px rgba(210,22,22,0.55); }
 
 /* ══════════════════════════════════════════════════════════
    COMBAT SCHERM
@@ -909,14 +996,17 @@ html, body {
 .combat-arena-bg {
   display: flex; flex-direction: column; flex: 1;
   background:
-    radial-gradient(ellipse 100% 80% at 50% 50%, #150904 0%, #050208 100%);
+    /* Duistere paars-blauw gevechtssfeer */
+    radial-gradient(ellipse 90%  70% at 50% 50%, rgba(18,8,40,0.9) 0%, transparent 65%),
+    radial-gradient(ellipse 100% 100% at 50% 0%,  rgba(60,20,5,0.5)  0%, transparent 50%),
+    linear-gradient(180deg, #050508 0%, #080610 50%, #050408 100%);
   overflow: hidden;
 }
 .combat-header {
   text-align: center; padding: 14px 20px;
-  background: linear-gradient(to bottom, rgba(4,2,1,0.99), rgba(6,3,1,0.93));
-  border-bottom: 1px solid rgba(160,85,12,0.22);
-  flex-shrink: 0; box-shadow: 0 3px 28px rgba(0,0,0,0.7);
+  background: linear-gradient(to bottom, rgba(4,3,10,0.99), rgba(6,4,14,0.95));
+  border-bottom: 1px solid rgba(150,100,18,0.25);
+  flex-shrink: 0; box-shadow: 0 3px 30px rgba(0,0,0,0.75);
 }
 .combat-header h2 {
   font-family: 'Cinzel', serif; font-size: 1.35rem;
@@ -925,31 +1015,31 @@ html, body {
 }
 .combat-field { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .combat-side { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; min-height: 0; }
-.combat-side.enemy { background: linear-gradient(to bottom, rgba(100,15,15,0.1), transparent); }
-.combat-side.player { background: linear-gradient(to top, rgba(15,15,100,0.1), transparent); }
+.combat-side.enemy { background: linear-gradient(to bottom, rgba(80,10,10,0.1), transparent); }
+.combat-side.player { background: linear-gradient(to top, rgba(10,10,80,0.1), transparent); }
 .combat-board { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .combat-hp-row { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-dim); margin: 6px 0; }
 .combat-hp-val { color: var(--hp-red); font-weight: 800; font-size: 1.05rem; }
 .combat-divider-line {
   height: 2px; flex-shrink: 0;
-  background: linear-gradient(90deg, transparent, rgba(200,130,25,0.38) 30%, rgba(240,185,40,0.65) 50%, rgba(200,130,25,0.38) 70%, transparent);
-  box-shadow: 0 0 24px rgba(200,130,25,0.22);
+  background: linear-gradient(90deg, transparent, rgba(190,125,22,0.35) 28%, rgba(240,185,40,0.65) 50%, rgba(190,125,22,0.35) 72%, transparent);
+  box-shadow: 0 0 26px rgba(200,135,22,0.22);
 }
 .combat-result-banner { display: inline-block; margin-top: 10px; font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 900; padding: 8px 28px; border-radius: 10px; animation: bounceIn 0.4s ease; }
-.combat-result-banner.won  { background: linear-gradient(135deg, #18903a, #0a5a22); color: #fff; box-shadow: 0 0 24px rgba(30,180,60,0.5); }
-.combat-result-banner.lost { background: linear-gradient(135deg, #8a1010, #5a0808); color: #fff; box-shadow: 0 0 24px rgba(180,30,30,0.5); }
-.combat-result-banner.tie  { background: linear-gradient(135deg, #3a3860, #22203a); color: #fff; }
-.combat-log { max-height: 88px; overflow-y: auto; padding: 6px 16px; font-size: 0.76rem; color: var(--text-dim); border-top: 1px solid rgba(80,50,8,0.22); flex-shrink: 0; background: rgba(0,0,0,0.35); }
-.cle { padding: 2px 0; } .cle.won { color: #40c060; } .cle.lost { color: #c04040; }
+.combat-result-banner.won  { background: linear-gradient(135deg, #158035, #085020); color: #fff; box-shadow: 0 0 26px rgba(25,170,55,0.55); }
+.combat-result-banner.lost { background: linear-gradient(135deg, #800c0c, #500505); color: #fff; box-shadow: 0 0 26px rgba(170,25,25,0.55); }
+.combat-result-banner.tie  { background: linear-gradient(135deg, #30304a, #1e1c32); color: #fff; }
+.combat-log { max-height: 88px; overflow-y: auto; padding: 6px 16px; font-size: 0.76rem; color: var(--text-dim); border-top: 1px solid rgba(70,50,10,0.22); flex-shrink: 0; background: rgba(0,0,0,0.35); }
+.cle { padding: 2px 0; } .cle.won { color: #38b858; } .cle.lost { color: #c03838; }
 
 /* Combat minion */
 .combat-minion { position: relative; width: 90px; height: 104px; flex-shrink: 0; transition: transform 0.15s; }
 .combat-minion::before { content: ''; position: absolute; top: 2px; left: 4px; width: 82px; height: 82px; background: radial-gradient(circle at center,#fff8b0 0%,#f5c518 28%,#c8900a 58%,#6a4000 100%); clip-path: polygon(50% 0%,63% 18%,85% 15%,82% 37%,100% 50%,82% 63%,85% 85%,63% 82%,50% 100%,37% 82%,15% 85%,18% 63%,0% 50%,18% 37%,15% 15%,37% 18%); z-index: 0; pointer-events: none; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.7)); }
 .combat-minion .mc-atk { bottom: 6px; left: -4px; width: 32px; height: 32px; font-size: 0.95rem; }
 .combat-minion .mc-hp  { bottom: 6px; right: -4px; width: 32px; height: 32px; font-size: 0.95rem; }
-.combat-minion.golden .mc-portrait { border-color: #f5d020; box-shadow: 0 0 0 2px #3a1a00, 0 0 18px rgba(245,197,24,0.95); animation: golden-shimmer 2.5s ease-in-out infinite; }
+.combat-minion.golden .mc-portrait { border-color: #f5d020; box-shadow: 0 0 0 2px #1a0e20, 0 0 18px rgba(245,197,24,0.95); animation: golden-shimmer 2.5s ease-in-out infinite; }
 .combat-minion.golden::before { background: radial-gradient(circle at center,#fff8a0 0%,#ffe840 28%,#f5c518 56%,#b07800 100%); animation: golden-shimmer 2.5s ease-in-out infinite; }
-.combat-minion.taunt-ring .mc-portrait { border-color: #e0b830; box-shadow: 0 0 0 2px #6a4000, 0 0 18px rgba(200,160,48,0.85); }
+.combat-minion.taunt-ring .mc-portrait { border-color: #e0b830; box-shadow: 0 0 0 2px #5a3500, 0 0 18px rgba(200,160,48,0.85); }
 .combat-minion.divine-glow .mc-portrait { border-color: rgba(255,255,220,0.98); box-shadow: 0 0 0 2px rgba(255,255,200,0.6), 0 0 26px rgba(255,255,150,0.9); animation: divine-pulse 1.8s ease-in-out infinite; }
 
 /* ══════════════════════════════════════════════════════════
@@ -957,34 +1047,41 @@ html, body {
 ══════════════════════════════════════════════════════════ */
 #screen-game-over {
   align-items: center; justify-content: center;
-  background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(80,35,5,0.55) 0%, transparent 60%), radial-gradient(ellipse at center, #0e0804 0%, #060402 100%);
+  background:
+    radial-gradient(ellipse 75% 55% at 50% 40%, rgba(70,30,5,0.5) 0%, transparent 58%),
+    radial-gradient(ellipse 80%  60% at 50% 70%, rgba(20,8,50,0.5) 0%, transparent 55%),
+    radial-gradient(ellipse at center, rgba(10,8,20,0.98) 0%, #06070f 100%);
 }
 .game-over-container { text-align: center; padding: 40px; }
-.game-over-icon { font-size: 6rem; margin-bottom: 20px; animation: bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1); filter: drop-shadow(0 0 30px rgba(245,197,24,0.65)); }
+.game-over-icon { font-size: 6rem; margin-bottom: 20px; animation: bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1); filter: drop-shadow(0 0 32px rgba(245,197,24,0.7)); }
 #game-over-title { font-family: 'Cinzel', serif; font-size: 2.8rem; font-weight: 900; margin-bottom: 10px; background: linear-gradient(135deg, var(--gold2), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 #game-over-subtitle { color: var(--text-dim); margin-bottom: 36px; font-size: 1.1rem; }
 
 /* ══════════════════════════════════════════════════════════
    OVERLAYS & NOTIFICATIES
 ══════════════════════════════════════════════════════════ */
-.elimination-toast { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg,#be1020,#780a14); color: #fff; padding: 10px 28px; border-radius: 10px; font-weight: 800; z-index: 999; box-shadow: 0 4px 20px rgba(175,18,28,0.65); animation: toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1); border: 1px solid rgba(255,80,80,0.3); }
-.global-notification { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); background: linear-gradient(160deg,rgba(10,6,2,0.99),rgba(7,4,1,0.98)); border: 1px solid rgba(160,95,18,0.4); color: var(--text); padding: 10px 26px; border-radius: 10px; font-size: 0.88rem; z-index: 998; box-shadow: var(--shadow), 0 0 20px rgba(120,70,10,0.18); animation: toast-in 0.3s ease; backdrop-filter: blur(8px); }
-.round-banner { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.82); z-index: 500; animation: fade-in 0.3s ease; backdrop-filter: blur(5px); }
-.round-banner-text { font-family: 'Cinzel', serif; font-size: 3.2rem; font-weight: 900; color: var(--gold); text-shadow: 0 0 50px rgba(245,197,24,0.85); animation: bounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+.elimination-toast { position: fixed; top: 22px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg,#b01020,#6a0810); color: #fff; padding: 10px 28px; border-radius: 10px; font-weight: 800; z-index: 999; box-shadow: 0 4px 22px rgba(165,15,25,0.7); animation: toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1); border: 1px solid rgba(255,75,75,0.32); }
+.global-notification { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); background: linear-gradient(160deg,rgba(8,6,18,0.99),rgba(6,5,14,0.99)); border: 1px solid rgba(160,110,22,0.42); color: var(--text); padding: 10px 26px; border-radius: 10px; font-size: 0.88rem; z-index: 998; box-shadow: var(--shadow), 0 0 22px rgba(110,75,12,0.18); animation: toast-in 0.3s ease; backdrop-filter: blur(8px); }
+.round-banner { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.86); z-index: 500; animation: fade-in 0.3s ease; backdrop-filter: blur(6px); }
+.round-banner-text { font-family: 'Cinzel', serif; font-size: 3.2rem; font-weight: 900; color: var(--gold); text-shadow: 0 0 55px rgba(245,197,24,0.9); animation: bounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1); }
 
 .float-text { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 1.3rem; font-weight: 900; color: var(--hp-red); pointer-events: none; animation: float-damage 0.9s ease forwards; z-index: 50; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
-.float-text.buff { color: var(--gold); } .float-text.heal { color: #40d060; }
+.float-text.buff { color: var(--gold); } .float-text.heal { color: #38cc58; }
 .shield-pop { position: absolute; inset: -4px; border-radius: 52% 52% 46% 46% / 58% 58% 48% 48%; border: 3px solid rgba(255,255,180,0.95); animation: fadeout 0.5s ease forwards; pointer-events: none; z-index: 20; }
 
 /* ══════════════════════════════════════════════════════════
    TRIPLE DISCOVER / CHOOSE ONE OVERLAY
 ══════════════════════════════════════════════════════════ */
-.discover-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: flex; align-items: center; justify-content: center; z-index: 800; backdrop-filter: blur(10px); animation: fade-in 0.25s ease; }
+.discover-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 800; backdrop-filter: blur(12px); animation: fade-in 0.25s ease; }
 .discover-modal {
-  background: linear-gradient(160deg, #1c1006, #0e0a04);
-  border: 1px solid rgba(200,130,25,0.5);
+  background: linear-gradient(160deg, #110e22, #0a0818);
+  border: 1px solid rgba(200,145,28,0.52);
   border-radius: 22px; padding: 32px 36px; text-align: center;
-  box-shadow: 0 0 80px rgba(180,120,20,0.25), var(--shadow), inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow:
+    0 0 90px rgba(160,110,18,0.22),
+    var(--shadow),
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 0 60px rgba(25,18,60,0.4);
   max-width: 540px; animation: modal-enter 0.35s cubic-bezier(0.34,1.56,0.64,1);
 }
 .discover-title { font-family: 'Cinzel', serif; font-size: 1.5rem; font-weight: 900; background: linear-gradient(135deg,var(--gold2),var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px; }
@@ -997,20 +1094,20 @@ html, body {
 .choose-one-btn {
   width: 300px; padding: 16px 24px;
   font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 800;
-  background: linear-gradient(135deg, #2a1808, #180e04);
+  background: linear-gradient(135deg, #1e1428, #140c1c);
   color: var(--gold2);
-  border: 1px solid rgba(180,110,20,0.45);
+  border: 1px solid rgba(170,120,22,0.48);
   border-radius: 12px; cursor: pointer;
   transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s;
-  box-shadow: 0 4px 16px rgba(80,45,8,0.5);
+  box-shadow: 0 4px 18px rgba(70,40,10,0.5);
 }
-.choose-one-btn:hover { transform: translateY(-3px) scale(1.01); border-color: rgba(230,160,40,0.65); box-shadow: 0 0 24px rgba(200,140,20,0.5), 0 6px 20px rgba(80,45,8,0.55); }
+.choose-one-btn:hover { transform: translateY(-3px) scale(1.01); border-color: rgba(235,168,42,0.68); box-shadow: 0 0 26px rgba(200,145,22,0.52), 0 6px 22px rgba(70,40,10,0.55); }
 
 /* ══════════════════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  .opponents-sidebar { width: 46px; }
+  .opponents-sidebar { width: 48px; }
   .shop-row { flex-wrap: wrap; }
   .minion-card { width: 80px; height: 94px; }
   .shop-card { width: 68px; height: 80px; }
