@@ -265,6 +265,18 @@ const PORTRAITS = {
   ultraviolet_ascendant              : { emoji: "🌊", cardId: "BG31_810_Battlegrounds"                     , bg: "#0d1a3a,#060d1d" },
   vinespeaker                        : { emoji: "🐗", cardId: "BG35_437_Battlegrounds"                     , bg: "#2a1a0d,#150d06" },
 
+  // ── PATCH 35.6 NEW/RETURNING ──────────────────────────
+  briarback_drummer                  : { emoji: "🥁", cardId: null                                         , bg: "#2a1a0d,#150d06" },
+  volcanic_visitor                   : { emoji: "🌋", cardId: null                                         , bg: "#4a1a00,#2d0d00" },
+  razorfen_flapper                   : { emoji: "🐗", cardId: null                                         , bg: "#2a1a0d,#150d06" },
+  dancing_barnstormer                : { emoji: "🌊", cardId: null                                         , bg: "#0d1a3a,#060d1d" },
+  nomi_kitchen_nightmare             : { emoji: "👨‍🍳", cardId: null                                         , bg: "#1a1a2a,#0d0d15" },
+  unleashed_mana_surge               : { emoji: "🌊", cardId: null                                         , bg: "#0d1a3a,#060d1d" },
+  ingenious_inventor                 : { emoji: "🔧", cardId: null                                         , bg: "#0d2a4a,#06152d" },
+  tidecaller_prophet                 : { emoji: "🔮", cardId: null                                         , bg: "#0d2a4a,#06152d" },
+  dead_sea_ravager                   : { emoji: "💀", cardId: null                                         , bg: "#2a0d3a,#15061d" },
+  fodder                             : { emoji: "🍖", cardId: null                                         , bg: "#1a1a1a,#0d0d0d" },
+
   // ── TOKENS ────────────────────────────────────────────
   cubling                            : { emoji: "📦", cardId: "BG26_800_Gt_Battlegrounds"                  , bg: "#1a4a1a,#0d2d0d" },
   microbot                           : { emoji: "🔩", cardId: "BG_BOT_312t_Battlegrounds"                  , bg: "#0d2a4a,#06152d" },

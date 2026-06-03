@@ -34,6 +34,7 @@ SPELLS_BY_TIER: dict[int, list[dict]] = {
         {"id": "mounting_avalanche",   "name": "Mounting Avalanche",    "tier": 3, "cost": 3, "description": "Give all friendly minions +2/+1."},
         {"id": "back_to_back",         "name": "Back to Back",          "tier": 3, "cost": 3, "description": "Give two random friendly minions +3/+3."},
         {"id": "arcane_absorption",    "name": "Arcane Absorption",     "tier": 3, "cost": 3, "description": "Give all friendly minions +1/+1."},
+        {"id": "blood_gem_barrage",    "name": "Blood Gem Barrage",     "tier": 3, "cost": 1, "description": "Give each friendly Quilboar a Blood Gem."},
     ],
     4: [
         {"id": "queens_command",       "name": "Queen's Command",       "tier": 4, "cost": 4, "description": "Give all friendly minions +3/+3. Nagas get double."},

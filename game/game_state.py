@@ -180,6 +180,19 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
             mult = 2 if reward.get("golden") else 1
             player._waveling_refresh_hooks += mult
 
+        elif rtype == "buff_tavern_tribe_post_combat":
+            # Dancing Barnstormer deathrattle: buff tribe in shop permanently
+            tribe = reward.get("tribe")
+            atk = reward.get("attack", 8)
+            hp = reward.get("health", 8)
+            for slot in player.shop:
+                if slot is None or isinstance(slot, dict):
+                    continue
+                if tribe is None or tribe in slot.types:
+                    slot.attack += atk
+                    slot.health += hp
+                    slot.max_health += hp
+
         elif rtype == "spread_stegodon_rally":
             tribe = reward.get("tribe")
             atk = reward.get("attack", 0)

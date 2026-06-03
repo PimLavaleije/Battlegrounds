@@ -8,10 +8,10 @@ class ShopManager:
     """Beheert de gedeelde minion pool voor één game."""
 
     def __init__(self):
-        # Pool: {minion_id: count} — Duos-only minions worden overgeslagen
+        # Pool: {minion_id: count} — Duos-only and removed minions are skipped
         self.pool: dict[str, int] = {}
         for mid, data in MINIONS.items():
-            if not data.get("duo_only", False):
+            if not data.get("duo_only", False) and not data.get("removed", False):
                 self.pool[mid] = POOL_SIZE.get(data["tier"], 15)
 
     # ── Pool beheer ─────────────────────────────────────────
@@ -35,7 +35,8 @@ class ShopManager:
     def generate_shop(self, tavern_tier: int, hero: dict | None = None) -> list[Minion | None]:
         size = SHOP_SIZE.get(tavern_tier, 3)
         available = [mid for mid, data in MINIONS.items()
-                     if data["tier"] <= tavern_tier and self.pool.get(mid, 0) > 0]
+                     if data["tier"] <= tavern_tier and self.pool.get(mid, 0) > 0
+                     and not data.get("removed", False)]
 
         # Millificent: garanteer minstens 1 Mech
         needs_mech = (hero and hero.get("ability", {}).get("effect") == "always_mech_in_shop")

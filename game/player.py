@@ -1004,6 +1004,12 @@ class Player:
                 t.attack += 5; t.health += 5; t.max_health += 5
 
         # ── Board manipulation ──────────────────────────────
+        elif sid == "blood_gem_barrage":
+            # Give each friendly Quilboar a Blood Gem
+            for m in self.board:
+                if "Quilboar" in m.types:
+                    self._apply_blood_gem(m)
+
         elif sid == "shifting_tide":
             _r.shuffle(self.board)
         elif sid == "boon_of_beetles":
@@ -1201,6 +1207,18 @@ class Player:
                         self._apply_spell(spell, target_index)
                         self._proud_recast = False
                     break
+
+        # Tidecaller Prophet: spells give extra +X/+X to all board minions this turn
+        for m in self.board:
+            if m.passive and m.passive.get("type") == "tavern_spell_bonus_scaling":
+                mult = 2 if m.golden else 1
+                bonus_atk = m.passive.get("attack", 1) * mult
+                bonus_hp = m.passive.get("health", 1) * mult
+                for ally in self.board:
+                    ally.attack += bonus_atk
+                    ally.health += bonus_hp
+                    ally.max_health += bonus_hp
+                break
 
         return {"spell": sid}
 
@@ -1536,6 +1554,22 @@ class Player:
                 t.max_health += bonus_hp
                 return {"buffed": t.to_dict()}
 
+        if effect == "buff_tavern_tribe":
+            tribe = bc.get("tribe")
+            mult = 2 if minion.golden else 1
+            atk = bc.get("attack", 0) * mult
+            hp = bc.get("health", 0) * mult
+            count = 0
+            for slot in self.shop:
+                if slot is None or isinstance(slot, dict):
+                    continue
+                if tribe is None or tribe in slot.types:
+                    slot.attack += atk
+                    slot.health += hp
+                    slot.max_health += hp
+                    count += 1
+            return {"buffed_tavern_tribe": tribe, "count": count}
+
         if effect == "add_fodder_to_refreshes":
             count = bc.get("count", 3)
             per_refresh = bc.get("fodder_per_refresh", 1)
@@ -1756,6 +1790,51 @@ class Player:
                         item.attack += item.passive.get("attack", 4) * mult
                         item.health += item.passive.get("health", 4) * mult
                         item.max_health += item.passive.get("health", 4) * mult
+
+        # Elemental played: trigger Nomi and Unleashed Mana Surge passives
+        if "Elemental" in played.types:
+            for m in self.board:
+                if not m.passive or m is played:
+                    continue
+                ptype = m.passive.get("type")
+                mult = 2 if m.golden else 1
+                if ptype == "on_elemental_played_buff_tavern":
+                    atk = m.passive.get("attack", 4) * mult
+                    hp = m.passive.get("health", 4) * mult
+                    for slot in self.shop:
+                        if slot is None or isinstance(slot, dict):
+                            continue
+                        if "Elemental" in slot.types:
+                            slot.attack += atk
+                            slot.health += hp
+                            slot.max_health += hp
+                    events.append({"type": "play_passive", "uid": m.uid})
+                elif ptype == "on_elemental_played_buff_board":
+                    atk = m.passive.get("attack", 4) * mult
+                    hp = m.passive.get("health", 4) * mult
+                    for ally in self.board:
+                        if "Elemental" in ally.types:
+                            ally.attack += atk
+                            ally.health += hp
+                            ally.max_health += hp
+                    events.append({"type": "play_passive", "uid": m.uid})
+
+        # Tidecaller Prophet: track Murloc plays, improve after every N Murlocs
+        if "Murloc" in played.types:
+            for m in self.board:
+                if not m.passive or m is played:
+                    continue
+                if m.passive.get("type") == "tavern_spell_bonus_scaling":
+                    counter = getattr(m, "_tcp_murloc_count", 0) + 1
+                    m._tcp_murloc_count = counter
+                    threshold = m.passive.get("murlocs_per_upgrade", 2)
+                    if counter >= threshold:
+                        m._tcp_murloc_count = 0
+                        mult = 2 if m.golden else 1
+                        m.passive = {**m.passive,
+                                     "attack": m.passive.get("attack", 1) + 1 * mult,
+                                     "health": m.passive.get("health", 1) + 1 * mult}
+                    events.append({"type": "play_passive", "uid": m.uid})
 
         return events
 
@@ -2457,6 +2536,13 @@ class Player:
             hp = target.passive.get("health", 2) * mult
             for ally in self.board:
                 ally.attack += atk; ally.health += hp; ally.max_health += hp
+
+        # Track total magnetize count for Ingenious Inventor
+        self._total_magnetizes = getattr(self, "_total_magnetizes", 0) + 1
+        # Apply to any Ingenious Inventor deathrattles on board
+        for ally in self.board:
+            if ally.deathrattle and ally.deathrattle.get("type") == "buff_all_mechs_attack_combat":
+                ally._magnetize_count = getattr(ally, "_magnetize_count", 0) + 1
 
         return {"success": True, "target": target.to_dict()}
 

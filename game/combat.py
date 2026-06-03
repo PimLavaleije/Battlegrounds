@@ -707,6 +707,31 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                                            "effect": "shifting_tide", "moved_uid": target.uid})
                     adjacent = []  # only one per cast for golden (re-pick per trigger)
 
+    elif dtype == "buff_all_mechs_attack_combat":
+        # Ingenious Inventor: all Mechs +2 Attack this combat, +2 more per Magnetize
+        mult = 2 if dead.golden else 1
+        base_atk = dr.get("base_attack", 2) * mult
+        magnetize_count = getattr(dead, "_magnetize_count", 0)
+        total_atk = base_atk + base_atk * magnetize_count
+        for ally in friendly_board:
+            if not ally.dead and "Mech" in ally.types:
+                ally.attack += total_atk
+        step["events"].append({"type": "deathrattle", "uid": dead.uid, "effect": "buff_mechs", "attack": total_atk})
+
+    elif dtype == "buff_tavern_tribe_post_combat":
+        # Dancing Barnstormer deathrattle: buff Elementals in tavern post-combat
+        mult = 2 if dead.golden else 1
+        post_rewards.append({"type": "buff_tavern_tribe_post_combat",
+                              "tribe": dr.get("tribe"), "attack": dr.get("attack", 8) * mult,
+                              "health": dr.get("health", 8) * mult})
+
+    elif dtype == "give_spell_post_combat":
+        # Razorfen Flapper: get spell after combat
+        spell_id = dr.get("spell", "blood_gem_barrage")
+        mult = 2 if dead.golden else 1
+        for _ in range(mult):
+            post_rewards.append({"type": "add_spell_post_combat", "spell": spell_id})
+
     elif dtype == "waveling_refresh_hook":
         # Waveling: register persistent refresh buff hook
         mult = 2 if dead.golden else 1
@@ -862,6 +887,14 @@ def _apply_rally_effects(board: list[Minion], enemy_board: list[Minion], post_re
                 t = random.choice(targets)
                 t.reborn = False; t.taunt = False
                 t.abilities = [a for a in t.abilities if a not in ("reborn", "taunt")]
+
+        elif rtype == "give_3_self_attack":
+            # Dead Sea Ravager: give 3 other friendly minions this minion's Attack
+            count = m.rally.get("count", 3) * multiplier
+            eligible = [a for a in board if a is not m and not a.dead]
+            targets = eligible[:count] if len(eligible) <= count else random.sample(eligible, count)
+            for t in targets:
+                t.attack += m.attack
 
         elif rtype in ("give_random_bounty_post_combat", "give_random_magnetic_mech_post_combat"):
             count = multiplier
