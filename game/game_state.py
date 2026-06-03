@@ -435,6 +435,11 @@ class GameState:
         bc = result.get("battlecry") or {}
         if isinstance(bc, dict) and "discover_options" in bc:
             result["battlecry_discover"] = bc["discover_options"]
+        # Well Wisher spellcraft: route pending pass to a random opponent
+        pending = getattr(p, "_pending_well_wisher_pass", None)
+        if pending:
+            p._pending_well_wisher_pass = None
+            self._route_pass(sid, pending, result)
         return result
 
     def apply_choose_one(self, sid: str, choice: int) -> dict:
@@ -596,6 +601,31 @@ class GameState:
                         leftmost.max_health += hp_buff
                         combat_board.append(leftmost.clone())
 
+            # Diremuck Forager: SoC give a random hand minion +2/+2 then summon for combat
+            for item in player.hand:
+                if isinstance(item, Minion) and item.id == "diremuck_forager" and item in player.board:
+                    pass  # Forager must be on board to trigger
+            for cm in combat_board:
+                if cm.id == "diremuck_forager":
+                    mult = 2 if cm.golden else 1
+                    hand_minions = [item for item in player.hand if isinstance(item, Minion)]
+                    if hand_minions and len(combat_board) < player.MAX_BOARD:
+                        chosen = random.choice(hand_minions)
+                        chosen.attack += 2 * mult; chosen.health += 2 * mult; chosen.max_health += 2 * mult
+                        combat_board.append(chosen.clone())
+                    break
+
+            # Choral Mrrrglr: SoC gain stats of all hand minions
+            for cm in combat_board:
+                if cm.id == "choral_mrrrglr":
+                    mult = 2 if cm.golden else 1
+                    for item in player.hand:
+                        if isinstance(item, Minion):
+                            cm.attack += item.attack * mult
+                            cm.health += item.health * mult
+                            cm.max_health += item.health * mult
+                    break
+
             # Tarecgosa / persistent_poet: snapshot stats na hero-aura, voor combat
             preserve_uids: set[str] = set()
             for ci, cm in enumerate(combat_board):
@@ -616,6 +646,19 @@ class GameState:
 
             # Pas post-combat beloningen toe
             _apply_post_combat_rewards(player, result["post_combat_rewards"]["player"])
+
+            # Old Soul: telt vriendelijke sterfgevallen terwijl het in hand zit
+            initial_board_size = len(combat_board)
+            player_survivors = len(result.get("surviving_minions", [])) if result.get("winner") == "player" else 0
+            deaths_this_combat = max(0, initial_board_size - player_survivors)
+            for item in player.hand:
+                if isinstance(item, Minion) and item.id == "old_soul":
+                    item._old_soul_deaths = getattr(item, "_old_soul_deaths", 0) + deaths_this_combat
+                    target = item.passive.get("target", 15) if item.passive else 15
+                    if item._old_soul_deaths >= target and not item.golden:
+                        item.make_golden()
+                        item._old_soul_deaths = 0
+                    break
 
             # Tarecgosa / persistent_poet: bewaar combat-gewonnen stats/keywords op echte board
             if preserve_uids:

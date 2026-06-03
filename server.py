@@ -197,6 +197,9 @@ def on_play_from_hand(data):
             emit("triple_discover", {"options": result["battlecry_discover"]})
         if result.get("choose_one_options"):
             emit("choose_one", {"options": result["choose_one_options"]})
+        if result.get("pass_recipient"):
+            socketio.emit("player_update", result["pass_recipient"]["player"],
+                          to=result["pass_recipient"]["sid"])
     else:
         emit("error", {"message": result.get("message", "Cannot play.")})
 

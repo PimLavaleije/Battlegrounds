@@ -28,8 +28,8 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
 
     _apply_combat_auras(p_board)
     _apply_combat_auras(e_board)
-    _apply_rally_effects(p_board, post_rewards["player"])
-    _apply_rally_effects(e_board, post_rewards["enemy"])
+    _apply_rally_effects(p_board, e_board, post_rewards["player"])
+    _apply_rally_effects(e_board, p_board, post_rewards["enemy"])
 
     while p_board and e_board and safety < 150:
         safety += 1
@@ -466,6 +466,17 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                     ally.divine_shield = True
                     if "divine_shield" not in ally.abilities:
                         ally.abilities.append("divine_shield")
+        # Banana Slamma: Beast gesummond → double (of triple voor golden) stats
+        if "Beast" in token.types:
+            for ally in friendly_board:
+                if ally.dead or not ally.passive:
+                    continue
+                if ally.passive.get("type") == "on_beast_summon_double_stats":
+                    factor = 3 if ally.golden else 2
+                    token.attack *= factor
+                    token.health *= factor
+                    token.max_health *= factor
+                    break
         return True
 
     if dtype == "summon":
@@ -499,9 +510,24 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
 
     elif dtype == "summon_count":
         count = dr.get("count", 1)
+        summoned = []
         for _ in range(count):
+            prev_len = len(friendly_board)
             if not _summon_token(dr["token"]):
                 break
+            if len(friendly_board) > prev_len:
+                summoned.append(friendly_board[spawn_pos])
+        if dr.get("add_taunt"):
+            for m in summoned:
+                m.taunt = True
+                if "taunt" not in m.abilities:
+                    m.abilities.append("taunt")
+        gems = dr.get("blood_gem_count", 0)
+        if gems:
+            for m in summoned:
+                m.attack += gems
+                m.health += gems
+                m.max_health += gems
 
     elif dtype == "buff_tribe":
         tribe = dr.get("tribe")
@@ -645,6 +671,25 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
             reward = {**dr, "golden": dead.golden}
             post_rewards.append(reward)
 
+    elif dtype == "trigger_adjacent_battlecry":
+        # Rylak Metalhead: trigger Battlecry of adjacent minion (simplified: buff nearby)
+        idx = next((i for i, m in enumerate(friendly_board) if m is dead), -1)
+        if idx >= 0:
+            for adj_i in [idx - 1, idx + 1]:
+                if 0 <= adj_i < len(friendly_board):
+                    adj = friendly_board[adj_i]
+                    if not adj.dead and adj.battlecry:
+                        btype = adj.battlecry.get("type", "")
+                        # Apply simple stat battlecries; skip complex ones
+                        if btype == "buff_tribe":
+                            tribe = adj.battlecry.get("tribe")
+                            atk = adj.battlecry.get("attack", 0)
+                            hp = adj.battlecry.get("health", 0)
+                            for ally in friendly_board:
+                                if not ally.dead and (tribe is None or tribe in ally.types):
+                                    ally.attack += atk; ally.health += hp
+                    break
+
 
 def _trigger_self_damaged_passive(damaged: Minion, board: list[Minion], step: dict):
     """Hardy Orca: als deze minion schade ontvangt → alle andere vrienden +1/+1."""
@@ -695,7 +740,7 @@ def _trigger_pack_leader(new_minion: Minion, friendly_board: list, step: dict):
     pass
 
 
-def _apply_rally_effects(board: list[Minion], post_rewards: list):
+def _apply_rally_effects(board: list[Minion], enemy_board: list[Minion], post_rewards: list):
     """Fires Rally effects at start of combat for minions on board."""
     for m in board:
         if not m.rally:
@@ -743,6 +788,21 @@ def _apply_rally_effects(board: list[Minion], post_rewards: list):
                     if "Naga" in ally.types:
                         ally.attack += 3 * multiplier
                         ally.health += 3 * multiplier
+
+        elif rtype == "gain_target_attack":
+            # Heroic Underdog: gain the Attack of a random enemy
+            if enemy_board:
+                target = random.choice([e for e in enemy_board if not e.dead] or enemy_board)
+                gain = target.attack * multiplier
+                m.attack += gain
+
+        elif rtype == "remove_keywords_target":
+            # Sin'dorei Straight Shot: remove Reborn and Taunt from a random enemy
+            targets = [e for e in enemy_board if not e.dead and (e.reborn or e.taunt)]
+            if targets:
+                t = random.choice(targets)
+                t.reborn = False; t.taunt = False
+                t.abilities = [a for a in t.abilities if a not in ("reborn", "taunt")]
 
         elif rtype in ("give_random_bounty_post_combat", "give_random_magnetic_mech_post_combat"):
             count = multiplier

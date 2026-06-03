@@ -59,6 +59,7 @@ class Player:
         self._pending_choose_one: dict | None = None
         self.trinkets: list[dict] = []  # actieve trofeeën van de speler
         self._hero_power_used = 0       # reset elke beurt; getoetst aan uses_per_turn
+        self._pending_well_wisher_pass: dict | None = None
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -78,6 +79,13 @@ class Player:
         self.gold_spent_this_turn = 0
         self._bloodbound_used = 0
         self._hero_power_used = 0
+        # Ichoron: remove temp divine shields applied last turn
+        for m in self.board:
+            if getattr(m, "_ichoron_temp_ds", False):
+                m._ichoron_temp_ds = False
+                m.divine_shield = False
+                if "divine_shield" in m.abilities:
+                    m.abilities.remove("divine_shield")
         self._apply_start_of_round_hero()
         self.apply_trinket_start_of_turn()
         self._apply_start_of_turn_board()
@@ -456,12 +464,19 @@ class Player:
         if isinstance(item, dict):
             return self._cast_spell_from_shop(shop_index, target_index)
         minion = item
-        if not self.can_buy():
-            return {"success": False, "message": "Not enough gold."}
-
-        self.shop[shop_index] = None
-        self.gold -= 3
-        self._on_gold_spent(3)
+        # Leeching Felhound: costs Health instead of Gold
+        health_cost = minion.passive and minion.passive.get("type") == "health_cost_buy"
+        if health_cost:
+            if self.hp <= 0:
+                return {"success": False, "message": "Not enough health."}
+            self.shop[shop_index] = None
+            self._on_hero_damaged(3)
+        else:
+            if not self.can_buy():
+                return {"success": False, "message": "Not enough gold."}
+            self.shop[shop_index] = None
+            self.gold -= 3
+            self._on_gold_spent(3)
         self.hand.append(minion)
         self._apply_game_counter_buff(minion)
 
@@ -625,6 +640,15 @@ class Player:
             self._apply_blood_gem(target, item.get("bonus_keyword"), item.get("bonus_tribe"), _from_hand=True)
             return {"success": True, "blood_gem": True, "target": target.to_dict()}
         if len(self.board) >= self.MAX_BOARD:
+            # Catacomb Crasher: board overflow → buff all minions permanently
+            for m in self.board:
+                if m.passive and m.passive.get("type") == "on_board_overflow_buff_all":
+                    mult = 2 if m.golden else 1
+                    atk = m.passive.get("attack", 1) * mult
+                    hp = m.passive.get("health", 1) * mult
+                    for ally in self.board:
+                        ally.attack += atk; ally.health += hp; ally.max_health += hp
+                    break
             return {"success": False, "message": "Board is full (max 7). Sell a minion to make room."}
         minion = self.hand.pop(hand_index)
         if 0 <= board_index < len(self.board):
@@ -707,6 +731,16 @@ class Player:
 
         elif etype == "spell_health_bonus":
             self.spell_health_bonus += effect.get("amount", 1) * mult
+
+        elif etype == "blood_gem_both_bonus":
+            amt = effect.get("amount", 1) * mult
+            self.blood_gem_attack_bonus += amt
+            self.blood_gem_health_bonus += amt
+
+        elif etype == "give_blood_gems":
+            count = effect.get("count", 4) * mult
+            for _ in range(count):
+                self.hand.append(self._create_blood_gem())
 
         return {"success": True}
 
@@ -1056,9 +1090,11 @@ class Player:
             self.spell_attack_bonus += 1 * mult
             self.spell_health_bonus += 1 * mult
         elif sid == "sc_well_wisher":
-            if self.board:
-                t = _r.choice(self.board)
-                t.attack += 3; t.health += 3; t.max_health += 3
+            candidates = [m for m in self.board if not m.golden]
+            if candidates:
+                chosen = _r.choice(candidates)
+                self.board.remove(chosen)
+                self._pending_well_wisher_pass = chosen.to_dict()
 
         # Zesty Shaker: als een spellcraft spreuk op hem gespeeld wordt, geef een kopie (1x/beurt)
         if spell.get("id", "").startswith("sc_") and target_index is not None:
@@ -1082,6 +1118,43 @@ class Player:
                 if m.health > pre[1]:
                     m.health += _hb
                     m.max_health += _hb
+
+        # Balinda Stonehearth: targeted spells cast twice
+        if target_index is not None and spell.get("type") == "spell":
+            for m in self.board:
+                if m.passive and m.passive.get("type") == "targeted_spells_cast_twice":
+                    if not getattr(self, "_balinda_recast", False):
+                        self._balinda_recast = True
+                        self._apply_spell(spell, target_index)
+                        self._balinda_recast = False
+                    break
+
+        # Batty Terrorguard: after any spell, a random Demon consumes a tavern minion
+        shop_minions = [(i, sm) for i, sm in enumerate(self.shop)
+                        if sm is not None and isinstance(sm, Minion)]
+        if shop_minions:
+            for m in self.board:
+                if m.passive and m.passive.get("type") == "on_spell_cast_demon_consume" and m is not None:
+                    demons = [d for d in self.board if "Demon" in d.types and d is not m]
+                    if demons:
+                        demon = _r.choice(demons)
+                        idx2, consumed = _r.choice(shop_minions)
+                        self.shop[idx2] = None
+                        dmult = 2 if demon.golden else 1
+                        demon.attack += consumed.attack * dmult
+                        demon.health += consumed.health * dmult
+                        demon.max_health += consumed.health * dmult
+                    break
+
+        # Proud Privateer: Bounties cast twice
+        if "bounty" in sid:
+            for m in self.board:
+                if m.passive and m.passive.get("type") == "on_bounty_cast_twice":
+                    if not getattr(self, "_proud_recast", False):
+                        self._proud_recast = True
+                        self._apply_spell(spell, target_index)
+                        self._proud_recast = False
+                    break
 
         return {"spell": sid}
 
@@ -1368,6 +1441,18 @@ class Player:
                 self._check_board_thresholds()
                 return {"buffed": t.to_dict()}
 
+        if effect == "discover_tavern_spell":
+            pool = [s for tier_spells in SPELLS_BY_TIER.values() for s in tier_spells
+                    if s.get("tier", 99) <= self.tavern_tier]
+            if pool:
+                picks = random.sample(pool, min(3, len(pool)))
+                return {"discover_options": [
+                    {"id": s["id"], "name": s["name"], "tier": s["tier"],
+                     "cost": s.get("cost", 3), "description": s.get("description", ""),
+                     "type": "spell"}
+                    for s in picks
+                ]}
+
         return None
 
     def _on_gold_spent(self, amount: int):
@@ -1443,6 +1528,17 @@ class Player:
                     m.max_health += m.passive.get("health", 4) * mult
                     events.append({"type": "buy_passive", "uid": m.uid, "attack": m.attack, "health": m.health})
 
+            elif ptype == "on_pirate_gained_buff_all" and "Pirate" in bought.types:
+                # Dastardly Drust: Pirate gained → buff all minions (+1/+1, goldens +2/+2)
+                for ally in self.board:
+                    mult = 4 if ally.golden else 2 if m.golden else 1
+                    base_atk = m.passive.get("attack", 1)
+                    base_hp = m.passive.get("health", 1)
+                    ally.attack += base_atk * (2 if ally.golden else 1)
+                    ally.health += base_hp * (2 if ally.golden else 1)
+                    ally.max_health += base_hp * (2 if ally.golden else 1)
+                events.append({"type": "buy_passive", "uid": m.uid})
+
         return events
 
     def _trigger_play_passives(self, played: Minion, battlecry_fired: bool = False) -> list[dict]:
@@ -1481,6 +1577,94 @@ class Player:
                 for _ in range(count):
                     self.hand.append(self._create_blood_gem())
                 events.append({"type": "play_passive", "uid": m.uid, "blood_gems": count})
+
+            elif ptype == "on_murloc_played_buff_hand_self" and "Murloc" in played.types and m is not played:
+                # Bream Counter: in hand, buffs itself when a Murloc is played
+                pass  # handled below (hand passives)
+
+            elif ptype == "on_murloc_played_buff_board_hand" and "Murloc" in played.types:
+                # Mrglin' Burglar: buff one board minion + one hand minion
+                mult = 2 if m.golden else 1
+                atk = m.passive.get("attack", 4) * mult
+                hp = m.passive.get("health", 3) * mult
+                board_targets = [a for a in self.board if a is not m and a is not played]
+                if board_targets:
+                    t = random.choice(board_targets)
+                    t.attack += atk; t.health += hp; t.max_health += hp
+                hand_minions = [h for h in self.hand if isinstance(h, Minion)]
+                if hand_minions:
+                    t2 = random.choice(hand_minions)
+                    t2.attack += atk; t2.health += hp; t2.max_health += hp
+                events.append({"type": "play_passive", "uid": m.uid})
+
+            elif ptype == "on_beast_played_buff_attack" and "Beast" in played.types:
+                # Lurking Leviathan: give played Beast +2 Attack, buff self permanently
+                mult = 2 if m.golden else 1
+                atk = m.passive.get("attack", 2) * mult
+                played.attack += atk
+                m.attack += atk; m.health += 1; m.max_health += 1
+                events.append({"type": "play_passive", "uid": m.uid})
+
+            elif ptype == "on_elemental_played_give_ds" and "Elemental" in played.types:
+                # Ichoron: give played Elemental Divine Shield until next turn
+                if not played.divine_shield:
+                    played.divine_shield = True
+                    if "divine_shield" not in played.abilities:
+                        played.abilities.append("divine_shield")
+                    played._ichoron_temp_ds = True
+                events.append({"type": "play_passive", "uid": m.uid})
+
+            elif ptype == "on_naga_played_buff_self" and "Naga" in played.types:
+                # Groundbreaker: gain +1/+1, improved by every 4 spells cast
+                mult = 2 if m.golden else 1
+                base = m.passive.get("attack", 1) * mult
+                bonus = (self.spells_cast_game // 4) * mult
+                total = base + bonus
+                m.attack += total; m.health += total; m.max_health += total
+                events.append({"type": "play_passive", "uid": m.uid})
+
+            elif ptype == "on_play_buff_by_tier":
+                # One-Amalgam Tour Group: buff minions of played card's tier or lower
+                mult = 2 if m.golden else 1
+                atk = m.passive.get("attack", 1) * mult
+                hp = m.passive.get("health", 1) * mult
+                for ally in self.board:
+                    if ally is not played and ally.tier <= played.tier:
+                        ally.attack += atk; ally.health += hp; ally.max_health += hp
+                events.append({"type": "play_passive", "uid": m.uid})
+
+            elif ptype == "on_play_low_tier_buff_tribe" and played.tier <= m.passive.get("max_tier", 3):
+                # Primitive Painter: play T3-: buff Murlocs
+                tribe = m.passive.get("tribe")
+                mult = 2 if m.golden else 1
+                atk = m.passive.get("attack", 1) * mult
+                hp = m.passive.get("health", 2) * mult
+                for ally in self.board:
+                    if tribe is None or tribe in ally.types:
+                        ally.attack += atk; ally.health += hp; ally.max_health += hp
+                events.append({"type": "play_passive", "uid": m.uid})
+
+            elif ptype == "on_beast_played_buff_damage_beasts" and "Beast" in played.types:
+                # Rabid Panther: buff all Beasts +3/+3, deal 1 damage to each
+                mult = 2 if m.golden else 1
+                atk = m.passive.get("attack", 3) * mult
+                hp = m.passive.get("health", 3) * mult
+                dmg = m.passive.get("damage", 1)
+                for ally in self.board:
+                    if "Beast" in ally.types:
+                        ally.attack += atk; ally.health += hp; ally.max_health += hp
+                        ally.health -= dmg
+                events.append({"type": "play_passive", "uid": m.uid})
+
+        # Bream Counter: check hand passives (minion in hand reacts to Murloc play)
+        if "Murloc" in played.types:
+            for item in self.hand:
+                if isinstance(item, Minion) and item.passive:
+                    if item.passive.get("type") == "on_murloc_played_buff_hand_self":
+                        mult = 2 if item.golden else 1
+                        item.attack += item.passive.get("attack", 4) * mult
+                        item.health += item.passive.get("health", 4) * mult
+                        item.max_health += item.passive.get("health", 4) * mult
 
         return events
 
@@ -1742,6 +1926,18 @@ class Player:
                     demon.max_health += consumed.health * dmult * mult
                 events.append({"type": "eot", "uid": m.uid})
 
+            elif etype == "eot_get_satellite":
+                # Moonsteel Juggernaut: get a 6/6 Magnetic Satellite, improve self
+                satellite_id = eot.get("satellite_id", "magnetic_satellite")
+                sat = Minion.from_id(satellite_id)
+                self.hand.append(sat)
+                if m.golden:
+                    # Golden: get two satellites
+                    self.hand.append(Minion.from_id(satellite_id))
+                buff = eot.get("self_buff", 2) * mult
+                m.attack += buff; m.health += buff; m.max_health += buff
+                events.append({"type": "eot", "uid": m.uid})
+
         # Drakkari Enchanter: EOT effecten extra keer triggeren
         drakkari = next((m for m in self.board if m.passive and m.passive.get("type") == "double_eot"), None)
         if drakkari and events:
@@ -1879,11 +2075,23 @@ class Player:
             self.alive = False
         if actual > 0:
             for m in self.board:
-                if m.passive and m.passive.get("type") == "on_hero_damage_buff_self":
-                    mult = 2 if m.golden else 1
+                if not m.passive:
+                    continue
+                ptype = m.passive.get("type")
+                mult = 2 if m.golden else 1
+                if ptype == "on_hero_damage_buff_self":
                     m.attack += m.passive.get("attack", 2) * mult
                     m.health += m.passive.get("health", 2) * mult
                     m.max_health += m.passive.get("health", 2) * mult
+                elif ptype == "on_hero_damage_buff_tribe":
+                    tribe = m.passive.get("tribe")
+                    atk = m.passive.get("attack", 0) * mult
+                    hp = m.passive.get("health", 0) * mult
+                    for ally in self.board:
+                        if tribe is None or tribe in ally.types:
+                            ally.attack += atk
+                            ally.health += hp
+                            ally.max_health += hp
 
     def _apply_game_counter_buff(self, minion: Minion):
         """Past historisch geaccumuleerde game-brede teller-buff toe op een nieuwe minion."""
@@ -2074,6 +2282,14 @@ class Player:
         # Deathrattle overnemen als target er geen heeft
         if mag.deathrattle and not target.deathrattle:
             target.deathrattle = copy.deepcopy(mag.deathrattle)
+
+        # Junk Jouster: Magnetize to self triggers buff all minions
+        if target.passive and target.passive.get("type") == "on_magnetized_to_self_buff_all":
+            mult = 2 if target.golden else 1
+            atk = target.passive.get("attack", 3) * mult
+            hp = target.passive.get("health", 2) * mult
+            for ally in self.board:
+                ally.attack += atk; ally.health += hp; ally.max_health += hp
 
         return {"success": True, "target": target.to_dict()}
 
