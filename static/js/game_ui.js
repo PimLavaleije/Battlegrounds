@@ -402,7 +402,7 @@ function buildSpellCard(spell) {
 
   const cost = document.createElement("div");
   cost.className = "shop-card-cost";
-  cost.textContent = `${spell.cost || 3}💰`;
+  cost.textContent = `${spell.cost != null ? spell.cost : 3}💰`;
   wrapper.appendChild(cost);
 
   const portrait = SPELL_PORTRAITS[spell.id] || { emoji: "✨" };

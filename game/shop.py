@@ -75,6 +75,6 @@ class ShopManager:
                 tier_spells.extend(SPELLS_BY_TIER.get(t, []))
             if tier_spells:
                 spell = random.choice(tier_spells)
-                shop.append({**spell, "type": "spell", "cost": 3})
+                shop.append({**spell, "type": "spell"})
 
         return shop
