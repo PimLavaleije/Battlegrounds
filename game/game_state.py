@@ -92,6 +92,14 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
         elif rtype == "blood_gem_adjacent_post_combat":
             pass  # skulking_bristlemane: combat-positie niet beschikbaar post-combat
 
+        elif rtype == "blood_gems_tribe_post_combat":
+            tribe = reward.get("tribe")
+            count = reward.get("count", 1) * (2 if reward.get("golden") else 1)
+            for m in player.board:
+                if tribe is None or tribe in m.types:
+                    for _ in range(count):
+                        player._apply_blood_gem(m)
+
         elif rtype == "avenge_chromadrake":
             count = 2 if reward.get("golden") else 1
             pool = [m for mid, m in MINIONS.items() if "chromadrake" in mid]
@@ -126,6 +134,10 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
 
         elif rtype == "avenge_teammate_minion":
             pass  # Solos: geen teammate
+
+        elif rtype == "reduce_upgrade_cost":
+            amount = reward.get("amount", 1) * (2 if reward.get("golden") else 1)
+            player.upgrade_cost = max(0, player.upgrade_cost - amount)
 
         elif rtype == "rally_buff_tribe_permanent":
             tribe = reward.get("tribe")

@@ -186,6 +186,13 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
     if not result_t.get("shielded") and result_t.get("damage", 0) > 0:
         if target.passive and target.passive.get("type") == "on_self_damaged":
             _trigger_self_damaged_passive(target, defender_board_ref, step)
+        # Very Hungry Winterfinner: buff a hand minion (tracked as post-combat reward)
+        if target.passive and target.passive.get("type") == "on_self_damage_buff_hand" and post_rewards is not None:
+            mult = 2 if target.golden else 1
+            atk = target.passive.get("attack", 2) * mult
+            hp = target.passive.get("health", 1) * mult
+            side_key = "enemy" if current_side == 0 else "player"
+            post_rewards[side_key].append({"type": "buff_random_hand", "attack": atk, "health": hp})
         # Iridescent Skyblazer / Trigore: Beast neemt schade
         if "Beast" in target.types:
             for ally in defender_board_ref:
@@ -670,6 +677,15 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         if post_rewards is not None:
             reward = {**dr, "golden": dead.golden}
             post_rewards.append(reward)
+
+    elif dtype == "summon_undead_from_hand":
+        # Deathly Striker: summon a random Undead from pool for this combat
+        from game.data.minions import MINIONS as _MINS
+        mult = 2 if dead.golden else 1
+        pool = [mid for mid, d in _MINS.items() if "Undead" in d.get("types", []) and d["tier"] <= 4]
+        for _ in range(mult):
+            if pool and _alive_count(friendly_board) < 7:
+                _summon_token(random.choice(pool))
 
     elif dtype == "trigger_adjacent_battlecry":
         # Rylak Metalhead: trigger Battlecry of adjacent minion (simplified: buff nearby)

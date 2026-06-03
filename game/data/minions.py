@@ -857,7 +857,8 @@ MINIONS = {'annoy_o_tron': {'id': 'annoy_o_tron',
                                              'minion in your hand +2/+1.',
                               'golden_description': 'Taunt Whenever this takes damage, '
                                                     'give a minion in your hand '
-                                                    '+4/+2.'},
+                                                    '+4/+2.',
+                              'passive': {'type': 'on_self_damage_buff_hand', 'attack': 2, 'health': 1}},
  'wanderer_cho': {'id': 'wanderer_cho',
                   'name': 'Wanderer Cho',
                   'tier': 2,
@@ -1458,7 +1459,8 @@ MINIONS = {'annoy_o_tron': {'id': 'annoy_o_tron',
                       'description': 'Deathrattle: Reduce the Cost of upgrading your '
                                      "team's Taverns by (1).",
                       'golden_description': 'Deathrattle: Reduce the Cost of upgrading '
-                                            "your team's Taverns by (2)."},
+                                            "your team's Taverns by (2).",
+                      'deathrattle': {'type': 'reduce_upgrade_cost', 'amount': 1}},
  'wildfire_elemental': {'id': 'wildfire_elemental',
                         'name': 'Wildfire Elemental',
                         'tier': 3,
@@ -1976,7 +1978,8 @@ MINIONS = {'annoy_o_tron': {'id': 'annoy_o_tron',
                   'golden_description': 'Deathrattle: Your Undead have +4 Attack this '
                                         'game, wherever they are. (+8 if this died '
                                         'outside combat!).',
-                  'deathrattle': {'type': 'buff_tribe_attack', 'tribe': 'Undead', 'attack': 2}},
+                  'deathrattle': {'type': 'buff_tribe_attack', 'tribe': 'Undead', 'attack': 2},
+                  'passive': {'type': 'on_sell_buff_tribe', 'tribe': 'Undead', 'attack': 4}},
  'private_chef': {'id': 'private_chef',
                   'name': 'Private Chef',
                   'tier': 4,
@@ -3109,7 +3112,8 @@ MINIONS = {'annoy_o_tron': {'id': 'annoy_o_tron',
                      'golden_description': 'Avenge (4): Get 2 random Undead. '
                                            'Deathrattle: Summon them from your hand '
                                            'for this combat only.',
-                     'avenge': {'threshold': 4, 'type': 'avenge_get_undead'}},
+                     'avenge': {'threshold': 4, 'type': 'avenge_get_undead'},
+                     'deathrattle': {'type': 'summon_undead_from_hand'}},
  'earthsong_shaman': {'id': 'earthsong_shaman',
                       'name': 'Earthsong Shaman',
                       'tier': 6,

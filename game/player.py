@@ -1739,6 +1739,18 @@ class Player:
                 self.hand.append(self._create_blood_gem())
             return {"blood_gems": count}
 
+        if ptype == "on_sell_buff_tribe":
+            # Plaguerunner: selling outside combat gives +4 Attack to all Undead (instead of +2 in combat)
+            tribe = sold.passive.get("tribe")
+            atk = sold.passive.get("attack", 4) * multiplier
+            for m in self.board:
+                if tribe is None or tribe in m.types:
+                    m.attack += atk
+            for item in self.hand:
+                if isinstance(item, Minion) and (tribe is None or tribe in item.types):
+                    item.attack += atk
+            return {"buffed_tribe": tribe, "attack": atk}
+
         if ptype == "on_sell_pass" and not getattr(sold, '_jumping_jack_passed', False):
             sold._jumping_jack_passed = True
             return {"type": "sell_then_pass", "minion": sold.to_dict()}
