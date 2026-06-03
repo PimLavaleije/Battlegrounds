@@ -21,7 +21,7 @@ def index():
 
 @socketio.on("create_lobby")
 def on_create_lobby(data):
-    name = data.get("player_name", "Speler").strip() or "Speler"
+    name = data.get("player_name", "Player").strip() or "Player"
     room_code = manager.create_lobby(request.sid, name)
     join_room(room_code)
     emit("lobby_created", {"room_code": room_code})
@@ -30,7 +30,7 @@ def on_create_lobby(data):
 
 @socketio.on("join_lobby")
 def on_join_lobby(data):
-    name = data.get("player_name", "Speler").strip() or "Speler"
+    name = data.get("player_name", "Player").strip() or "Player"
     room_code = data.get("room_code", "").upper().strip()
     result = manager.join_lobby(request.sid, room_code, name)
     if result["success"]:
@@ -91,7 +91,7 @@ def on_buy_minion(data):
         for pass_info in result.get("mirror_monster_passes", []):
             socketio.emit("player_update", pass_info["player"], to=pass_info["sid"])
     else:
-        emit("error", {"message": result.get("message", "Kan niet kopen.")})
+        emit("error", {"message": result.get("message", "Cannot buy.")})
 
 
 @socketio.on("choose_discover")
@@ -116,7 +116,7 @@ def on_sell_minion(data):
             socketio.emit("player_update", result["pass_recipient"]["player"],
                           to=result["pass_recipient"]["sid"])
     else:
-        emit("error", {"message": result.get("message", "Kan niet verkopen.")})
+        emit("error", {"message": result.get("message", "Cannot sell.")})
 
 
 @socketio.on("magnetize")
@@ -131,7 +131,7 @@ def on_magnetize(data):
     if result["success"]:
         emit("player_update", result["player"])
     else:
-        emit("error", {"message": result.get("message", "Kan niet magnetizen.")})
+        emit("error", {"message": result.get("message", "Cannot magnetize.")})
 
 
 @socketio.on("pass_minion")
@@ -146,7 +146,7 @@ def on_pass_minion(data):
             socketio.emit("player_update", result["pass_recipient"]["player"],
                           to=result["pass_recipient"]["sid"])
     else:
-        emit("error", {"message": result.get("message", "Kan niet passen.")})
+        emit("error", {"message": result.get("message", "Cannot pass.")})
 
 
 @socketio.on("reroll")
@@ -158,7 +158,7 @@ def on_reroll(data):
     if result["success"]:
         emit("player_update", result["player"])
     else:
-        emit("error", {"message": result.get("message", "Niet genoeg goud.")})
+        emit("error", {"message": result.get("message", "Not enough gold.")})
 
 
 @socketio.on("freeze")
@@ -179,7 +179,7 @@ def on_upgrade_tavern(data):
     if result["success"]:
         emit("player_update", result["player"])
     else:
-        emit("error", {"message": result.get("message", "Kan niet upgraden.")})
+        emit("error", {"message": result.get("message", "Cannot upgrade.")})
 
 
 @socketio.on("play_from_hand")
@@ -198,7 +198,7 @@ def on_play_from_hand(data):
         if result.get("choose_one_options"):
             emit("choose_one", {"options": result["choose_one_options"]})
     else:
-        emit("error", {"message": result.get("message", "Kan niet spelen.")})
+        emit("error", {"message": result.get("message", "Cannot play.")})
 
 
 @socketio.on("choose_one_choice")
@@ -222,7 +222,7 @@ def on_sell_from_hand(data):
     if result["success"]:
         emit("player_update", result["player"])
     else:
-        emit("error", {"message": result.get("message", "Kan niet verkopen.")})
+        emit("error", {"message": result.get("message", "Cannot sell.")})
 
 
 @socketio.on("move_minion")
@@ -251,16 +251,16 @@ def on_use_hero_power(data):
         # Speciale feedback aan de speler
         effect = result.get("effect")
         if effect == "lucky_roll":
-            emit("notification", {"message": f"🎲 Je gooide een {result.get('roll', '?')}!"})
+            emit("notification", {"message": f"🎲 You rolled a {result.get('roll', '?')}!"})
         elif effect == "buried_treasure_dig":
             remaining = result.get("digs_remaining", "?")
-            emit("notification", {"message": f"⛏️ Gegraven! Nog {remaining} keer tot een Gouden minion!"})
+            emit("notification", {"message": f"⛏️ Dug! {remaining} more times until a Golden minion!"})
         elif effect == "the_perfect_crime":
-            emit("notification", {"message": "🎩 Alle tavern kaarten gestolen!"})
+            emit("notification", {"message": "🎩 All tavern cards stolen!"})
         elif effect == "temporal_tavern":
-            emit("notification", {"message": "⏰ Tavern refresht met hogere-tier kaarten!"})
+            emit("notification", {"message": "⏰ Tavern refreshing with higher-tier cards!"})
     else:
-        emit("error", {"message": result.get("message", "Held-spreuk mislukt.")})
+        emit("error", {"message": result.get("message", "Hero power failed.")})
 
 
 @socketio.on("select_trinket")
@@ -271,9 +271,9 @@ def on_select_trinket(data):
     result = manager.select_trinket(request.sid, room_code, data.get("trinket_id", ""))
     if result["success"]:
         emit("player_update", result["player"])
-        emit("notification", {"message": f"🏆 Trofee gekozen!"})
+        emit("notification", {"message": f"🏆 Trinket chosen!"})
     else:
-        emit("error", {"message": result.get("message", "Onbekende trofee.")})
+        emit("error", {"message": result.get("message", "Unknown trinket.")})
 
 
 @socketio.on("player_ready")

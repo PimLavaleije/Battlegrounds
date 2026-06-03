@@ -6,7 +6,7 @@ const SpellTarget = {
     this.active = true;
     this.handIndex = handIndex;
     document.getElementById("board-slots").classList.add("spell-targeting");
-    showNotification("Klik op een minion op je board om de spreuk te richten. (Esc = annuleer)", 30000);
+    showNotification("Click a minion on your board to target the spell. (Esc = cancel)", 30000);
   },
   cancel() {
     this.active = false;
@@ -33,7 +33,7 @@ const MagnetizeTarget = {
     this.itemTypes = itemTypes;
     document.getElementById("board-slots").classList.add("magnetize-targeting");
     GameUI.renderBoard(State.player?.board);
-    showNotification("Klik op een compatibel minion om te Magnetizen. (Esc = standalone spelen)", 30000);
+    showNotification("Click a compatible minion to Magnetize. (Esc = play standalone)", 30000);
   },
   cancel() {
     this.active = false;
@@ -92,7 +92,7 @@ const GameUI = {
     if (!container) return;
     container.innerHTML = "";
     if (!hand || hand.length === 0) {
-      container.innerHTML = '<div class="hand-empty-msg">Koop minions — klik om op board te zetten</div>';
+      container.innerHTML = '<div class="hand-empty-msg">Buy minions — click to play to board</div>';
       return;
     }
     hand.forEach((item, idx) => {
@@ -147,14 +147,14 @@ const GameUI = {
 
         card.addEventListener("contextmenu", e => {
           e.preventDefault();
-          if (confirm(`Verkoop ${item.name} voor 1💰?`)) SocketClient.sellFromHand(idx);
+          if (confirm(`Sell ${item.name} for 1💰?`)) SocketClient.sellFromHand(idx);
         });
 
         const passCost = (State.player?.pass_free_available > 0) ? 0 : 1;
         const passBtn = document.createElement('div');
         passBtn.className = 'hand-pass-btn';
         passBtn.textContent = `📤 ${passCost}💰`;
-        passBtn.title = 'Pass naar willekeurige tegenstander';
+        passBtn.title = 'Pass to random opponent';
         passBtn.addEventListener('click', e => {
           e.stopPropagation();
           SocketClient.passMinion(idx);
@@ -421,7 +421,7 @@ function showSpellTooltip(spell, e) {
   const tip = document.getElementById("minion-tooltip");
   tip.innerHTML = `
     <div class="tip-name">✨ ${escapeHtml(spell.name)}</div>
-    <div class="tip-tribe">Spreuk · Tier ${spell.tier}</div>
+    <div class="tip-tribe">Spell · Tier ${spell.tier}</div>
     ${spell.description ? `<div class="tip-desc">${escapeHtml(spell.description)}</div>` : ""}
   `;
   tip.classList.remove("hidden");
@@ -432,7 +432,7 @@ function showBloodGemTooltip(gem, e) {
   const tip = document.getElementById("minion-tooltip");
   tip.innerHTML = `
     <div class="tip-name">💎 ${escapeHtml(gem.name)}</div>
-    <div class="tip-tribe">Gratis · Klik op een board minion</div>
+    <div class="tip-tribe">Free · Click a board minion</div>
     ${gem.description ? `<div class="tip-desc">${escapeHtml(gem.description)}</div>` : ""}
   `;
   tip.classList.remove("hidden");
@@ -444,16 +444,16 @@ function showTooltip(minion, e) {
   const tip = document.getElementById("minion-tooltip");
   const kws = [];
   if (minion.taunt)         kws.push("Taunt");
-  if (minion.divine_shield) kws.push("Goddelijk Schild");
-  if (minion.reborn)        kws.push("Herboren");
-  if (minion.poisonous)     kws.push("Giftig");
-  if (minion.windfury)      kws.push("Windtoom");
+  if (minion.divine_shield) kws.push("Divine Shield");
+  if (minion.reborn)        kws.push("Reborn");
+  if (minion.poisonous)     kws.push("Poisonous");
+  if (minion.windfury)      kws.push("Windfury");
   if (minion.cleave)        kws.push("Cleave");
-  if (minion.deathrattle)   kws.push("Sterf-effect");
+  if (minion.deathrattle)   kws.push("Deathrattle");
 
   tip.innerHTML = `
     <div class="tip-name">${escapeHtml(minion.name)}${minion.golden ? " ✨" : ""}</div>
-    <div class="tip-tribe">${minion.tribe || "Neutraal"} · Tier ${minion.tier}</div>
+    <div class="tip-tribe">${minion.tribe || "Neutral"} · Tier ${minion.tier}</div>
     <div class="tip-stats">
       <span class="atk">⚔️ ${minion.attack}</span>
       <span class="hp">❤️ ${minion.health}</span>

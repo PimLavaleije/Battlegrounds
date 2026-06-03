@@ -22,11 +22,11 @@ class GameManager:
     def join_lobby(self, sid: str, room_code: str, player_name: str) -> dict:
         game = self.rooms.get(room_code)
         if not game:
-            return {"success": False, "message": f"Kamer '{room_code}' bestaat niet."}
+            return {"success": False, "message": f"Room '{room_code}' does not exist."}
         if game.state != "lobby":
-            return {"success": False, "message": "Het spel is al begonnen."}
+            return {"success": False, "message": "The game has already started."}
         if len(game.players) >= self.MAX_PLAYERS_PER_ROOM:
-            return {"success": False, "message": "Kamer is vol (max 8 spelers)."}
+            return {"success": False, "message": "Room is full (max 8 players)."}
         game.add_player(sid, player_name)
         self.sid_to_room[sid] = room_code
         return {"success": True, "room_code": room_code}
@@ -49,11 +49,11 @@ class GameManager:
     def start_game(self, sid: str, room_code: str) -> dict:
         game = self.rooms.get(room_code)
         if not game:
-            return {"success": False, "message": "Kamer niet gevonden."}
+            return {"success": False, "message": "Room not found."}
         if game.host_sid != sid:
-            return {"success": False, "message": "Alleen de host kan het spel starten."}
+            return {"success": False, "message": "Only the host can start the game."}
         if len(game.players) < 1:
-            return {"success": False, "message": "Er is minimaal 1 speler nodig."}
+            return {"success": False, "message": "At least 1 player is required."}
 
         # Vul op met AI bots tot 8
         game.fill_with_bots(8)

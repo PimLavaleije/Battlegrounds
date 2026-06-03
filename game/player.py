@@ -149,23 +149,23 @@ class Player:
     # ── Hero ability ────────────────────────────────────────
     def use_hero_power(self, target_index: int | None = None) -> dict:
         if not self.hero:
-            return {"success": False, "message": "Geen held geselecteerd."}
+            return {"success": False, "message": "No hero selected."}
         ab = self.hero.get("ability", {})
         if ab.get("type") != "hero_power":
-            return {"success": False, "message": "Geen actieve held-spreuk."}
+            return {"success": False, "message": "No active hero power."}
         # Unlock tier check
         unlock_tier = ab.get("unlock_tier")
         if unlock_tier and self.tavern_tier < unlock_tier:
-            return {"success": False, "message": f"Beschikbaar vanaf Taverne Tier {unlock_tier}."}
+            return {"success": False, "message": f"Available from Tavern Tier {unlock_tier}."}
         unlock_turn = ab.get("unlock_turn")
         if unlock_turn and getattr(self, "_current_round", 1) < unlock_turn:
-            return {"success": False, "message": f"Beschikbaar vanaf beurt {unlock_turn}."}
+            return {"success": False, "message": f"Available from turn {unlock_turn}."}
         cost = ab.get("cost", 2)
         if self.gold < cost:
-            return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
+            return {"success": False, "message": f"Not enough gold (costs {cost})."}
         uses_per_turn = ab.get("uses_per_turn", 1)
         if self._hero_power_used >= uses_per_turn:
-            return {"success": False, "message": "Held-spreuk al gebruikt deze beurt."}
+            return {"success": False, "message": "Hero power already used this turn."}
 
         effect = ab.get("effect")
         self.gold -= cost
@@ -269,7 +269,7 @@ class Player:
             used = getattr(self, "_bloodbound_used", 0)
             if used >= uses:
                 self.gold += cost  # refund
-                return {"success": False, "message": f"Al {uses}× gebruikt deze beurt."}
+                return {"success": False, "message": f"Already used {uses}× this turn."}
             self._bloodbound_used = used + 1
             count = ab.get("gems", 2) * (1 if not getattr(self, "double_bloodbound", False) else 2)
             for _ in range(count):
@@ -402,7 +402,7 @@ class Player:
                 triple = self._track_triple(m)
                 return {"success": True, "effect": "three_wishes", "triple": triple}
             self.gold += cost  # geen kandidaten, refund
-            return {"success": False, "message": "Geen minion met 2 kopieën gevonden."}
+            return {"success": False, "message": "No minion with 2 copies found."}
 
         elif effect == "embrace_your_rage":
             # Y'Shaarj: voeg een minion van jouw tier toe aan hand (vereenvoudigd; eigenlijk start-of-combat)
@@ -425,11 +425,11 @@ class Player:
             # Shudderwock: trigger een battlecry van een boardminion
             if target_index is None or not (0 <= target_index < len(self.board)):
                 self.gold += cost
-                return {"success": False, "message": "Kies een boardminion om de Battlecry te triggeren."}
+                return {"success": False, "message": "Choose a board minion to trigger the Battlecry."}
             target_m = self.board[target_index]
             if not target_m.battlecry:
                 self.gold += cost
-                return {"success": False, "message": f"{target_m.name} heeft geen Battlecry."}
+                return {"success": False, "message": f"{target_m.name} has no Battlecry."}
             self._apply_battlecry(target_m)
             return {"success": True, "effect": "snicker_snack",
                     "player": self.to_dict(include_shop=True)}
@@ -438,7 +438,7 @@ class Player:
         elif effect in ("ill_take_that", "reclaimed_souls", "friendly_wager",
                          "i_spy", "imprison", "spawning_pool"):
             self.gold += cost  # refund
-            return {"success": False, "message": "Dit heldvermogen is nog niet geïmplementeerd."}
+            return {"success": False, "message": "This hero power is not yet implemented."}
 
         return {"success": True}
 
@@ -448,16 +448,16 @@ class Player:
 
     def buy_minion(self, shop_index: int, target_index: int | None = None) -> dict:
         if shop_index < 0 or shop_index >= len(self.shop):
-            return {"success": False, "message": "Ongeldige winkel-index."}
+            return {"success": False, "message": "Invalid shop index."}
         item = self.shop[shop_index]
         if item is None:
-            return {"success": False, "message": "Geen minion op die plek."}
+            return {"success": False, "message": "No minion at that slot."}
         # Spell dict in shop — redirect to spell handler
         if isinstance(item, dict):
             return self._cast_spell_from_shop(shop_index, target_index)
         minion = item
         if not self.can_buy():
-            return {"success": False, "message": "Niet genoeg goud."}
+            return {"success": False, "message": "Not enough gold."}
 
         self.shop[shop_index] = None
         self.gold -= 3
@@ -506,7 +506,7 @@ class Player:
 
     def sell_minion(self, board_index: int) -> dict:
         if board_index < 0 or board_index >= len(self.board):
-            return {"success": False, "message": "Ongeldige board-index."}
+            return {"success": False, "message": "Invalid board index."}
         minion = self.board.pop(board_index)
         self.gold = min(self.gold + self._sell_gold(minion), self.MAX_GOLD)
         self._remove_from_triple(minion)
@@ -523,7 +523,7 @@ class Player:
             self.free_refreshes_available -= 1
             return {"success": True, "gold": self.gold}
         if self.gold < 1:
-            return {"success": False, "message": "Niet genoeg goud."}
+            return {"success": False, "message": "Not enough gold."}
         self.gold -= 1
         self._on_gold_spent(1)
         return {"success": True, "gold": self.gold}
@@ -534,9 +534,9 @@ class Player:
 
     def upgrade_tavern(self) -> dict:
         if self.tavern_tier >= 6:
-            return {"success": False, "message": "Al op maximaal tavern niveau."}
+            return {"success": False, "message": "Already at maximum tavern tier."}
         if self.gold < self.upgrade_cost:
-            return {"success": False, "message": f"Niet genoeg goud (kost {self.upgrade_cost})."}
+            return {"success": False, "message": f"Not enough gold (costs {self.upgrade_cost})."}
         cost_paid = self.upgrade_cost
         self.gold -= cost_paid
         self._on_gold_spent(cost_paid)
@@ -554,7 +554,7 @@ class Player:
 
     def move_minion(self, from_idx: int, to_idx: int) -> dict:
         if not (0 <= from_idx < len(self.board) and 0 <= to_idx < len(self.board)):
-            return {"success": False, "message": "Ongeldige positie."}
+            return {"success": False, "message": "Invalid position."}
         self.board.insert(to_idx, self.board.pop(from_idx))
         return {"success": True}
 
@@ -608,7 +608,7 @@ class Player:
     # ── Hand acties ─────────────────────────────────────────────
     def play_from_hand(self, hand_index: int, board_index: int = -1) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
-            return {"success": False, "message": "Ongeldige hand-index."}
+            return {"success": False, "message": "Invalid hand index."}
         item = self.hand[hand_index]
         # Spell stored in hand (given by battlecry/deathrattle)
         if isinstance(item, dict) and item.get("type") == "spell":
@@ -619,13 +619,13 @@ class Player:
         # Blood Gem — doelgericht +1/+1 item
         if isinstance(item, dict) and item.get("type") == "blood_gem":
             if not self.board:
-                return {"success": False, "message": "Geen minions om Blood Gem op te spelen."}
+                return {"success": False, "message": "No minions to play Blood Gem on."}
             self.hand.pop(hand_index)
             target = self.board[board_index] if 0 <= board_index < len(self.board) else self.board[0]
             self._apply_blood_gem(target, item.get("bonus_keyword"), item.get("bonus_tribe"), _from_hand=True)
             return {"success": True, "blood_gem": True, "target": target.to_dict()}
         if len(self.board) >= self.MAX_BOARD:
-            return {"success": False, "message": "Board is vol (max 7). Verkoop een minion om ruimte te maken."}
+            return {"success": False, "message": "Board is full (max 7). Sell a minion to make room."}
         minion = self.hand.pop(hand_index)
         if 0 <= board_index < len(self.board):
             self.board.insert(board_index, minion)
@@ -672,10 +672,10 @@ class Player:
     def apply_choose_one(self, choice: int) -> dict:
         pending = self._pending_choose_one
         if not pending:
-            return {"success": False, "message": "Geen keuze in behandeling."}
+            return {"success": False, "message": "No pending choice."}
         effects = pending["effects"]
         if choice < 0 or choice >= len(effects):
-            return {"success": False, "message": "Ongeldige keuze."}
+            return {"success": False, "message": "Invalid choice."}
         effect = effects[choice]
         mult = pending["mult"]
         uid = pending["uid"]
@@ -717,7 +717,7 @@ class Player:
         cost = max(0, spell.get("cost", 3) - self.next_spell_discount)
         self.next_spell_discount = 0
         if self.gold < cost:
-            return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
+            return {"success": False, "message": f"Not enough gold (costs {cost})."}
         self.shop[shop_index] = None
         self.gold -= cost
         if cost > 0:
@@ -1101,10 +1101,10 @@ class Player:
 
     def sell_from_hand(self, hand_index: int) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
-            return {"success": False, "message": "Ongeldige hand-index."}
+            return {"success": False, "message": "Invalid hand index."}
         item = self.hand[hand_index]
         if isinstance(item, dict):
-            return {"success": False, "message": "Spreuken kunnen niet verkocht worden."}
+            return {"success": False, "message": "Spells cannot be sold."}
         minion = self.hand.pop(hand_index)
         self.gold = min(self.gold + self._sell_gold(minion), self.MAX_GOLD)
         self._remove_from_triple(minion)
@@ -2046,16 +2046,16 @@ class Player:
     def magnetize(self, hand_index: int, board_index: int) -> dict:
         """Combineer een Magnetic minion met een compatibel board-doelwit."""
         if hand_index < 0 or hand_index >= len(self.hand):
-            return {"success": False, "message": "Ongeldige hand-index."}
+            return {"success": False, "message": "Invalid hand index."}
         item = self.hand[hand_index]
         if not isinstance(item, Minion) or 'magnetic' not in item.abilities:
-            return {"success": False, "message": "Geen Magnetic minion."}
+            return {"success": False, "message": "Not a Magnetic minion."}
         if board_index < 0 or board_index >= len(self.board):
-            return {"success": False, "message": "Ongeldige board-index."}
+            return {"success": False, "message": "Invalid board index."}
         target = self.board[board_index]
         mag = item
         if not any(t in target.types for t in mag.types):
-            return {"success": False, "message": f"{target.name} is geen geldig doelwit."}
+            return {"success": False, "message": f"{target.name} is not a valid target."}
 
         self.hand.pop(hand_index)
 
@@ -2101,12 +2101,12 @@ class Player:
 
     def pass_minion(self, hand_index: int) -> dict:
         if hand_index < 0 or hand_index >= len(self.hand):
-            return {"success": False, "message": "Ongeldige hand-index."}
+            return {"success": False, "message": "Invalid hand index."}
 
         free = self._free_passes_available() > 0
         cost = 0 if free else 1
         if self.gold < cost:
-            return {"success": False, "message": "Niet genoeg goud (Pass kost 1 goud)."}
+            return {"success": False, "message": "Not enough gold (Pass costs 1 gold)."}
 
         item = self.hand.pop(hand_index)
         self.gold -= cost

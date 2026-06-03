@@ -22,7 +22,7 @@ function showNotification(msg, ms = 3000) {
 }
 function showElimination(name) {
   const el = document.getElementById("elimination-toast");
-  el.textContent = `💀 ${name} is uitgeschakeld!`;
+  el.textContent = `💀 ${name} has been eliminated!`;
   el.classList.remove("hidden");
   setTimeout(() => el.classList.add("hidden"), 4000);
 }
@@ -38,7 +38,7 @@ function showRoundBanner(text) {
 // ── Landing ──────────────────────────────────────────────────
 document.getElementById("btn-create").addEventListener("click", () => {
   const name = document.getElementById("input-name").value.trim();
-  if (!name) { showLandingError("Voer een naam in."); return; }
+  if (!name) { showLandingError("Please enter a name."); return; }
   State.playerName = name;
   SocketClient.createLobby(name);
 });
@@ -48,8 +48,8 @@ document.getElementById("btn-join-open").addEventListener("click", () => {
 document.getElementById("btn-join-confirm").addEventListener("click", () => {
   const name = document.getElementById("input-name").value.trim();
   const code = document.getElementById("input-room").value.trim().toUpperCase();
-  if (!name) { showLandingError("Voer een naam in."); return; }
-  if (code.length !== 4) { showLandingError("Voer een geldige 4-letter code in."); return; }
+  if (!name) { showLandingError("Please enter a name."); return; }
+  if (code.length !== 4) { showLandingError("Please enter a valid 4-letter code."); return; }
   State.playerName = name;
   SocketClient.joinLobby(name, code);
 });
@@ -137,7 +137,7 @@ function renderGame(data) {
   State.roundNum  = data.round_num;
   clearInterval(State.shopTimer);
   showScreen("screen-game");
-  showRoundBanner(`Ronde ${data.round_num}`);
+  showRoundBanner(`Round ${data.round_num}`);
   updateHUD(data.player, data.round_num);
   renderOpponentsSidebar(data.opponents);
   GameUI.renderShop(data.player.shop);
@@ -192,7 +192,7 @@ function updateHUD(player, roundNum) {
   document.getElementById("hud-tier").textContent  = player.tavern_tier;
   document.getElementById("board-count").textContent = `(${player.board.length}/7)`;
   const taverneEl = document.querySelector(".taverne-label");
-  if (taverneEl) taverneEl.textContent = `Taverne · Tier ${player.tavern_tier}`;
+  if (taverneEl) taverneEl.textContent = `Tavern · Tier ${player.tavern_tier}`;
   if (player.hero) {
     const heroEmoji = document.getElementById("hud-hero-emoji");
     const imgUrl = getHeroImageUrl(player.hero.id);
@@ -207,7 +207,7 @@ function updateHUD(player, roundNum) {
   const upBtn = document.getElementById("btn-upgrade");
   document.getElementById("upgrade-cost").textContent = player.upgrade_cost;
   upBtn.disabled = player.tavern_tier >= 6;
-  if (player.tavern_tier >= 6) upBtn.textContent = "⬆️ MAX";
+  if (player.tavern_tier >= 6) upBtn.textContent = "⬆️ Max";
 
   updateHeroBoardDisplay(player);
   renderTrinketBar(player.trinkets);
@@ -342,7 +342,7 @@ document.getElementById("btn-ready").addEventListener("click", () => {
   SocketClient.playerReady();
   const btn = document.getElementById("btn-ready");
   btn.disabled = true;
-  btn.textContent = "⏳ Wachten...";
+  btn.textContent = "⏳ Waiting...";
 });
 
 // ── Updates van server ────────────────────────────────────────
@@ -369,10 +369,10 @@ function updateHeroPowerButton(player) {
 function onFreezeUpdate(frozen) {
   const btn = document.getElementById("btn-freeze");
   btn.classList.toggle("active", frozen);
-  btn.textContent = frozen ? "❄️ Bevroren" : "❄️ Bevries";
+  btn.textContent = frozen ? "❄️ Frozen" : "❄️ Freeze";
 }
 function onReadyUpdate(data) {
-  document.getElementById("ready-indicator").textContent = `${data.ready}/${data.total} klaar`;
+  document.getElementById("ready-indicator").textContent = `${data.ready}/${data.total} ready`;
 }
 
 // ── Game over ─────────────────────────────────────────────────
@@ -381,9 +381,9 @@ function showGameOver(winner) {
   clearInterval(State.heroTimer);
   const isWinner = winner === State.playerName;
   document.getElementById("game-over-icon").textContent    = isWinner ? "🏆" : "💀";
-  document.getElementById("game-over-title").textContent   = isWinner ? "Gewonnen!" : "Verslagen!";
+  document.getElementById("game-over-title").textContent   = isWinner ? "Victory!" : "Defeated!";
   document.getElementById("game-over-subtitle").textContent =
-    isWinner ? "Jij bent de laatste staande!" : `${escapeHtml(winner)} heeft gewonnen.`;
+    isWinner ? "You are the last one standing!" : `${escapeHtml(winner)} has won.`;
   showScreen("screen-game-over");
 }
 document.getElementById("btn-play-again").addEventListener("click", () => {
@@ -442,8 +442,8 @@ function showTrinketOffer(offer) {
   container.innerHTML = "";
 
   const isGreater = offer.grade === "greater";
-  title.textContent = isGreater ? "🏆 Kies een Grote Trofee" : "🎖️ Kies een Kleine Trofee";
-  subtitle.textContent = isGreater ? "Ronde 9 — Grote Trofee: krachtige permanente bonus" : "Ronde 6 — Kleine Trofee: permanente bonus";
+  title.textContent = isGreater ? "🏆 Choose a Greater Trinket" : "🎖️ Choose a Lesser Trinket";
+  subtitle.textContent = isGreater ? "Round 9 — Greater Trinket: powerful permanent bonus" : "Round 6 — Lesser Trinket: permanent bonus";
 
   offer.options.forEach(trinket => {
     const card = document.createElement("div");
@@ -452,7 +452,7 @@ function showTrinketOffer(offer) {
       <div class="trinket-card-icon">${isGreater ? "🏆" : "🎖️"}</div>
       <div class="trinket-card-name">${escapeHtml(trinket.name)}</div>
       <div class="trinket-card-desc">${escapeHtml(trinket.description)}</div>
-      <button class="trinket-pick-btn">Kiezen</button>
+      <button class="trinket-pick-btn">Pick</button>
     `;
     card.querySelector(".trinket-pick-btn").addEventListener("click", () => {
       overlay.classList.add("hidden");

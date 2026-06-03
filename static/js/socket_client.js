@@ -30,11 +30,11 @@ const SocketClient = {
 // ── Verbinding ───────────────────────────────────────────────
 socket.on("connect", () => {
   State.mySid = socket.id;
-  console.log("Verbonden met server:", socket.id);
+  console.log("Connected to server:", socket.id);
 });
 
 socket.on("disconnect", () => {
-  showNotification("Verbinding verbroken. Ververs de pagina.");
+  showNotification("Connection lost. Please refresh the page.");
 });
 
 // ── Lobby events ─────────────────────────────────────────────
@@ -75,7 +75,7 @@ socket.on("round_start", data => {
   // Reset ready knop
   const readyBtn = document.getElementById("btn-ready");
   readyBtn.disabled = false;
-  readyBtn.textContent = "✅ Klaar!";
+  readyBtn.textContent = "✅ Ready!";
   document.getElementById("ready-indicator").textContent = "";
 
   renderGame(data);
@@ -116,7 +116,7 @@ socket.on("ready_update", data => {
 // ── Combat ───────────────────────────────────────────────────
 socket.on("combat_starting", () => {
   State.inCombat = true;
-  showNotification("⚔️ Gevecht begint!", 2000);
+  showNotification("⚔️ Combat begins!", 2000);
 });
 
 socket.on("combat_result", data => {

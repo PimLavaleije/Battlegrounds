@@ -66,7 +66,7 @@ const CombatReplay = {
       setTimeout(() => attackerEl.classList.remove("anim-takehit"), 350);
     }
 
-    this._log(`⚔️ ${step.attacker_name} → ${step.target_name} (${step.attacker_attack} schade)`);
+    this._log(`⚔️ ${step.attacker_name} → ${step.target_name} (${step.attacker_attack} damage)`);
 
     // Sub-events
     for (const ev of (step.events || [])) {
@@ -82,7 +82,7 @@ const CombatReplay = {
     const el = this._uid(board, step.uid);
     if (el) {
       el.classList.add("anim-death");
-      this._log(`💀 ${step.name} sterft`);
+      this._log(`💀 ${step.name} dies`);
       await this._sleep(450);
       el.remove();
     }
@@ -101,7 +101,7 @@ const CombatReplay = {
       const card = buildCombatCard(ev.token);
       card.classList.add("anim-bounce-in");
       friendlyBoard.appendChild(card);
-      this._log(`✨ ${ev.token.name} wordt opgeroepen`);
+      this._log(`✨ ${ev.token.name} is summoned`);
     }
     if (ev.type === "buff") {
       const el = this._uid(pc, ev.uid) || this._uid(ec, ev.uid);
@@ -111,14 +111,14 @@ const CombatReplay = {
         if (ev.health !== undefined) this._setStat(el, ".mc-hp",  ev.health);
       }
     }
-    if (ev.type === "aoe_damage") this._log(`💥 ${ev.amount} schade aan iedereen!`);
-    if (ev.type === "reborn")     this._log(`🔮 ${ev.name} herrijst met 1 leven!`);
+    if (ev.type === "aoe_damage") this._log(`💥 ${ev.amount} damage to everyone!`);
+    if (ev.type === "reborn")     this._log(`🔮 ${ev.name} reborns with 1 health!`);
     if (ev.type === "soul_juggler") {
       const el = this._uid(ec, ev.target_uid) || this._uid(pc, ev.target_uid);
       if (el) { el.classList.add("anim-takehit"); this._floatText(el, "-3"); }
-      this._log("🔥 Soul Juggler doet 3 schade");
+      this._log("🔥 Soul Juggler deals 3 damage");
     }
-    if (ev.type === "pack_leader_buff") this._log("🐺 Pack Leader geeft +3 aanval!");
+    if (ev.type === "pack_leader_buff") this._log("🐺 Pack Leader gives +3 Attack!");
   },
 
   _showResult(data) {
@@ -126,17 +126,17 @@ const CombatReplay = {
     banner.classList.remove("hidden", "won", "lost", "tie");
     const res = data.your_result;
     if (res === "won") {
-      banner.textContent = `🏆 Gewonnen! (${data.opponent_name} krijgt ${data.damage_dealt} schade)`;
+      banner.textContent = `🏆 Victory! (${data.opponent_name} takes ${data.damage_dealt} damage)`;
       banner.classList.add("won");
-      this._log(`✅ Jij wint! Tegenstander krijgt ${data.damage_dealt} schade.`, "won");
+      this._log(`✅ You win! Opponent takes ${data.damage_dealt} damage.`, "won");
     } else if (res === "lost") {
-      banner.textContent = `💀 Verloren! (Jij krijgt ${data.damage_received} schade)`;
+      banner.textContent = `💀 Defeated! (You take ${data.damage_received} damage)`;
       banner.classList.add("lost");
-      this._log(`❌ Tegenstander wint. Jij krijgt ${data.damage_received} schade.`, "lost");
+      this._log(`❌ Opponent wins. You take ${data.damage_received} damage.`, "lost");
     } else {
-      banner.textContent = "🤝 Gelijkspel!";
+      banner.textContent = "🤝 Draw!";
       banner.classList.add("tie");
-      this._log("🤝 Gelijkspel.");
+      this._log("🤝 Draw.");
     }
     if (State.player) {
       State.player.hp = Math.max(0, State.player.hp - (data.damage_received || 0));

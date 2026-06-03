@@ -294,7 +294,7 @@ class GameState:
     def buy_minion(self, sid: str, shop_index: int, target_index: int | None = None) -> dict:
         p = self.players.get(sid)
         if not p or not p.alive:
-            return {"success": False, "message": "Speler niet gevonden."}
+            return {"success": False, "message": "Player not found."}
         result = p.buy_minion(shop_index, target_index)
         if result.get("triple"):
             tier = result["triple"].get("discover_tier", p.tavern_tier)
@@ -375,7 +375,7 @@ class GameState:
     def pass_minion(self, sid: str, hand_index: int) -> dict:
         p = self.players.get(sid)
         if not p or not p.alive:
-            return {"success": False, "message": "Speler niet gevonden."}
+            return {"success": False, "message": "Player not found."}
         result = p.pass_minion(hand_index)
         if not result["success"]:
             return result
@@ -385,7 +385,7 @@ class GameState:
     def sell_minion(self, sid: str, board_index: int) -> dict:
         p = self.players.get(sid)
         if not p or not p.alive:
-            return {"success": False, "message": "Speler niet gevonden."}
+            return {"success": False, "message": "Player not found."}
         result = p.sell_minion(board_index)
         sp = result.get("sell_passive") or {}
         if isinstance(sp, dict) and sp.get("type") == "sell_then_pass":
@@ -484,7 +484,7 @@ class GameState:
             return {"success": False}
         trinket = TRINKETS.get(trinket_id)
         if not trinket:
-            return {"success": False, "message": "Onbekende trofee."}
+            return {"success": False, "message": "Unknown trinket."}
         p.acquire_trinket(trinket)
         return {"success": True, "player": p.to_dict(include_shop=True)}
 
