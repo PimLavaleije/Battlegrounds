@@ -261,6 +261,21 @@ const GameUI = {
   },
 };
 
+// ── Keyword-icons helper ─────────────────────────────────────
+function buildKeywordIcons(minion) {
+  const icons = [];
+  if (minion.divine_shield) icons.push('<span class="kw kw-ds"   title="Divine Shield">✦</span>');
+  if (minion.windfury && !minion.megawindfury)
+                             icons.push('<span class="kw kw-wf"   title="Windfury">⚡</span>');
+  if (minion.megawindfury)   icons.push('<span class="kw kw-mwf"  title="Mega-Windfury">⚡⚡</span>');
+  if (minion.reborn)         icons.push('<span class="kw kw-rb"   title="Reborn">♾</span>');
+  if (minion.poisonous || minion.venomous)
+                             icons.push('<span class="kw kw-psn"  title="Poisonous">☠</span>');
+  if (minion.deathrattle)    icons.push('<span class="kw kw-dr"   title="Deathrattle">💀</span>');
+  if (minion.cleave)         icons.push('<span class="kw kw-clv"  title="Cleave">⚔</span>');
+  return icons.join("");
+}
+
 // ── Bouw een oval portret-kaart (Hearthstone BG stijl) ──────
 function buildOvalCard(minion, context) {
   const isShop = context === "shop";
@@ -275,6 +290,8 @@ function buildOvalCard(minion, context) {
 
   const portrait = getPortrait(minion.id);
   const imgUrl   = getCardImageUrl(minion.id, !!minion.golden);
+  const kwIcons  = buildKeywordIcons(minion);
+  const shortName = minion.name.length > 12 ? minion.name.slice(0, 11) + "…" : minion.name;
 
   wrapper.innerHTML = `
     <div class="mc-portrait">
@@ -286,6 +303,8 @@ function buildOvalCard(minion, context) {
         <span>${portrait.emoji}</span>
       </div>
     </div>
+    ${kwIcons ? `<div class="mc-keywords">${kwIcons}</div>` : ""}
+    <div class="mc-name">${escapeHtml(shortName)}</div>
     <div class="mc-atk">${minion.attack}</div>
     <div class="mc-hp">${minion.health}</div>
   `;
@@ -305,6 +324,7 @@ function buildCombatCard(minion) {
 
   const portrait = getPortrait(minion.id);
   const imgUrl   = getCardImageUrl(minion.id, !!minion.golden);
+  const kwIcons  = buildKeywordIcons(minion);
 
   wrapper.innerHTML = `
     <div class="mc-portrait">
@@ -316,6 +336,7 @@ function buildCombatCard(minion) {
         <span>${portrait.emoji}</span>
       </div>
     </div>
+    ${kwIcons ? `<div class="mc-keywords">${kwIcons}</div>` : ""}
     <div class="mc-atk">${minion.attack}</div>
     <div class="mc-hp">${minion.health}</div>
   `;
@@ -372,6 +393,14 @@ function buildShopCard(minion, opts = {}) {
     hpBadge.textContent = minion.health;
     wrapper.appendChild(atkBadge);
     wrapper.appendChild(hpBadge);
+    // Keyword icons row over image
+    const kwIcons = buildKeywordIcons(minion);
+    if (kwIcons) {
+      const kwRow = document.createElement("div");
+      kwRow.className = "sfc-keywords";
+      kwRow.innerHTML = kwIcons;
+      wrapper.appendChild(kwRow);
+    }
   } else {
     const fb = document.createElement("div");
     fb.className = "shop-card-full-fb";

@@ -347,12 +347,108 @@ document.getElementById("btn-ready").addEventListener("click", () => {
 
 // ── Updates van server ────────────────────────────────────────
 function onPlayerUpdate(player) {
+  const prev = State.player;
   State.player = player;
   updateHUD(player, State.roundNum);
-  GameUI.renderShop(player.shop);
-  GameUI.renderBoard(player.board);
-  GameUI.renderHand(player.hand || []);
   updateHeroPowerButton(player);
+
+  // Smart partial updates — only full re-render when structure changed
+  const boardChanged = _collectionChanged(prev?.board, player.board);
+  const shopChanged  = _collectionChanged(prev?.shop,  player.shop);
+  const handChanged  = _collectionChanged(prev?.hand,  player.hand);
+
+  if (boardChanged) {
+    GameUI.renderBoard(player.board);
+  } else if (player.board) {
+    _patchStats("board-slots", player.board, prev?.board);
+  }
+
+  if (shopChanged) {
+    GameUI.renderShop(player.shop);
+  } else if (player.shop) {
+    _patchStats("shop-slots", player.shop, prev?.shop);
+  }
+
+  if (handChanged) {
+    GameUI.renderHand(player.hand || []);
+  } else if (player.hand) {
+    _patchStats("hand-slots", player.hand, prev?.hand);
+  }
+}
+
+// Returns true if the uid composition or order changed (needs full rebuild)
+function _collectionChanged(prev, next) {
+  if (!prev || !next || prev.length !== next.length) return true;
+  for (let i = 0; i < next.length; i++) {
+    const a = prev[i], b = next[i];
+    if (!a && !b) continue;
+    if (!a || !b) return true;
+    if ((a.uid ?? a.id) !== (b.uid ?? b.id)) return true;
+    // Also re-render if abilities/keywords changed (new divine shield, taunt, etc.)
+    if ((a.divine_shield !== b.divine_shield) || (a.taunt !== b.taunt) ||
+        (a.windfury !== b.windfury) || (a.reborn !== b.reborn) ||
+        (a.golden !== b.golden)) return true;
+  }
+  return false;
+}
+
+// Update only atk/hp numbers in existing cards, with flash animation
+function _patchStats(containerId, next, prev) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const cards = container.querySelectorAll("[data-uid]");
+  cards.forEach(card => {
+    const uid = card.dataset.uid;
+    const m = next.find(x => x && (x.uid ?? x.id) == uid);
+    const p = prev?.find(x => x && (x.uid ?? x.id) == uid);
+    if (!m) return;
+
+    // Update oval card stats
+    const atkEl = card.querySelector(".mc-atk");
+    const hpEl  = card.querySelector(".mc-hp");
+    if (atkEl && p && m.attack !== p.attack) {
+      atkEl.textContent = m.attack;
+      _flashStat(atkEl, m.attack > p.attack ? "stat-up" : "stat-down");
+    } else if (atkEl) {
+      atkEl.textContent = m.attack;
+    }
+    if (hpEl && p && m.health !== p.health) {
+      hpEl.textContent = m.health;
+      _flashStat(hpEl, m.health > p.health ? "stat-up" : "stat-down");
+    } else if (hpEl) {
+      hpEl.textContent = m.health;
+    }
+
+    // Update full-card stat overlays
+    const sAtk = card.querySelector(".sfc-atk");
+    const sHp  = card.querySelector(".sfc-hp");
+    if (sAtk && p && m.attack !== p.attack) {
+      sAtk.textContent = m.attack;
+      _flashStat(sAtk, m.attack > p.attack ? "stat-up" : "stat-down");
+    } else if (sAtk) { sAtk.textContent = m.attack; }
+    if (sHp && p && m.health !== p.health) {
+      sHp.textContent = m.health;
+      _flashStat(sHp, m.health > p.health ? "stat-up" : "stat-down");
+    } else if (sHp) { sHp.textContent = m.health; }
+
+    // Update fallback stats
+    const fbAtk = card.querySelector(".sfb-atk");
+    const fbHp  = card.querySelector(".sfb-hp");
+    if (fbAtk) fbAtk.textContent = m.attack;
+    if (fbHp)  fbHp.textContent  = m.health;
+
+    // low-hp class
+    if (hpEl || sHp) {
+      card.classList.toggle("low-hp", m.health <= 1);
+    }
+  });
+}
+
+function _flashStat(el, cls) {
+  el.classList.remove("stat-up", "stat-down");
+  void el.offsetWidth; // reflow
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), 700);
 }
 
 function updateHeroPowerButton(player) {
