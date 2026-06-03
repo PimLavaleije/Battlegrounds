@@ -77,6 +77,7 @@ class Player:
         self.gold_spent_this_turn = 0
         self._bloodbound_used = 0
         self._apply_start_of_round_hero()
+        self.apply_trinket_start_of_turn()
         self._apply_start_of_turn_board()
         for m in self.board:
             if hasattr(m, "_hired_ritualist_triggered"):
@@ -1555,10 +1556,16 @@ class Player:
 
     def _recalculate_board_passives(self):
         """Herbereken board-brede passieve effecten (bijv. Brann op board = double battlecry)."""
-        self.double_battlecry = (
-            any(m.id == "brann_bronzebeard" for m in self.board)
-            or self.hero is not None and self.hero.get("ability", {}).get("effect") == "double_battlecry"
-        )
+        brann = next((m for m in self.board if m.id == "brann_bronzebeard"), None)
+        hero_double = (self.hero is not None
+                       and self.hero.get("ability", {}).get("effect") == "double_battlecry")
+        if brann:
+            self.battlecry_triggers = 3 if brann.golden else 2
+        elif hero_double:
+            self.battlecry_triggers = 2
+        else:
+            self.battlecry_triggers = 1
+        self.double_battlecry = self.battlecry_triggers > 1
 
     def _apply_start_of_turn_board(self):
         """Start-of-turn effecten van minions op het board (Accord-o-Tron, Plunder Pal, etc.)."""
@@ -2051,12 +2058,6 @@ class Player:
                 setattr(target, kw, True)
                 if kw not in target.abilities:
                     target.abilities.append(kw)
-
-        # Dubbele windfury → megawindfury
-        if getattr(mag, 'windfury', False) and getattr(target, 'windfury', False):
-            target.megawindfury = True
-            if 'megawindfury' not in target.abilities:
-                target.abilities.append('megawindfury')
 
         # Deathrattle overnemen als target er geen heeft
         if mag.deathrattle and not target.deathrattle:

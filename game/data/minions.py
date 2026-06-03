@@ -1,5 +1,5 @@
 # Minion pool counts per tier
-POOL_SIZE = {1: 18, 2: 15, 3: 13, 4: 11, 5: 9, 6: 7}
+POOL_SIZE = {1: 18, 2: 15, 3: 13, 4: 11, 5: 9, 6: 6}
 
 # Shop size per tavern tier
 SHOP_SIZE = {1: 3, 2: 4, 3: 4, 4: 5, 5: 5, 6: 6}

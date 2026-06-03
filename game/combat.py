@@ -63,7 +63,7 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
         if target is None:
             break
 
-        # Mega-windfury (golden windfury) = 4x, gewone windfury = 2x, anders 1x
+        # Megawindfury = 4x (zeldzaam, alleen via specifieke effecten); windfury = 2x; anders 1x
         attacks = 4 if attacker.megawindfury else (2 if attacker.windfury else 1)
         for _ in range(attacks):
             if not p_board or not e_board:
@@ -131,10 +131,13 @@ def _choose_target(attacker: Minion, defender_board: list[Minion]) -> tuple[Mini
     if not alive:
         return None, -1
 
-    # Zapp valt laagste aanval aan
+    # Zapp valt laagste aanval aan; bij gelijke aanval willekeurig
     if attacker.zapp:
         alive.sort(key=lambda x: x[1].attack)
-        return alive[0][1], alive[0][0]
+        min_atk = alive[0][1].attack
+        tied = [(i, m) for i, m in alive if m.attack == min_atk]
+        chosen = random.choice(tied)
+        return chosen[1], chosen[0]
 
     # Taunt targets
     taunt_targets = [(i, m) for i, m in alive if m.taunt]
@@ -233,8 +236,12 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
                 step["events"].append({"type": "excess_damage", "uid": t_exc.uid,
                                        "damage": exc_res["damage"]})
 
-    # Tegenslag
-    result_a = attacker.take_damage(target.attack if not target.poisonous else 9999)
+    # Tegenslag – venomous target doodt aanvaller (eerste keer dat het schade uitdeelt)
+    _target_venom_active = target.venomous and not getattr(target, '_venomous_used', False)
+    _target_kill = target.poisonous or _target_venom_active
+    result_a = attacker.take_damage(9999 if _target_kill else target.attack)
+    if _target_venom_active and result_a.get("damage", 0) > 0:
+        target._venomous_used = True
     step["attacker_damage"] = result_a["damage"]
     step["attacker_shield_broken"] = result_a.get("shield_broken", False)
 
