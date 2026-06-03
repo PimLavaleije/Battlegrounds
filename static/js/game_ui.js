@@ -274,7 +274,7 @@ function buildOvalCard(minion, context) {
   if (minion.health <= 1 && !isShop) wrapper.classList.add("low-hp");
 
   const portrait = getPortrait(minion.id);
-  const imgUrl   = getCardImageUrl(minion.id);
+  const imgUrl   = getCardImageUrl(minion.id, !!minion.golden);
 
   wrapper.innerHTML = `
     <div class="mc-portrait">
@@ -304,7 +304,7 @@ function buildCombatCard(minion) {
   if (minion.divine_shield) wrapper.classList.add("divine-glow");
 
   const portrait = getPortrait(minion.id);
-  const imgUrl   = getCardImageUrl(minion.id);
+  const imgUrl   = getCardImageUrl(minion.id, !!minion.golden);
 
   wrapper.innerHTML = `
     <div class="mc-portrait">
@@ -333,7 +333,7 @@ function buildShopCard(minion, opts = {}) {
   if (minion.taunt)         wrapper.classList.add("taunt-outline");
   if (minion.divine_shield) wrapper.classList.add("divine-outline");
 
-  const imgUrl   = getCardImageUrl(minion.id);
+  const imgUrl   = getCardImageUrl(minion.id, !!minion.golden);
   const portrait = getPortrait(minion.id);
 
   if (showCost) {

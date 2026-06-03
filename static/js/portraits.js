@@ -97,7 +97,7 @@ const PORTRAITS = {
   prickly_piper                      : { emoji: "🐗", cardId: "BG26_160_Battlegrounds"                     , bg: "#2a1a0d,#150d06" },
   puddle_prancer                     : { emoji: "🐟", cardId: "BGDUO_117_Battlegrounds"                    , bg: "#0d2a4a,#06152d" },
   pufferquil                         : { emoji: "🐗", cardId: "BG25_039_Battlegrounds"                     , bg: "#2a1a0d,#150d06" },
-  red_chromadrake                    : { emoji: "🐉", cardId: "BG34_638_Gt_Battlegrounds"                  , bg: "#3a2500,#1d1300" },
+  red_chromadrake                    : { emoji: "🐉", cardId: "BG34_638_Battlegrounds"                    , bg: "#3a2500,#1d1300" },
   roaring_recruiter                  : { emoji: "🐉", cardId: "BG29_816_Battlegrounds"                     , bg: "#3a2500,#1d1300" },
   scourfin                           : { emoji: "🐟", cardId: "BG26_360_Battlegrounds"                     , bg: "#0d2a4a,#06152d" },
   shoalfin_mystic                    : { emoji: "🐟", cardId: "BG32_860_Battlegrounds"                     , bg: "#0d2a4a,#06152d" },
@@ -506,10 +506,17 @@ const SPELL_PORTRAITS = {
 };
 
 // Returns wiki card image URL, or null if no cardId
-function getCardImageUrl(minionId) {
+function getCardImageUrl(minionId, isGolden = false) {
   const p = PORTRAITS[minionId];
-  if (p && p.cardId) {
-    return `https://hearthstone.wiki.gg/images/thumb/${p.cardId}.png/200px-${p.cardId}.png`;
+  if (!p || !p.cardId) return null;
+  let cardId = p.cardId;
+  if (isGolden) {
+    // Use explicit goldenCardId if defined, else derive by inserting _G_ before _Battlegrounds
+    if (p.goldenCardId) {
+      cardId = p.goldenCardId;
+    } else {
+      cardId = cardId.replace(/_Battlegrounds$/, "_G_Battlegrounds");
+    }
   }
-  return null;
+  return `https://hearthstone.wiki.gg/images/thumb/${cardId}.png/200px-${cardId}.png`;
 }
