@@ -261,18 +261,80 @@ const GameUI = {
   },
 };
 
+// ── Keyword SVG icons ────────────────────────────────────────
+const KW_SVG = {
+  // Divine Shield – gouden schild met middenkruis
+  ds: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 1.5L13.5 4V9C13.5 12.5 8 14.5 8 14.5S2.5 12.5 2.5 9V4L8 1.5Z"
+          stroke="#ffe860" stroke-width="1.4" fill="rgba(255,232,96,0.12)"/>
+    <path d="M8 5.5V10.5M5.5 8H10.5" stroke="#ffe860" stroke-width="1.3" stroke-linecap="round"/>
+  </svg>`,
+
+  // Windfury – twee gebogen windstrepen
+  wf: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2.5 5.5Q8 3 13.5 5.5" stroke="#7ab4ff" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M2.5 10.5Q8 8 13.5 10.5" stroke="#7ab4ff" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`,
+
+  // Mega-Windfury – drie windstrepen
+  mwf: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 4Q8 2 14 4"   stroke="#60aaff" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M2 8Q8 6 14 8"   stroke="#60aaff" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M2 12Q8 10 14 12" stroke="#60aaff" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`,
+
+  // Reborn – kleine kroon
+  rb: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 12V7L5 10L8 3.5L11 10L14 7V12H2Z"
+          stroke="#6de87a" stroke-width="1.4" stroke-linejoin="round" fill="rgba(109,232,122,0.12)"/>
+    <circle cx="2" cy="7"  r="1.1" fill="#6de87a"/>
+    <circle cx="8" cy="3.5" r="1.1" fill="#6de87a"/>
+    <circle cx="14" cy="7" r="1.1" fill="#6de87a"/>
+  </svg>`,
+
+  // Poisonous – gifdruppel
+  psn: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 1.5Q12.5 7 12.5 10A4.5 4.5 0 0 1 3.5 10Q3.5 7 8 1.5Z"
+          stroke="#5de05d" stroke-width="1.4" fill="rgba(93,224,93,0.15)"/>
+    <circle cx="6.2" cy="9.5" r="0.9" fill="#5de05d"/>
+    <circle cx="9.8" cy="9.5" r="0.9" fill="#5de05d"/>
+    <path d="M6.2 11.5H9.8" stroke="#5de05d" stroke-width="1.1" stroke-linecap="round"/>
+  </svg>`,
+
+  // Deathrattle – schedel
+  dr: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 2C4.5 2 3 4.5 3 7C3 9.5 4.5 10.5 4.5 12.5H11.5C11.5 10.5 13 9.5 13 7C13 4.5 11.5 2 8 2Z"
+          stroke="#c06ee0" stroke-width="1.4" fill="rgba(192,110,224,0.12)"/>
+    <circle cx="6" cy="7.2" r="1.3" fill="#c06ee0"/>
+    <circle cx="10" cy="7.2" r="1.3" fill="#c06ee0"/>
+    <path d="M5.5 11.5V13M8 11.5V13M10.5 11.5V13" stroke="#c06ee0" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`,
+
+  // Cleave – bijl
+  clv: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="4.5" y1="13.5" x2="10.5" y2="4.5" stroke="#e08050" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M10.5 4.5C12 2.5 15 3 13.5 6.5C12.5 8.5 10 8 10.5 4.5Z"
+          fill="#e08050" stroke="#e08050" stroke-width="0.5" stroke-linejoin="round"/>
+  </svg>`,
+};
+
 // ── Keyword-icons helper ─────────────────────────────────────
 function buildKeywordIcons(minion) {
   const icons = [];
-  if (minion.divine_shield) icons.push('<span class="kw kw-ds"   title="Divine Shield">✦</span>');
-  if (minion.windfury && !minion.megawindfury)
-                             icons.push('<span class="kw kw-wf"   title="Windfury">⚡</span>');
-  if (minion.megawindfury)   icons.push('<span class="kw kw-mwf"  title="Mega-Windfury">⚡⚡</span>');
-  if (minion.reborn)         icons.push('<span class="kw kw-rb"   title="Reborn">♾</span>');
+  if (minion.divine_shield)
+    icons.push(`<span class="kw kw-ds" title="Divine Shield">${KW_SVG.ds}</span>`);
+  if (minion.megawindfury)
+    icons.push(`<span class="kw kw-mwf" title="Mega-Windfury">${KW_SVG.mwf}</span>`);
+  else if (minion.windfury)
+    icons.push(`<span class="kw kw-wf" title="Windfury">${KW_SVG.wf}</span>`);
+  if (minion.reborn)
+    icons.push(`<span class="kw kw-rb" title="Reborn">${KW_SVG.rb}</span>`);
   if (minion.poisonous || minion.venomous)
-                             icons.push('<span class="kw kw-psn"  title="Poisonous">☠</span>');
-  if (minion.deathrattle)    icons.push('<span class="kw kw-dr"   title="Deathrattle">💀</span>');
-  if (minion.cleave)         icons.push('<span class="kw kw-clv"  title="Cleave">⚔</span>');
+    icons.push(`<span class="kw kw-psn" title="Poisonous">${KW_SVG.psn}</span>`);
+  if (minion.deathrattle)
+    icons.push(`<span class="kw kw-dr" title="Deathrattle">${KW_SVG.dr}</span>`);
+  if (minion.cleave)
+    icons.push(`<span class="kw kw-clv" title="Cleave">${KW_SVG.clv}</span>`);
   return icons.join("");
 }
 

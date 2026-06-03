@@ -348,31 +348,37 @@ html, body {
 
 /* ── Keyword icons ──────────────────────────────────────── */
 .mc-keywords {
-  position: absolute; top: 4px; right: -2px;
+  position: absolute; top: 4px; right: -3px;
   display: flex; flex-direction: column; gap: 2px;
   z-index: 12; pointer-events: none;
 }
 .kw {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: rgba(10,6,20,0.88); border: 1px solid rgba(200,160,40,0.5);
-  font-size: 0.55rem; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.8); line-height: 1;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: rgba(8,5,18,0.82);
+  border: 1px solid rgba(180,140,30,0.45);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow: hidden;
 }
-.kw-ds  { background: rgba(240,240,180,0.22); border-color: #fff8a0; color: #ffe860; }
-.kw-wf  { background: rgba(60,120,220,0.25); border-color: #80aaff; color: #aaccff; }
-.kw-mwf { background: rgba(60,120,220,0.35); border-color: #60aaff; color: #60aaff; font-size: 0.45rem; }
-.kw-rb  { background: rgba(180,240,180,0.2); border-color: #80e080; color: #80e080; }
-.kw-psn { background: rgba(80,200,80,0.2);  border-color: #60cc60; color: #60cc60; }
-.kw-dr  { background: rgba(160,60,200,0.25); border-color: #c060e0; color: #c060e0; }
-.kw-clv { background: rgba(220,80,40,0.25);  border-color: #e08060; color: #e08060; }
+.kw svg { width: 12px; height: 12px; display: block; flex-shrink: 0; }
+
+/* Per-keyword border tints */
+.kw-ds  { border-color: rgba(255,232,96,0.6); }
+.kw-wf  { border-color: rgba(122,180,255,0.55); }
+.kw-mwf { border-color: rgba(96,170,255,0.6); }
+.kw-rb  { border-color: rgba(109,232,122,0.55); }
+.kw-psn { border-color: rgba(93,224,93,0.55); }
+.kw-dr  { border-color: rgba(192,110,224,0.55); }
+.kw-clv { border-color: rgba(224,128,80,0.55); }
 
 /* Keyword icons on full shop cards */
 .sfc-keywords {
-  position: absolute; top: 8%; right: 3%;
+  position: absolute; top: 8%; right: 4%;
   display: flex; flex-direction: column; gap: 3px;
   z-index: 12; pointer-events: none;
 }
-.sfc-keywords .kw { width: 18px; height: 18px; font-size: 0.6rem; }
+.sfc-keywords .kw { width: 20px; height: 20px; }
+.sfc-keywords .kw svg { width: 14px; height: 14px; }
 
 /* ── Stat flash animations ──────────────────────────────── */
 @keyframes stat-up-flash   { 0%{transform:scale(1.4);background:radial-gradient(circle at 35% 25%,#a0ffb0,#00c040,#004010);} 100%{transform:scale(1);} }
