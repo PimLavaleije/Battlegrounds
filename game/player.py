@@ -58,6 +58,7 @@ class Player:
         self.pending_egg_hatch: "Minion | None" = None
         self._pending_choose_one: dict | None = None
         self.trinkets: list[dict] = []  # actieve trofeeën van de speler
+        self._hero_power_used = 0       # reset elke beurt; getoetst aan uses_per_turn
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -76,6 +77,7 @@ class Player:
         self.pass_free_used_this_turn = 0
         self.gold_spent_this_turn = 0
         self._bloodbound_used = 0
+        self._hero_power_used = 0
         self._apply_start_of_round_hero()
         self.apply_trinket_start_of_turn()
         self._apply_start_of_turn_board()
@@ -161,9 +163,13 @@ class Player:
         cost = ab.get("cost", 2)
         if self.gold < cost:
             return {"success": False, "message": f"Niet genoeg goud (kost {cost})."}
+        uses_per_turn = ab.get("uses_per_turn", 1)
+        if self._hero_power_used >= uses_per_turn:
+            return {"success": False, "message": "Held-spreuk al gebruikt deze beurt."}
 
         effect = ab.get("effect")
         self.gold -= cost
+        self._hero_power_used += 1
 
         # ── Targeted effects ──────────────────────────────────────
         if effect == "give_divine_shield":
@@ -2189,6 +2195,7 @@ class Player:
             "trinkets": self.trinkets,
             "spell_attack_bonus": self.spell_attack_bonus,
             "spell_health_bonus": self.spell_health_bonus,
+            "hero_power_used": self._hero_power_used,
         }
         if include_shop:
             d["shop"] = [

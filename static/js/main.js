@@ -145,6 +145,7 @@ function renderGame(data) {
   GameUI.renderHand(data.player.hand || []);
   startShopTimer(data.timer || 45);
   setupHeroPower(data.player.hero);
+  updateHeroPowerButton(data.player);
 }
 
 function updateHUD(player, roundNum) {
@@ -351,6 +352,19 @@ function onPlayerUpdate(player) {
   GameUI.renderShop(player.shop);
   GameUI.renderBoard(player.board);
   GameUI.renderHand(player.hand || []);
+  updateHeroPowerButton(player);
+}
+
+function updateHeroPowerButton(player) {
+  const btn = document.getElementById("btn-hero-power");
+  if (!btn) return;
+  const ab = player.hero?.ability;
+  if (!ab || ab.type !== "hero_power") return;
+  const usesPerTurn = ab.uses_per_turn ?? 1;
+  const used = player.hero_power_used ?? 0;
+  const exhausted = used >= usesPerTurn;
+  btn.disabled = exhausted;
+  btn.classList.toggle("hp-exhausted", exhausted);
 }
 function onFreezeUpdate(frozen) {
   const btn = document.getElementById("btn-freeze");
