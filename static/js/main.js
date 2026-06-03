@@ -165,6 +165,23 @@ function updateHUD(player, roundNum) {
   if (armorStat) armorStat.style.display = newArmor > 0 ? "" : "none";
   if (newArmor < prevArmor) { armorEl.classList.remove("anim-hp-damage"); void armorEl.offsetWidth; armorEl.classList.add("anim-hp-damage"); setTimeout(() => armorEl.classList.remove("anim-hp-damage"), 500); }
 
+  // Spellpower indicator
+  const spellpowerEl = document.getElementById("hud-spellpower");
+  const spellpowerStat = document.getElementById("hud-spellpower-stat");
+  if (spellpowerEl && spellpowerStat) {
+    const atk = player.spell_attack_bonus ?? 0;
+    const hp  = player.spell_health_bonus  ?? 0;
+    if (atk > 0 || hp > 0) {
+      const parts = [];
+      if (atk > 0) parts.push(`+${atk}⚔️`);
+      if (hp  > 0) parts.push(`+${hp}❤️`);
+      spellpowerEl.textContent = parts.join(" ");
+      spellpowerStat.style.display = "";
+    } else {
+      spellpowerStat.style.display = "none";
+    }
+  }
+
   // Gold flash bij winst
   const goldEl = document.getElementById("hud-gold");
   const prevGold = parseInt(goldEl.textContent) || player.gold;

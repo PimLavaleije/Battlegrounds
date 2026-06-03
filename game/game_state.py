@@ -223,7 +223,10 @@ class GameState:
             options = random.sample(hero_pool, min(3, len(hero_pool)))
             p.hero_options = options
             if p.is_ai:
-                p.hero = random.choice(options)
+                hero = random.choice(options)
+                p.hero = hero
+                p.hp = hero.get("hp_override", 30)
+                p.armor = hero.get("armor", 0)
 
     def select_hero(self, sid: str, hero_id: str) -> bool:
         p = self.players.get(sid)

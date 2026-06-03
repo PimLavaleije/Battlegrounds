@@ -583,6 +583,10 @@ MINIONS = {'annoy_o_tron': {'id': 'annoy_o_tron',
                        'tribe': None,
                        'types': [],
                        'abilities': ['choose_one'],
+                       'choose_one': [
+                           {'type': 'spell_attack_bonus', 'amount': 1, 'label': '+1 Aanval'},
+                           {'type': 'spell_health_bonus', 'amount': 1, 'label': '+1 Gezondheid'},
+                       ],
                        'description': 'Choose One - Your Tavern spells that give stats '
                                       'grant an extra +1 Attack this game; or +1 '
                                       'Health.',

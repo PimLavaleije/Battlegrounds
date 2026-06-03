@@ -696,6 +696,12 @@ class Player:
                 if "windfury" not in minion.abilities:
                     minion.abilities.append("windfury")
 
+        elif etype == "spell_attack_bonus":
+            self.spell_attack_bonus += effect.get("amount", 1) * mult
+
+        elif etype == "spell_health_bonus":
+            self.spell_health_bonus += effect.get("amount", 1) * mult
+
         return {"success": True}
 
     # ── Spreuken ─────────────────────────────────────────────────
@@ -2181,6 +2187,8 @@ class Player:
             "passes_this_turn": self.passes_this_turn,
             "total_passes_game": self.total_passes_game,
             "trinkets": self.trinkets,
+            "spell_attack_bonus": self.spell_attack_bonus,
+            "spell_health_bonus": self.spell_health_bonus,
         }
         if include_shop:
             d["shop"] = [
