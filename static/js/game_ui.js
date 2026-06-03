@@ -360,9 +360,18 @@ function buildShopCard(minion, opts = {}) {
         <div class="sfb-atk">${minion.attack}</div>
         <div class="sfb-hp">${minion.health}</div>
       </div>`;
-    img.onerror = () => { img.style.display = "none"; fb.style.display = "flex"; };
+    img.onerror = () => { img.style.display = "none"; fb.style.display = "flex"; atkBadge.style.display = "none"; hpBadge.style.display = "none"; };
     wrapper.appendChild(img);
     wrapper.appendChild(fb);
+    // Stat overlays covering the baked-in stats in the card image
+    const atkBadge = document.createElement("div");
+    atkBadge.className = "sfc-atk";
+    atkBadge.textContent = minion.attack;
+    const hpBadge = document.createElement("div");
+    hpBadge.className = "sfc-hp";
+    hpBadge.textContent = minion.health;
+    wrapper.appendChild(atkBadge);
+    wrapper.appendChild(hpBadge);
   } else {
     const fb = document.createElement("div");
     fb.className = "shop-card-full-fb";

@@ -938,6 +938,25 @@ html, body {
 .shop-card-full.taunt-outline { outline: 3px solid #d0a820; outline-offset: 2px; box-shadow: 0 0 16px rgba(200,160,30,0.42); }
 .shop-card-full.divine-outline { outline: 3px solid rgba(255,255,200,0.95); outline-offset: 2px; box-shadow: 0 0 24px rgba(255,255,150,0.72); animation: divine-pulse 1.8s ease-in-out infinite; }
 .shop-card-full-img { width: 100%; height: auto; display: block; pointer-events: none; border-radius: var(--card-radius); }
+/* Stat overlays on full card image — cover the baked-in stat numbers */
+.sfc-atk, .sfc-hp {
+  position: absolute; bottom: 5%; z-index: 10;
+  width: 28px; height: 28px; border-radius: 50%;
+  font-weight: 900; font-size: 0.95rem;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.95);
+}
+.sfc-atk {
+  left: 4%;
+  background: radial-gradient(circle at 35% 25%, #fff8b0, #e09000, #5a2e00);
+  border: 2px solid #1a0a00; color: #1a0800;
+}
+.sfc-hp {
+  right: 4%;
+  background: radial-gradient(circle at 35% 25%, #ffaaaa, #c01818, #5a0000);
+  border: 2px solid #200000; color: #fff;
+}
 .shop-card-full-fb {
   width: 140px; height: 187px;
   background: linear-gradient(160deg, #181030, #0c0820);
