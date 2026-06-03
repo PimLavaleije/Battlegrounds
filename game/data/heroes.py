@@ -43,7 +43,7 @@ HEROES = {
         "ability": {"type": "hero_power", "cost": 1, "effect": "ill_take_that"},
     },
     "artanis": {
-        "id": "artanis", "name": "Artanis", "armor": 18, "emoji": "🔮",
+        "id": "artanis", "duo_only": True, "name": "Artanis", "armor": 18, "emoji": "🔮",
         "description": "Choose from 2 Protoss minions to get after you buy 14 cards.",
         "ability": {"type": "passive", "effect": "warp_gate", "threshold": 14},
     },
@@ -90,7 +90,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "avalanche", "threshold": 3, "discount": 3},
     },
     "cho": {
-        "id": "cho", "name": "Cho", "armor": 14, "emoji": "🥊",
+        "id": "cho", "duo_only": True, "name": "Cho", "armor": 14, "emoji": "🥊",
         "description": "Whenever you play a Golden minion, both you and Gall get a Triple Reward.",
         "ability": {"type": "passive", "effect": "double_trouble_cho"},
     },
@@ -152,7 +152,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "enhancification"},
     },
     "exarch_othaar": {
-        "id": "exarch_othaar", "name": "Exarch Othaar", "armor": 15, "emoji": "💠",
+        "id": "exarch_othaar", "duo_only": True, "name": "Exarch Othaar", "armor": 15, "emoji": "💠",
         "description": "The next Tavern spell you buy costs (1) less. (Unlocks on Turn 3.)",
         "ability": {"type": "passive", "effect": "arcane_knowledge", "unlock_turn": 3},
     },
@@ -194,7 +194,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "dungars_gryphon"},
     },
     "gall": {
-        "id": "gall", "name": "Gall", "armor": 14, "emoji": "😈",
+        "id": "gall", "duo_only": True, "name": "Gall", "armor": 14, "emoji": "😈",
         "description": "Whenever you play a Golden minion, both you and Cho get a Triple Reward.",
         "ability": {"type": "passive", "effect": "double_trouble_gall"},
     },
@@ -241,7 +241,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "major_hymn"},
     },
     "ini_stormcoil": {
-        "id": "ini_stormcoil", "name": "Ini Stormcoil", "armor": 15, "emoji": "🤖",
+        "id": "ini_stormcoil", "duo_only": True, "name": "Ini Stormcoil", "armor": 15, "emoji": "🤖",
         "description": "After 9 friendly minions die, get a random Mech.",
         "ability": {"type": "passive", "effect": "mechgyver", "threshold": 9},
     },
@@ -252,7 +252,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "swap_lock_and_shop"},
     },
     "jim_raynor": {
-        "id": "jim_raynor", "name": "Jim Raynor", "armor": 16, "emoji": "🚀",
+        "id": "jim_raynor", "duo_only": True, "name": "Jim Raynor", "armor": 16, "emoji": "🚀",
         "description": "Start the game with a 2/2 Battlecruiser. Add Battlecruiser Upgrade when Tavern Refreshed.",
         "ability": {"type": "passive", "effect": "lift_off"},
     },
@@ -263,7 +263,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "verdant_spheres", "threshold": 3},
     },
     "kerrigan": {
-        "id": "kerrigan", "name": "Kerrigan, Queen of Blades", "armor": 14, "emoji": "👾",
+        "id": "kerrigan", "duo_only": True, "name": "Kerrigan, Queen of Blades", "armor": 14, "emoji": "👾",
         "description": "Unlock Tier 2 Zerg. Costs (1) less each turn. Start the game with a 2/2 Larva.",
         "ability": {"type": "hero_power", "cost": 6, "effect": "spawning_pool"},
     },
@@ -552,7 +552,7 @@ HEROES = {
         "ability": {"type": "passive", "effect": "reborn_rites"},
     },
     "the_nameless_one": {
-        "id": "the_nameless_one", "name": "The Nameless One", "armor": 12, "emoji": "❓",
+        "id": "the_nameless_one", "duo_only": True, "name": "The Nameless One", "armor": 12, "emoji": "❓",
         "description": "Copy your teammate's Hero Power.",
         "ability": {"type": "passive", "effect": "copy_teammate_hero_power"},
     },
@@ -583,7 +583,7 @@ HEROES = {
     },
     # ── V ──────────────────────────────────────────────────────
     "vanndar_stormpike": {
-        "id": "vanndar_stormpike", "name": "Vanndar Stormpike", "armor": 12, "emoji": "🛡️",
+        "id": "vanndar_stormpike", "duo_only": True, "name": "Vanndar Stormpike", "armor": 12, "emoji": "🛡️",
         "description": "When you have space in combat, summon a copy of your highest-Health minion.",
         "ability": {"type": "passive", "effect": "stormpike_strength"},
     },

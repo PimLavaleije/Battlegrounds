@@ -2451,43 +2451,85 @@ class Player:
         """Voeg trofee toe en pas onmiddellijke effecten toe."""
         self.trinkets.append(trinket)
         effect = trinket.get("effect", "")
-        # Eénmalige goud-effecten
-        if effect == "gain_gold":
+        result = {"success": True}
+
+        if effect == "instant_gold":
+            self.gold = min(self.gold + trinket.get("gold", 0), self.MAX_GOLD)
+            if trinket.get("max_gold_bonus"):
+                self.MAX_GOLD += trinket["max_gold_bonus"]
+        elif effect == "increase_max_gold":
+            self.MAX_GOLD += trinket.get("max_gold_bonus", 0)
+            self.gold = min(self.gold, self.MAX_GOLD)
+
+        # Legacy effect names (kept for compatibility)
+        elif effect == "gain_gold":
             self.gold = min(self.gold + trinket.get("amount", 0), self.MAX_GOLD)
         elif effect == "gain_gold_and_max":
-            gain = trinket.get("amount", 0)
-            self.gold = min(self.gold + gain, self.MAX_GOLD)
+            self.gold = min(self.gold + trinket.get("amount", 0), self.MAX_GOLD)
             self.MAX_GOLD += trinket.get("max_bonus", 0)
-        # Eénmalige board-buff
         elif effect == "buff_tribe":
             tribe = trinket.get("tribe")
-            atk = trinket.get("attack", 0)
-            hp  = trinket.get("health", 0)
+            for m in self.board:
+                if tribe is None or tribe in m.types:
+                    m.attack += trinket.get("attack", 0)
+                    m.health += trinket.get("health", 0)
+                    m.max_health += trinket.get("health", 0)
+
+        elif effect == "instant_buff_tribe":
+            tribe = trinket.get("tribe")
+            atk = trinket.get("attack", 0); hp = trinket.get("health", 0)
             for m in self.board:
                 if tribe is None or tribe in m.types:
                     m.attack += atk; m.health += hp; m.max_health += hp
-        return {"success": True}
+
+        elif effect == "instant_buff_all":
+            atk = trinket.get("attack", 0); hp = trinket.get("health", 0)
+            for m in self.board:
+                m.attack += atk; m.health += hp; m.max_health += hp
+
+        elif effect == "instant_ice_block":
+            self._ice_block_charges = getattr(self, "_ice_block_charges", 0) + 1
+            if trinket.get("gold"):
+                self.gold = min(self.gold + trinket["gold"], self.MAX_GOLD)
+
+        elif effect == "instant_discover":
+            # Signals game_state to show a discover modal
+            result["trinket_discover"] = {
+                "tier": trinket.get("tier", 6),
+                "count": trinket.get("count", 1),
+            }
+
+        return result
 
     def apply_trinket_start_of_turn(self):
         """Passive trofee-effecten die elke beurt triggeren."""
         for t in self.trinkets:
             effect = t.get("effect", "")
-            if effect == "passive_tribe_attack":
+            tid = t.get("id", "")
+
+            if effect in ("passive_tribe_attack", "passive_tribe_stats"):
                 tribe = t.get("tribe")
-                bonus = t.get("attack", 0)
+                atk   = t.get("attack", 0)
+                hp    = t.get("health", 0)
                 for m in self.board:
                     if tribe is None or tribe in m.types:
-                        m.attack = max(m.attack, m.base_attack + bonus)
-                        # Store as permanent bonus to survive board changes
-            elif effect == "passive_tribe_stats":
-                tribe = t.get("tribe")
-                atk  = t.get("attack", 0)
-                hp   = t.get("health", 0)
-                for m in self.board:
-                    if tribe is None or tribe in m.types:
-                        if not getattr(m, f'_trinket_{t["id"]}_applied', False):
-                            m.attack += atk; m.health += hp; m.max_health += hp
-                            setattr(m, f'_trinket_{t["id"]}_applied', True)
+                        flag = f'_trinket_{tid}_applied'
+                        if not getattr(m, flag, False):
+                            m.attack += atk
+                            m.health += hp
+                            m.max_health += hp
+                            setattr(m, flag, True)
+
+            elif effect == "sot_gold":
+                self.gold = min(self.gold + t.get("gold", 1), self.MAX_GOLD)
+
+            elif effect == "sot_get_minion":
+                minion_id = t.get("minion_id")
+                if minion_id:
+                    try:
+                        self.hand.append(Minion.from_id(minion_id))
+                    except Exception:
+                        pass
 
     # ── Schade ──────────────────────────────────────────────
     def take_damage(self, amount: int):

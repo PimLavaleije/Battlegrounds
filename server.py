@@ -276,7 +276,9 @@ def on_select_trinket(data):
     result = manager.select_trinket(request.sid, room_code, data.get("trinket_id", ""))
     if result["success"]:
         emit("player_update", result["player"])
-        emit("notification", {"message": f"🏆 Trinket chosen!"})
+        emit("notification", {"message": "Trinket chosen!"})
+        if result.get("trinket_discover"):
+            emit("triple_discover", {"options": result["trinket_discover"]})
     else:
         emit("error", {"message": result.get("message", "Unknown trinket.")})
 

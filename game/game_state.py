@@ -257,7 +257,7 @@ class GameState:
     # ── Hero selectie ────────────────────────────────────────
     def start_hero_selection(self):
         self.state = "hero_selection"
-        hero_pool = list(HEROES_LIST)
+        hero_pool = [h for h in HEROES_LIST if not h.get("duo_only", False)]
         random.shuffle(hero_pool)
         for p in self.players.values():
             options = random.sample(hero_pool, min(3, len(hero_pool)))
@@ -348,9 +348,12 @@ class GameState:
     def _discover_options(self, tier: int) -> list:
         from game.data.minions import MINIONS
         candidates = [m for m in MINIONS.values()
-                      if m["tier"] <= tier and not m.get("removed", False)]
+                      if m["tier"] <= tier
+                      and not m.get("removed", False)
+                      and not m.get("duo_only", False)]
         if not candidates:
-            candidates = [m for m in MINIONS.values() if not m.get("removed", False)]
+            candidates = [m for m in MINIONS.values()
+                          if not m.get("removed", False) and not m.get("duo_only", False)]
         chosen = random.sample(candidates, min(3, len(candidates)))
         return [{
             "id": m["id"], "name": m["name"], "tier": m["tier"],
@@ -569,8 +572,18 @@ class GameState:
         trinket = TRINKETS.get(trinket_id)
         if not trinket:
             return {"success": False, "message": "Unknown trinket."}
-        p.acquire_trinket(trinket)
-        return {"success": True, "player": p.to_dict(include_shop=True)}
+        result = p.acquire_trinket(trinket)
+        out = {"success": True, "player": p.to_dict(include_shop=True)}
+        # Trinket discover: generate options and return them
+        td = result.get("trinket_discover")
+        if td:
+            tier = td.get("tier", 6)
+            count = td.get("count", 1)
+            all_opts = []
+            for _ in range(count):
+                all_opts.append(self._discover_options(tier))
+            out["trinket_discover"] = all_opts[0] if count == 1 else all_opts
+        return out
 
     def move_minion(self, sid: str, from_idx: int, to_idx: int) -> dict:
         p = self.players.get(sid)
