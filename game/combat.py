@@ -687,6 +687,33 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
             if pool and _alive_count(friendly_board) < 7:
                 _summon_token(random.choice(pool))
 
+    elif dtype == "cast_shifting_tide_adjacent":
+        # Tide Raiser: pick a random adjacent minion and move it to a random position
+        idx = next((i for i, m in enumerate(friendly_board) if m is dead), -1)
+        if idx >= 0:
+            adjacent = []
+            if idx - 1 >= 0 and not friendly_board[idx - 1].dead:
+                adjacent.append(idx - 1)
+            if idx + 1 < len(friendly_board) and not friendly_board[idx + 1].dead:
+                adjacent.append(idx + 1)
+            mult = 2 if dead.golden else 1
+            for _ in range(mult):
+                if adjacent:
+                    adj_i = random.choice(adjacent)
+                    target = friendly_board.pop(adj_i)
+                    new_pos = random.randint(0, len(friendly_board))
+                    friendly_board.insert(new_pos, target)
+                    step["events"].append({"type": "deathrattle", "uid": dead.uid,
+                                           "effect": "shifting_tide", "moved_uid": target.uid})
+                    adjacent = []  # only one per cast for golden (re-pick per trigger)
+
+    elif dtype == "waveling_refresh_hook":
+        # Waveling: register persistent refresh buff hook
+        mult = 2 if dead.golden else 1
+        post_rewards.append({"type": "waveling_refresh_hook", "golden": dead.golden,
+                              "attack": dr.get("attack", 3) * mult,
+                              "health": dr.get("health", 3) * mult})
+
     elif dtype == "trigger_adjacent_battlecry":
         # Rylak Metalhead: trigger Battlecry of adjacent minion (simplified: buff nearby)
         idx = next((i for i, m in enumerate(friendly_board) if m is dead), -1)
@@ -764,7 +791,23 @@ def _apply_rally_effects(board: list[Minion], enemy_board: list[Minion], post_re
         rtype = m.rally.get("type")
         multiplier = 2 if m.golden else 1
 
-        if rtype == "buff_tribe_random":
+        if rtype == "buff_tribe_spread_rally":
+            # Stomping Stegodon: give all other Beasts +attack AND give them this Rally
+            tribe = m.rally.get("tribe")
+            atk = m.rally.get("attack", 0) * multiplier
+            spread_rally = {"type": "buff_tribe_all", "tribe": tribe,
+                            "attack": m.rally.get("attack", 0), "health": 0}
+            buffed = []
+            for ally in board:
+                if ally is not m and not ally.dead and (tribe is None or tribe in ally.types):
+                    ally.attack += atk
+                    ally.rally = spread_rally
+                    buffed.append(ally)
+            # Post-combat: spread the rally to real board minions permanently
+            post_rewards.append({"type": "spread_stegodon_rally",
+                                 "tribe": tribe, "attack": m.rally.get("attack", 0)})
+
+        elif rtype == "buff_tribe_random":
             tribe = m.rally.get("tribe")
             eligible = [a for a in board if a is not m and not a.dead
                         and (tribe is None or tribe in a.types)]

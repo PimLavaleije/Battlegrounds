@@ -60,6 +60,13 @@ class Player:
         self.trinkets: list[dict] = []  # actieve trofeeën van de speler
         self._hero_power_used = 0       # reset elke beurt; getoetst aan uses_per_turn
         self._pending_well_wisher_pass: dict | None = None
+        self._mrrglton_played_count = 0   # Mama/Papa Mrrglton scaling
+        self._orc_estra_played_count = 0  # Orc-estra Conductor scaling
+        self._fodder_refreshes_remaining = 0   # Laboratory Assistant
+        self._health_cost_spell_uses = 0       # Bazaar Dealer
+        self._health_cost_refresh_uses = 0     # Malchezaar
+        self._waveling_refresh_hooks = 0       # Waveling post-death persistent hooks
+        self._patient_scout_tier_map: dict[int, int] = {}  # uid -> current discover tier
 
     # ── Turn setup ──────────────────────────────────────────
     def start_turn(self, round_num: int):
@@ -79,6 +86,22 @@ class Player:
         self.gold_spent_this_turn = 0
         self._bloodbound_used = 0
         self._hero_power_used = 0
+        # Recalculate per-turn health-cost uses from board
+        self._health_cost_spell_uses = 0
+        self._health_cost_refresh_uses = 0
+        for m in self.board:
+            if m.passive:
+                ptype = m.passive.get("type")
+                mult = 2 if m.golden else 1
+                if ptype == "health_cost_spell_per_turn":
+                    self._health_cost_spell_uses += m.passive.get("count", 1) * mult
+                elif ptype == "health_cost_refresh_per_turn":
+                    self._health_cost_refresh_uses += m.passive.get("count", 2) * mult
+        # Patient Scout: increment discover tier for each one on board
+        for m in self.board:
+            if m.id == "patient_scout":
+                current = self._patient_scout_tier_map.get(m.uid, 1)
+                self._patient_scout_tier_map[m.uid] = min(current + 1, 6)
         # Ichoron: remove temp divine shields applied last turn
         for m in self.board:
             if getattr(m, "_ichoron_temp_ds", False):
@@ -471,6 +494,8 @@ class Player:
                 return {"success": False, "message": "Not enough health."}
             self.shop[shop_index] = None
             self._on_hero_damaged(3)
+            # Soul Rewinder / Ashen Corruptor: rewind the health cost
+            self._trigger_health_cost_buy_rewind(3)
         else:
             if not self.can_buy():
                 return {"success": False, "message": "Not enough gold."}
@@ -478,6 +503,7 @@ class Player:
             self.gold -= 3
             self._on_gold_spent(3)
         self.hand.append(minion)
+        self._on_card_added_to_hand(minion)
         self._apply_game_counter_buff(minion)
 
         # Triple check
@@ -531,11 +557,20 @@ class Player:
         if getattr(self, "_smart_savings_active", False):
             self._smart_savings_active = False
             self.gold_next_turn_bonus += 1
-        return {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
+        result = {"success": True, "gold": self.gold, "sold": minion.to_dict(), "sell_passive": sell_passive}
+        if sell_passive and sell_passive.get("discover_options"):
+            result["sell_discover"] = sell_passive["discover_options"]
+        return result
 
     def reroll(self) -> dict:
         if self.free_refreshes_available > 0:
             self.free_refreshes_available -= 1
+            return {"success": True, "gold": self.gold}
+        # Malchezaar: refresh costs Health instead of Gold
+        if self._health_cost_refresh_uses > 0:
+            self._health_cost_refresh_uses -= 1
+            self._on_hero_damaged(1)
+            self._trigger_health_cost_buy_rewind(1)
             return {"success": True, "gold": self.gold}
         if self.gold < 1:
             return {"success": False, "message": "Not enough gold."}
@@ -612,6 +647,7 @@ class Player:
             if egg.golden:
                 minion.make_golden()
         self.hand.append(minion)
+        self._on_card_added_to_hand(minion)
         self._apply_game_counter_buff(minion)
         return {"success": True}
 
@@ -750,6 +786,15 @@ class Player:
         spell = self.shop[shop_index]
         cost = max(0, spell.get("cost", 3) - self.next_spell_discount)
         self.next_spell_discount = 0
+        # Bazaar Dealer: costs Health instead of Gold
+        if self._health_cost_spell_uses > 0:
+            self._health_cost_spell_uses -= 1
+            self.shop[shop_index] = None
+            self._on_hero_damaged(cost)
+            self._trigger_health_cost_buy_rewind(cost)
+            self.hand.append(spell)
+            self._on_card_added_to_hand(spell)
+            return {"success": True, "spell": spell}
         if self.gold < cost:
             return {"success": False, "message": f"Not enough gold (costs {cost})."}
         self.shop[shop_index] = None
@@ -757,6 +802,7 @@ class Player:
         if cost > 0:
             self._on_gold_spent(cost)
         self.hand.append(spell)
+        self._on_card_added_to_hand(spell)
         return {"success": True, "spell": spell}
 
     def _apply_spell(self, spell: dict, target_index: int | None = None) -> dict:
@@ -1453,6 +1499,51 @@ class Player:
                     for s in picks
                 ]}
 
+        if effect == "buff_tribe_improved_mrrglton":
+            tribe = bc.get("tribe")
+            mult = 3 if minion.golden else 1
+            base_atk = bc.get("base_attack", 2)
+            base_hp = bc.get("base_health", 0)
+            per_atk = bc.get("per_mrrglton_attack", 2)
+            per_hp = bc.get("per_mrrglton_health", 0)
+            bonus_atk = (base_atk + per_atk * self._mrrglton_played_count) * mult
+            bonus_hp = (base_hp + per_hp * self._mrrglton_played_count) * mult
+            targets = [m for m in self.board if tribe in m.types and m is not minion]
+            for t in targets:
+                t.attack += bonus_atk
+                t.health += bonus_hp
+                t.max_health += bonus_hp
+            # Count this Mrrglton as played (affects future casts)
+            self._mrrglton_played_count += 1
+            return {"buffed_all": [t.to_dict() for t in targets]} if targets else None
+
+        if effect == "buff_target_orc_estra_scaling":
+            mult = 2 if minion.golden else 1
+            base_atk = bc.get("base_attack", 2) * mult
+            base_hp = bc.get("base_health", 2) * mult
+            per_atk = bc.get("per_orc_estra_attack", 2) * mult
+            per_hp = bc.get("per_orc_estra_health", 2) * mult
+            bonus_atk = base_atk + per_atk * self._orc_estra_played_count
+            bonus_hp = base_hp + per_hp * self._orc_estra_played_count
+            self._orc_estra_played_count += 1
+            targets = [m for m in self.board if m is not minion] + [
+                m for m in self.hand if isinstance(m, Minion) and m is not minion
+            ]
+            if targets:
+                t = random.choice(targets)
+                t.attack += bonus_atk
+                t.health += bonus_hp
+                t.max_health += bonus_hp
+                return {"buffed": t.to_dict()}
+
+        if effect == "add_fodder_to_refreshes":
+            count = bc.get("count", 3)
+            per_refresh = bc.get("fodder_per_refresh", 1)
+            if minion.golden:
+                per_refresh *= 2
+            self._fodder_refreshes_remaining += count * per_refresh
+            return {"fodder_refreshes": count}
+
         return None
 
     def _on_gold_spent(self, amount: int):
@@ -1759,6 +1850,25 @@ class Player:
             bonus = sold.passive.get("gold", 5) * multiplier - 1  # -1 want base gold al uitbetaald
             self.gold = min(self.gold + bonus, self.MAX_GOLD)
             return {"bonus_gold": bonus}
+
+        if ptype == "on_sell_discover_tier_upgrading":
+            from game.data.minions import MINIONS
+            tier = self._patient_scout_tier_map.pop(sold.uid, sold.passive.get("base_tier", 1))
+            tier = min(tier, 6)
+            pool = [m for m in MINIONS.values() if m["tier"] == tier]
+            if not pool:
+                return None
+            count = multiplier  # golden = 2 discovers
+            options_list = []
+            for _ in range(count):
+                picks = random.sample(pool, min(3, len(pool)))
+                options_list.append([
+                    {"id": d["id"], "name": d["name"], "tier": d["tier"],
+                     "attack": d.get("attack", 0), "health": d.get("health", 0),
+                     "description": d.get("description", ""), "golden": False}
+                    for d in picks
+                ])
+            return {"discover_options": options_list[0], "discover_tier": tier}
 
         return None
 
@@ -2075,6 +2185,51 @@ class Player:
                 item.max_health += item.passive.get("health", 1) * mult
 
         return events
+
+    def _trigger_health_cost_buy_rewind(self, amount: int):
+        """Soul Rewinder / Ashen Corruptor: undo the health cost when buying with HP."""
+        for m in self.board:
+            if not m.passive:
+                continue
+            if m.passive.get("type") != "on_health_cost_buy_rewind":
+                continue
+            mult = 2 if m.golden else 1
+            # Restore the HP that was spent
+            self.hp = min(self.hp + amount, 40)
+            if self.hp > 0:
+                self.alive = True
+            # Soul Rewinder: give itself +1 Health
+            if "self_health" in m.passive:
+                gain = m.passive["self_health"] * mult
+                m.health += gain
+                m.max_health += gain
+            # Ashen Corruptor: give shop minions +1/+1 this turn
+            if "buff_tavern" in m.passive:
+                val = m.passive["buff_tavern"] * mult
+                for slot in self.shop:
+                    if slot is None or isinstance(slot, dict):
+                        continue
+                    slot.attack += val
+                    slot.health += val
+                    slot.max_health += val
+
+    def _on_card_added_to_hand(self, card):
+        """Peggy Sturdybone: whenever any card enters hand, buff a random friendly Pirate."""
+        for m in self.board:
+            if not m.passive:
+                continue
+            if m.passive.get("type") != "on_card_added_to_hand_buff_pirate":
+                continue
+            if m is card:
+                continue
+            mult = 2 if m.golden else 1
+            targets = [a for a in self.board if "Pirate" in a.types and a is not m]
+            if targets:
+                t = random.choice(targets)
+                t.attack += m.passive.get("attack", 2) * mult
+                hp_val = m.passive.get("health", 1) * mult
+                t.health += hp_val
+                t.max_health += hp_val
 
     def _on_hero_damaged(self, amount: int):
         """Verlaagt held-HP (armor eerst) en triggert Floating Watcher passives."""

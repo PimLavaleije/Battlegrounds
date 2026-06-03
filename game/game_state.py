@@ -176,6 +176,21 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
                         m.make_golden()
                         m._death_count = 0
 
+        elif rtype == "waveling_refresh_hook":
+            mult = 2 if reward.get("golden") else 1
+            player._waveling_refresh_hooks += mult
+
+        elif rtype == "spread_stegodon_rally":
+            tribe = reward.get("tribe")
+            atk = reward.get("attack", 0)
+            spread_rally = {"type": "buff_tribe_all", "tribe": tribe, "attack": atk, "health": 0}
+            for m in player.board:
+                if tribe is None or tribe in m.types:
+                    m.rally = spread_rally
+            for m in player.hand:
+                if isinstance(m, Minion) and (tribe is None or tribe in m.types):
+                    m.rally = spread_rally
+
 
 AI_NAMES = [
     "Rexxar", "Jaina", "Thrall", "Anduin", "Sylvanas",
@@ -424,6 +439,28 @@ class GameState:
                              if m is not None and not isinstance(m, dict)]
                     for i in _r.sample(slots, min(2, len(slots))):
                         p.shop[i] = Minion.from_id(_r.choice(higher_pool))
+            # Laboratory Assistant Fodder: inject into shop
+            if p._fodder_refreshes_remaining > 0:
+                fodder = Minion.from_id("fodder")
+                p._fodder_refreshes_remaining -= 1
+                # If Demon on board, it consumes the Fodder immediately (no slot needed)
+                demons = [m for m in p.board if "Demon" in m.types]
+                if demons:
+                    consumer = random.choice(demons)
+                    consumer.attack += fodder.attack
+                    consumer.health += fodder.health
+                    consumer.max_health += fodder.health
+                else:
+                    # No Demon available: add Fodder to shop as a normal card
+                    p.shop.append(fodder)
+            # Waveling: buff a random shop minion (+3/+3 per hook)
+            if p._waveling_refresh_hooks > 0:
+                shop_minions = [m for m in p.shop if m is not None and not isinstance(m, dict)]
+                if shop_minions:
+                    target = random.choice(shop_minions)
+                    target.attack += 3 * p._waveling_refresh_hooks
+                    target.health += 3 * p._waveling_refresh_hooks
+                    target.max_health += 3 * p._waveling_refresh_hooks
         return {**result, "shop": [(m if isinstance(m, dict) else m.to_dict()) if m else None for m in p.shop]}
 
     def freeze(self, sid: str) -> dict:
@@ -575,8 +612,15 @@ class GameState:
                             scout.attack *= 2; scout.health *= 2; scout.max_health *= 2
                         enemy_board.append(scout)
 
+            # Maelstrom Emergent: extra cast count
+            maelstrom_extras = sum(
+                (m.passive.get("extra", 1) * (2 if m.golden else 1))
+                for m in player.board
+                if m.passive and m.passive.get("type") == "double_combat_spells"
+            )
             # Pas uitgestelde spreuk-effecten toe op vijandelijk board
-            for spell_id in player.pending_combat_spells:
+            spell_list = player.pending_combat_spells * (1 + maelstrom_extras)
+            for spell_id in spell_list:
                 if spell_id == "corrupted_cupcakes":
                     for m in enemy_board:
                         m.attack = max(0, m.attack - 2)

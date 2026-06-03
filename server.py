@@ -115,6 +115,8 @@ def on_sell_minion(data):
         if result.get("pass_recipient"):
             socketio.emit("player_update", result["pass_recipient"]["player"],
                           to=result["pass_recipient"]["sid"])
+        if result.get("sell_discover"):
+            emit("triple_discover", {"options": result["sell_discover"]})
     else:
         emit("error", {"message": result.get("message", "Cannot sell.")})
 
