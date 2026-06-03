@@ -316,11 +316,21 @@ const KW_SVG = {
     <path d="M10.5 4.5C12 2.5 15 3 13.5 6.5C12.5 8.5 10 8 10.5 4.5Z"
           fill="#e08050" stroke="#e08050" stroke-width="0.5" stroke-linejoin="round"/>
   </svg>`,
+
+  // Taunt – schild met uitroepteken
+  taunt: `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 1.5L13.5 4V9C13.5 12.5 8 14.5 8 14.5S2.5 12.5 2.5 9V4L8 1.5Z"
+          stroke="#d4a820" stroke-width="1.4" fill="rgba(212,168,32,0.15)"/>
+    <line x1="8" y1="5.5" x2="8" y2="9.5" stroke="#d4a820" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="8" cy="11.5" r="0.9" fill="#d4a820"/>
+  </svg>`,
 };
 
 // ── Keyword-icons helper ─────────────────────────────────────
 function buildKeywordIcons(minion) {
   const icons = [];
+  if (minion.taunt)
+    icons.push(`<span class="kw kw-taunt" title="Taunt">${KW_SVG.taunt}</span>`);
   if (minion.divine_shield)
     icons.push(`<span class="kw kw-ds" title="Divine Shield">${KW_SVG.ds}</span>`);
   if (minion.megawindfury)

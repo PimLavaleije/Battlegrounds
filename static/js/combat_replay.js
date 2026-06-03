@@ -13,7 +13,24 @@ const CombatReplay = {
     document.getElementById("combat-log").innerHTML = "";
 
     this._renderBoards(data.player_board, data.enemy_board);
+    this._renderHand();
     this._playSteps(data.steps, data).then(() => this._showResult(data));
+  },
+
+  _renderHand() {
+    const row = document.getElementById("combat-hand-row");
+    if (!row || !State.player?.hand?.length) {
+      if (row) row.innerHTML = "";
+      return;
+    }
+    row.innerHTML = "";
+    State.player.hand.forEach(item => {
+      if (!item || item.type === "blood_gem") return;
+      const card = item.type === "spell" ? buildSpellCard(item) : buildShopCard(item, { showCost: false });
+      card.style.pointerEvents = "none";
+      card.style.opacity = "0.85";
+      row.appendChild(card);
+    });
   },
 
   _renderBoards(playerBoard, enemyBoard) {

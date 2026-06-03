@@ -86,6 +86,8 @@ class Player:
         self.gold_spent_this_turn = 0
         self._bloodbound_used = 0
         self._hero_power_used = 0
+        # Sanitize board: remove any None entries that could cause count/play-from-hand bugs
+        self.board = [m for m in self.board if m is not None]
         # Recalculate per-turn health-cost uses from board
         self._health_cost_spell_uses = 0
         self._health_cost_refresh_uses = 0

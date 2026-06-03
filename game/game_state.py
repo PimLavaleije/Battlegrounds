@@ -347,9 +347,10 @@ class GameState:
 
     def _discover_options(self, tier: int) -> list:
         from game.data.minions import MINIONS
-        candidates = [m for m in MINIONS.values() if m["tier"] == tier]
+        candidates = [m for m in MINIONS.values()
+                      if m["tier"] <= tier and not m.get("removed", False)]
         if not candidates:
-            candidates = list(MINIONS.values())
+            candidates = [m for m in MINIONS.values() if not m.get("removed", False)]
         chosen = random.sample(candidates, min(3, len(candidates)))
         return [{
             "id": m["id"], "name": m["name"], "tier": m["tier"],
@@ -427,6 +428,14 @@ class GameState:
         if not p or not p.alive:
             return {"success": False, "message": "Player not found."}
         result = p.sell_minion(board_index)
+        # Return sold minion to pool so the shop doesn't deplete over rounds
+        sold = result.get("sold")
+        if sold:
+            from game.minion import Minion as _M
+            try:
+                self.shop_manager.return_to_pool(_M.from_dict(sold))
+            except Exception:
+                pass
         sp = result.get("sell_passive") or {}
         if isinstance(sp, dict) and sp.get("type") == "sell_then_pass":
             self._route_pass(sid, sp["minion"], result)
@@ -516,7 +525,15 @@ class GameState:
         p = self.players.get(sid)
         if not p or not p.alive:
             return {"success": False}
-        return p.sell_from_hand(hand_index)
+        result = p.sell_from_hand(hand_index)
+        sold = result.get("sold")
+        if sold:
+            from game.minion import Minion as _M
+            try:
+                self.shop_manager.return_to_pool(_M.from_dict(sold))
+            except Exception:
+                pass
+        return result
 
     # ── Trofeeën (Trinkets) ──────────────────────────────────
     TRINKET_ROUNDS = {6: "lesser", 9: "greater"}

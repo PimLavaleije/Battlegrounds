@@ -31,7 +31,7 @@ def simulate_combat(player_board: list[Minion], enemy_board: list[Minion]) -> di
     _apply_rally_effects(p_board, e_board, post_rewards["player"])
     _apply_rally_effects(e_board, p_board, post_rewards["enemy"])
 
-    while p_board and e_board and safety < 150:
+    while p_board and e_board and safety < 300:
         safety += 1
 
         if current_side == 0:
