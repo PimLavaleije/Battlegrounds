@@ -76,10 +76,18 @@ def _apply_hero_combat_auras(board: list, enemy_board: list, hero: dict | None):
             tentacle = _M.from_id("tentacle")
             board.append(tentacle)
 
+    elif effect == "frostwolf_fervor":
+        # Drek'Thar: when board has space, summon copy of highest-attack minion
+        alive = [m for m in board if not m.dead]
+        if alive and len(board) < 7:
+            highest = max(alive, key=lambda m: m.attack)
+            clone = highest.clone()
+            board.append(clone)
+
     elif effect == "sprout_it_out":
-        # Greybough passive: tracked at combat time via a flag
-        # Stored on hero so summon handlers can reference it
-        pass  # handled in _summon_token in combat.py via hero check
+        # Greybough: mark existing board members so _summon_token can apply buff
+        for m in board:
+            m._greybough_sprout = True
 
     elif effect == "broodmother":
         # Onyxia: Avenge (N): summon 1/1 Whelp that attacks immediately
@@ -308,6 +316,14 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
                 if isinstance(m, Minion) and (tribe is None or tribe in m.types):
                     m.rally = spread_rally
 
+        elif rtype == "aranna_attack":
+            if (player.hero and player.hero.get("ability", {}).get("effect") == "demon_hunter_training"
+                    and not getattr(player, "_aranna_unlocked", False)):
+                player._aranna_attack_count = getattr(player, "_aranna_attack_count", 0) + 1
+                threshold = player.hero["ability"].get("threshold", 14)
+                if player._aranna_attack_count >= threshold:
+                    player._aranna_unlocked = True
+
 
 AI_NAMES = [
     "Rexxar", "Jaina", "Thrall", "Anduin", "Sylvanas",
@@ -434,6 +450,12 @@ class GameState:
             else:
                 p.frozen = False
 
+            # A.F. Kay / Faelin: no shop on skip turns
+            if getattr(p, "_af_kay_skip", False):
+                p._af_kay_skip = False
+                self.shop_manager.return_shop_to_pool(p.shop)
+                p.shop = []
+
             # Sindragosa: auto-freeze at end-of-turn (handled here as start of NEXT turn)
             if getattr(p, "_sindragosa_freeze_eot", False):
                 p._sindragosa_freeze_eot = False
@@ -465,6 +487,35 @@ class GameState:
         trinket_offer = self.get_trinket_offer_for(sid)
         if trinket_offer:
             data["trinket_offer"] = trinket_offer
+
+        # A.F. Kay: 2x discover T3 on round 3
+        if getattr(p, "_af_kay_discovers_remaining", 0) > 0:
+            from game.data.minions import MINIONS as _M
+            pool = [v for v in _M.values() if v.get("tier") == 3 and not v.get("removed") and not v.get("duo_only")]
+            picks = random.sample(pool, min(3, len(pool)))
+            data["af_kay_discover"] = [{"id": m["id"], "name": m["name"], "tier": m["tier"],
+                                        "attack": m.get("attack", 0), "health": m.get("health", 0),
+                                        "description": m.get("description", ""), "golden": False,
+                                        "abilities": m.get("abilities", [])} for m in picks]
+            data["af_kay_discovers_remaining"] = p._af_kay_discovers_remaining
+
+        # Faelin: discover T2/T4/T6 on round 1
+        if getattr(p, "_faelin_discover", False):
+            p._faelin_discover = False
+            from game.data.minions import MINIONS as _M2
+            def _ok(d): return not d.get("removed") and not d.get("duo_only")
+            faelin_opts = []
+            for tier in (2, 4, 6):
+                tier_pool = [v for v in _M2.values() if v.get("tier") == tier and _ok(v)]
+                if tier_pool:
+                    picks = random.sample(tier_pool, min(3, len(tier_pool)))
+                    faelin_opts.append([{"id": m["id"], "name": m["name"], "tier": m["tier"],
+                                         "attack": m.get("attack", 0), "health": m.get("health", 0),
+                                         "description": m.get("description", ""), "golden": False,
+                                         "abilities": m.get("abilities", [])} for m in picks])
+            if faelin_opts:
+                data["faelin_discover"] = faelin_opts  # lijst van 3 discovers
+
         return data
 
     # ── Shop acties ─────────────────────────────────────────
@@ -474,8 +525,11 @@ class GameState:
             return {"success": False, "message": "Player not found."}
         result = p.buy_minion(shop_index, target_index)
         if result.get("triple"):
-            tier = result["triple"].get("discover_tier", p.tavern_tier)
-            result["triple"]["discover_options"] = self._discover_options(tier)
+            tier = result["triple"].get("discover_tier")
+            if tier is not None:
+                result["triple"]["discover_options"] = self._discover_options(tier)
+            else:
+                result["triple"]["discover_options"] = []
         if result.get("success"):
             bought_passive = (result.get("minion") or {}).get("passive") or {}
             if bought_passive.get("type") == "on_buy_copy_and_pass":
@@ -516,6 +570,20 @@ class GameState:
         discovered_passive = ALL_MINIONS.get(minion_id, {}).get("passive") or {}
         if discovered_passive.get("type") == "on_buy_copy_and_pass":
             self._handle_mirror_monster(sid, result)
+        # A.F. Kay: trigger a second discover if more remaining
+        remaining = getattr(p, "_af_kay_discovers_remaining", 0)
+        if remaining > 0:
+            p._af_kay_discovers_remaining = remaining - 1
+            if p._af_kay_discovers_remaining > 0:
+                from game.data.minions import MINIONS as _M
+                pool = [v for v in _M.values() if v.get("tier") == 3 and not v.get("removed") and not v.get("duo_only")]
+                picks = random.sample(pool, min(3, len(pool)))
+                result["af_kay_next_discover"] = [{"id": m["id"], "name": m["name"], "tier": m["tier"],
+                                                    "attack": m.get("attack", 0), "health": m.get("health", 0),
+                                                    "description": m.get("description", ""), "golden": False,
+                                                    "abilities": m.get("abilities", [])} for m in picks]
+            else:
+                p._af_kay_discovers_remaining = 0
         return result
 
     def magnetize(self, sid: str, hand_index: int, board_index: int) -> dict:

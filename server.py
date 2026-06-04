@@ -84,10 +84,12 @@ def on_buy_minion(data):
     if result["success"]:
         emit("player_update", result["player"])
         if result.get("triple"):
-            emit("triple_discover", {
-                "golden": result["triple"]["golden"],
-                "options": result["triple"].get("discover_options", []),
-            })
+            opts = result["triple"].get("discover_options", [])
+            if opts:  # Clocksworth: geen discover, wel golden + Tavern Coin
+                emit("triple_discover", {
+                    "golden": result["triple"]["golden"],
+                    "options": opts,
+                })
         for pass_info in result.get("mirror_monster_passes", []):
             socketio.emit("player_update", pass_info["player"], to=pass_info["sid"])
     else:
@@ -102,6 +104,9 @@ def on_choose_discover(data):
     result = manager.choose_discover(request.sid, room_code, data.get("minion_id"))
     if result["success"]:
         emit("player_update", result["player"])
+        if result.get("af_kay_next_discover"):
+            emit("triple_discover", {"options": result["af_kay_next_discover"],
+                                     "af_kay": True, "remaining": 1})
 
 
 @socketio.on("sell_minion")
@@ -312,6 +317,15 @@ def _start_round(room_code: str):
             socketio.emit("round_start", round_data, to=sid)
             if round_data.get("egg_hatch_options"):
                 socketio.emit("triple_discover", {"options": round_data["egg_hatch_options"]}, to=sid)
+            # A.F. Kay: stuur sequential discovers voor 2x T3 minion
+            if round_data.get("af_kay_discover"):
+                socketio.emit("triple_discover", {"options": round_data["af_kay_discover"],
+                                                   "af_kay": True,
+                                                   "remaining": round_data.get("af_kay_discovers_remaining", 1)}, to=sid)
+            # Faelin: stuur 3 discovers (T2, T4, T6) sequentieel
+            if round_data.get("faelin_discover"):
+                for opts in round_data["faelin_discover"]:
+                    socketio.emit("triple_discover", {"options": opts, "faelin": True}, to=sid)
     # Stuur opponents info naar alle spelers
     socketio.emit("opponents_update", game.get_all_players_public(), to=room_code)
 

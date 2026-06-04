@@ -157,6 +157,7 @@ class Minion:
             "dead": self.dead,
             "reborn_used": self.reborn_used,
             "play_order": self.play_order,
+            "imprisoned_turns": getattr(self, "_imprisoned_turns", 0),
         }
 
     @staticmethod

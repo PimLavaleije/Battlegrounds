@@ -307,6 +307,11 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
                 "damage": adj_result["damage"],
             })
 
+    # Aranna Starseeker: track friendly attack for demon_hunter_training
+    if post_rewards is not None:
+        my_key = "player" if current_side == 0 else "enemy"
+        post_rewards[my_key].append({"type": "aranna_attack"})
+
     return step
 
 
@@ -512,6 +517,13 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                     token.health *= factor
                     token.max_health *= factor
                     break
+        # Greybough (sprout_it_out): summoned minions get +1/+2 and Taunt
+        if any(getattr(m, "_greybough_sprout", False) for m in friendly_board if not m.dead and m is not token):
+            token.attack += 1
+            token.health += 2; token.max_health += 2
+            token.taunt = True
+            if "taunt" not in token.abilities:
+                token.abilities.append("taunt")
         return True
 
     if dtype == "summon":

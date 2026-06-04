@@ -86,6 +86,7 @@ class Player:
         self.gold_spent_this_turn = 0
         self._bloodbound_used = 0
         self._hero_power_used = 0
+        self._aranna_free_buy_used = False
         # Sanitize board: remove any None entries that could cause count/play-from-hand bugs
         self.board = [m for m in self.board if m is not None]
         # Recalculate per-turn health-cost uses from board
@@ -163,6 +164,11 @@ class Player:
                 sc_spell = self._generate_spellcraft_spell(m)
                 if sc_spell:
                     self.hand.append(sc_spell)
+        # Maiev (imprison): decrement locked turns; unlock when 0
+        for item in self.hand:
+            if isinstance(item, Minion) and getattr(item, "_imprisoned_turns", 0) > 0:
+                item._imprisoned_turns -= 1
+
         # Egg of the Endtimes: beurt-teller bijhouden
         self.pending_egg_hatch = None
         for item in self.hand:
@@ -262,6 +268,21 @@ class Player:
 
         # ── Rakanishu: spell stat bonus ───────────────────────
         # This is applied in _apply_spell already via a check
+
+        # ── A.F. Kay (procrastinate): skip turns 1-2, discover T3 on turn 3 ──
+        elif effect == "procrastinate":
+            if self._current_round <= 2:
+                self.gold = 0
+                self._af_kay_skip = True
+            elif self._current_round == 3:
+                self._af_kay_discovers_remaining = 2  # game_state picks this up
+
+        # ── Ambassador Faelin (expedition_plans): skip turn 1, discover T2/T4/T6 ──
+        elif effect == "expedition_plans":
+            if self._current_round == 1:
+                self.gold = 0
+                self._faelin_discover = True
+                self._af_kay_skip = True
 
         # ── Sindragosa: freeze tavern at end of turn ──────────
         elif effect == "stay_frosty":
@@ -643,6 +664,10 @@ class Player:
             return self.hero["ability"].get("buy_cost", 2)
         if effect == "stay_frosty":  # Sindragosa: costs 2
             return self.hero["ability"].get("buy_cost", 2)
+        if (effect == "demon_hunter_training"
+                and getattr(self, "_aranna_unlocked", False)
+                and not getattr(self, "_aranna_free_buy_used", False)):
+            return 0
         return 3
 
     def _hero_refresh_cost(self) -> int:
@@ -682,6 +707,11 @@ class Player:
                 return {"success": False, "message": "Not enough gold."}
             self.shop[shop_index] = None
             self.gold -= buy_cost
+            # Aranna: mark free buy as used
+            if (self.hero and self.hero.get("ability", {}).get("effect") == "demon_hunter_training"
+                    and getattr(self, "_aranna_unlocked", False)
+                    and buy_cost == 0):
+                self._aranna_free_buy_used = True
             self._on_gold_spent(buy_cost)
         self.hand.append(minion)
         self._on_card_added_to_hand(minion)
@@ -863,16 +893,20 @@ class Player:
             self.triple_tracker[key] = []
         self.triple_tracker[key].append(minion)
 
-        if len(self.triple_tracker[key]) >= 3:
-            copies = self.triple_tracker[key][:3]
-            self.triple_tracker[key] = self.triple_tracker[key][3:]
-            # Verwijder de 3 kopieën van board én hand
+        # Clocksworth: 2 copies = golden instead of 3
+        clocksworth = (self.hero and self.hero.get("ability", {}).get("effect") == "double_time")
+        threshold = 2 if clocksworth else 3
+
+        if len(self.triple_tracker[key]) >= threshold:
+            copies = self.triple_tracker[key][:threshold]
+            self.triple_tracker[key] = self.triple_tracker[key][threshold:]
+            # Verwijder de kopieën van board én hand
             for c in copies:
                 if c in self.board:
                     self.board.remove(c)
                 elif c in self.hand:
                     self.hand.remove(c)
-            # Golden versie: basis×2 + alle geaccumuleerde buffs van de 3 kopieën
+            # Golden versie: basis×2 + alle geaccumuleerde buffs van de kopieën
             golden = Minion.from_id(minion.id)
             golden.make_golden()
             extra_atk = sum(c.attack - c.base_attack for c in copies)
@@ -880,7 +914,11 @@ class Player:
             golden.attack     += extra_atk
             golden.health     += extra_hp
             golden.max_health += extra_hp
-            self.hand.append(golden)  # golden gaat naar hand
+            self.hand.append(golden)
+            if clocksworth:
+                # Clocksworth: Tavern Coin instead of discover
+                self.hand.append({**_SPELLS_FLAT["tavern_coin"], "type": "spell", "cost": 0})
+                return {"triple": True, "golden": golden.to_dict(), "discover_tier": None}
             discover_tier = min(self.tavern_tier + 1, 6)
             return {"triple": True, "golden": golden.to_dict(), "discover_tier": discover_tier}
         return None
@@ -909,6 +947,9 @@ class Player:
         if hand_index < 0 or hand_index >= len(self.hand):
             return {"success": False, "message": "Invalid hand index."}
         item = self.hand[hand_index]
+        # Maiev: gevangengezette kaart nog niet speelbaar
+        if isinstance(item, Minion) and getattr(item, "_imprisoned_turns", 0) > 0:
+            return {"success": False, "message": f"Kaart is nog {item._imprisoned_turns} beurt(en) gevangen."}
         # Spell stored in hand (given by battlecry/deathrattle)
         if isinstance(item, dict) and item.get("type") == "spell":
             self.hand.pop(hand_index)
@@ -2176,6 +2217,16 @@ class Player:
                     mult = 2 if m.golden else 1
                     self.spell_attack_bonus += m.passive.get("amount", 1) * mult
                     events.append({"type": "play_passive", "uid": m.uid})
+
+        # Chenvaala (avalanche): after N elementals played, reduce upgrade cost by discount
+        if "Elemental" in played.types and self.hero:
+            if self.hero.get("ability", {}).get("effect") == "avalanche":
+                ab = self.hero["ability"]
+                self._chenvaala_count = getattr(self, "_chenvaala_count", 0) + 1
+                if self._chenvaala_count >= ab.get("threshold", 3):
+                    self._chenvaala_count = 0
+                    disc = ab.get("discount", 3)
+                    self.upgrade_cost = max(0, self.upgrade_cost - disc)
 
         # Tidecaller Prophet: track Murloc plays, improve after every N Murlocs
         if "Murloc" in played.types:
