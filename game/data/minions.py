@@ -5,7 +5,22 @@ POOL_SIZE = {1: 18, 2: 15, 3: 13, 4: 11, 5: 9, 6: 6}
 SHOP_SIZE = {1: 3, 2: 4, 3: 4, 4: 5, 5: 5, 6: 6}
 
 # Token minions (not in shop pool)
-TOKENS = {'fodder': {'id': 'fodder',
+TOKENS = {'tentacle': {'id': 'tentacle',
+              'name': 'Tentacle', 'tier': 1, 'attack': 2, 'health': 2,
+              'tribe': None, 'types': [], 'abilities': ['taunt'],
+              'token': True, 'description': 'Taunt. (Ozumat)'},
+ 'amalgam': {'id': 'amalgam',
+              'name': 'Amalgam', 'tier': 1, 'attack': 2, 'health': 2,
+              'tribe': None,
+              'types': ['Beast','Demon','Dragon','Elemental','Mech','Murloc','Naga','Pirate','Quilboar','Undead'],
+              'abilities': ['venomous'], 'token': True,
+              'description': 'Venomous. Has all minion types. (The Curator)'},
+ 'banana': {'id': 'banana',
+             'name': 'Banana', 'tier': 1, 'attack': 0, 'health': 0,
+             'tribe': None, 'types': [], 'abilities': [], 'token': True,
+             'description': 'Give a friendly minion +1/+1.',
+             'type': 'spell', 'cost': 0},
+ 'fodder': {'id': 'fodder',
               'name': 'Fodder',
               'tier': 1,
               'attack': 2,

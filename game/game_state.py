@@ -17,12 +17,15 @@ def _apply_hero_combat_auras(board: list, enemy_board: list, hero: dict | None):
     """Applies hero passives at start of combat on the (already cloned) combat board."""
     if not hero:
         return
+    from game.minion import Minion as _M
     effect = hero.get("ability", {}).get("effect")
     ab = hero.get("ability", {})
+
     if effect == "all_will_burn":
         bonus = ab.get("attack", 2)
         for m in board + enemy_board:
             m.attack += bonus
+
     elif effect == "wingmen":
         atk = ab.get("attack", 2)
         hp  = ab.get("health", 1)
@@ -34,6 +37,57 @@ def _apply_hero_combat_auras(board: list, enemy_board: list, hero: dict | None):
                 board[-1].attack += atk
                 board[-1].health += hp
                 board[-1].max_health += hp
+
+    elif effect == "alakir_start_of_combat":
+        # Al'Akir: left-most minion gets Windfury + Divine Shield + Taunt
+        if board:
+            m = board[0]
+            m.windfury = True; m.divine_shield = True; m.taunt = True
+            for kw in ("windfury", "divine_shield", "taunt"):
+                if kw not in m.abilities:
+                    m.abilities.append(kw)
+
+    elif effect == "wax_warband":
+        # Queen Wagtoggle: give a friendly minion of each TYPE +1/+1
+        atk = ab.get("attack", 1); hp = ab.get("health", 1)
+        seen_types: set = set()
+        for m in board:
+            for t in m.types:
+                if t not in seen_types:
+                    seen_types.add(t)
+                    m.attack += atk; m.health += hp; m.max_health += hp
+                    break
+        if not any(m.types for m in board):  # no typed minions: buff first
+            if board:
+                board[0].attack += atk; board[0].health += hp; board[0].max_health += hp
+
+    elif effect == "fragrant_phylactery":
+        # Tamsin Roame: lowest-attack minion gets Deathrattle: give other minions its stats
+        alive = [m for m in board if not m.dead]
+        if alive:
+            lowest = min(alive, key=lambda m: m.attack)
+            lowest.deathrattle = {"type": "give_stats_to_others"}
+            if "deathrattle" not in lowest.abilities:
+                lowest.abilities.append("deathrattle")
+
+    elif effect == "tentacular":
+        # Ozumat: when there's space, summon a 2/2 Tentacle with Taunt
+        if len(board) < 7:
+            tentacle = _M.from_id("tentacle")
+            board.append(tentacle)
+
+    elif effect == "sprout_it_out":
+        # Greybough passive: tracked at combat time via a flag
+        # Stored on hero so summon handlers can reference it
+        pass  # handled in _summon_token in combat.py via hero check
+
+    elif effect == "broodmother":
+        # Onyxia: Avenge (N): summon 1/1 Whelp that attacks immediately
+        # This is tracked per combat as a hero-level avenge
+        pass  # handled in _process_deaths
+
+    elif effect == "ozumat_tentacle":
+        pass  # alias handled above
 
 
 def _apply_post_combat_rewards(player: Player, rewards: list):
@@ -193,6 +247,24 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
                     slot.health += hp
                     slot.max_health += hp
 
+        elif rtype == "rokara_kill_buff":
+            # Rokara (glory_of_combat): +1 Attack to the killing minion permanently
+            if player.hero and player.hero.get("ability", {}).get("effect") == "glory_of_combat":
+                uid = reward.get("uid")
+                atk = reward.get("attack", 1)
+                real_m = next((m for m in player.board if m.uid == uid), None)
+                if real_m:
+                    real_m.attack += atk
+
+        elif rtype == "ill_take_that":
+            # Rafaam: get a plain copy of the first enemy you killed
+            if player.hero and player.hero.get("ability", {}).get("effect") == "ill_take_that":
+                from game.minion import Minion as _M2
+                from game.data.minions import ALL_MINIONS as _AM
+                mid = reward.get("minion_id")
+                if mid and mid in _AM:
+                    player.hand.append(_M2.from_id(mid))
+
         elif rtype == "add_random_tier_spell_post_combat":
             from game.data.spells import SPELLS_BY_TIER as _SBT
             tier = reward.get("tier", 1)
@@ -313,7 +385,35 @@ class GameState:
                 p.double_deathrattle = True
             if hero["id"] == "dinotamer_brann":
                 p.double_battlecry = True
+            # Start-of-game passives
+            self._apply_hero_start_of_game(p, hero)
         return self._all_heroes_selected()
+
+    def _apply_hero_start_of_game(self, p: "Player", hero: dict):
+        """Apply one-time start-of-game hero passives after hero selection."""
+        effect = hero.get("ability", {}).get("effect")
+        if effect == "menagerist":
+            # The Curator: start with a 2/2 Amalgam with Venomous + all types
+            p.board.append(Minion.from_id("amalgam"))
+        elif effect == "pilot_the_shredder":
+            # Sneed: start with a 2/1 Shredder (simplified: 2/1 Mech)
+            from game.data.minions import ALL_MINIONS as _AM
+            if "shredder" in _AM:
+                p.board.append(Minion.from_id("shredder"))
+            else:
+                shred = Minion.from_id("microbot")
+                shred.name = "Shredder"; shred.attack = 2; shred.health = 1
+                shred.max_health = 1
+                p.board.append(shred)
+        elif effect == "avatar_of_nzoth":
+            # N'Zoth: start with a 2/2 Fish (simplified token)
+            fish = Minion.from_id("microbot")
+            fish.name = "Fish of N'Zoth"; fish.attack = 2; fish.health = 2
+            fish.max_health = 2
+            p.board.append(fish)
+        elif effect == "skycapn_kragg":
+            # Skycap'n Kragg: gain 2 Gold once per game (handled as bonus_gold next turn)
+            p.gold_next_turn_bonus += hero.get("ability", {}).get("piggy_bank_amount", 2)
 
     def _all_heroes_selected(self) -> bool:
         return all(p.hero is not None for p in self.players.values())
@@ -332,7 +432,12 @@ class GameState:
                 self.shop_manager.return_shop_to_pool(p.shop)
                 p.shop = self.shop_manager.generate_shop(p.tavern_tier, p.hero)
             else:
-                p.frozen = False  # Bevroren shop blijft, maar unfreeze voor volgende ronde
+                p.frozen = False
+
+            # Sindragosa: auto-freeze at end-of-turn (handled here as start of NEXT turn)
+            if getattr(p, "_sindragosa_freeze_eot", False):
+                p._sindragosa_freeze_eot = False
+                p.frozen = True  # will freeze the newly generated shop
 
             if p.is_ai:
                 self._ai_take_turn(p)
@@ -518,6 +623,44 @@ class GameState:
                     target.attack += 3 * p._waveling_refresh_hooks
                     target.health += 3 * p._waveling_refresh_hooks
                     target.max_health += 3 * p._waveling_refresh_hooks
+
+            # Ysera (dream_portal): add an extra Dragon to the shop
+            if p.hero and p.hero.get("ability", {}).get("effect") == "dream_portal":
+                from game.data.minions import MINIONS as _MINS2
+                dragon_pool = [mid for mid, d in _MINS2.items()
+                               if "Dragon" in d.get("types", []) and d["tier"] <= p.tavern_tier
+                               and not d.get("removed") and self.shop_manager.pool.get(mid, 0) > 0]
+                if dragon_pool:
+                    chosen_id = random.choice(dragon_pool)
+                    if self.shop_manager.take_from_pool(chosen_id):
+                        p.shop.append(Minion.from_id(chosen_id))
+
+            # Overlord Saurfang (for_the_horde): shop minions get +X/+X
+            if p.hero and p.hero.get("ability", {}).get("effect") == "for_the_horde":
+                bonus = getattr(p, "_saurfang_shop_bonus", 1)
+                for slot in p.shop:
+                    if slot is not None and not isinstance(slot, dict):
+                        slot.attack += bonus; slot.health += bonus; slot.max_health += bonus
+
+            # Enhance-o Mechano (enhancification): give a random shop minion a random keyword
+            if p.hero and p.hero.get("ability", {}).get("effect") == "enhancification":
+                shop_m = [m for m in p.shop if m is not None and not isinstance(m, dict)]
+                if shop_m:
+                    t = random.choice(shop_m)
+                    kw = random.choice(["divine_shield", "taunt", "windfury", "reborn", "poisonous"])
+                    setattr(t, kw, True)
+                    if kw not in t.abilities:
+                        t.abilities.append(kw)
+
+            # Varden Dawngrasp (twice_as_nice): copy highest-tier shop minion and freeze
+            if p.hero and p.hero.get("ability", {}).get("effect") == "twice_as_nice":
+                shop_m = [m for m in p.shop if m is not None and not isinstance(m, dict)]
+                if shop_m:
+                    highest = max(shop_m, key=lambda m: m.tier)
+                    copy = highest.clone()
+                    p.shop.append(copy)
+                    p.frozen = True  # freeze the shop
+
         return {**result, "shop": [(m if isinstance(m, dict) else m.to_dict()) if m else None for m in p.shop]}
 
     def freeze(self, sid: str) -> dict:

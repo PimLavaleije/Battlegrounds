@@ -258,6 +258,16 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
         if attacker.passive and attacker.passive.get("type") == "on_self_damaged":
             _trigger_self_damaged_passive(attacker, attacker_board_ref, step)
 
+    # Track kill for Rokara (glory_of_combat) and Rafaam (ill_take_that)
+    if target.health <= 0 and not result_t.get("shielded") and post_rewards is not None:
+        my_rewards_key = "player" if current_side == 0 else "enemy"
+        my_rewards = post_rewards[my_rewards_key]
+        # Rokara: +1 Attack to killing minion (one per kill, filter in apply_post_combat)
+        my_rewards.append({"type": "rokara_kill_buff", "uid": attacker.uid, "attack": 1})
+        # Rafaam: only first kill this combat
+        if not any(r.get("type") == "ill_take_that" for r in my_rewards):
+            my_rewards.append({"type": "ill_take_that", "minion_id": target.id})
+
     # Demon deals damage passives (Devout Hellcaller, Lord of the Ruins)
     if "Demon" in attacker.types and step.get("target_damage", 0) > 0:
         for ally in attacker_board_ref:
@@ -704,6 +714,15 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
         for _ in range(mult):
             if pool and _alive_count(friendly_board) < 7:
                 _summon_token(random.choice(pool))
+
+    elif dtype == "give_stats_to_others":
+        # Tamsin Roame: Deathrattle: give other friendly minions this minion's stats
+        atk = dead.base_attack if hasattr(dead, "base_attack") else dead.attack
+        hp = dead.base_health if hasattr(dead, "base_health") else dead.health
+        for m in friendly_board:
+            if not m.dead and m is not dead:
+                m.attack += atk; m.health += hp; m.max_health += hp
+        step["events"].append({"type": "deathrattle", "uid": dead.uid, "effect": "give_stats"})
 
     elif dtype == "get_random_battlecry_minion":
         # Barrens Conjurer: get a random Battlecry minion post-combat
