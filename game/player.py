@@ -1210,6 +1210,35 @@ class Player:
                         self._proud_recast = False
                     break
 
+        # Sundered Matriarch: spell cast → give all minions +3 Health
+        for m in self.board:
+            if m.passive and m.passive.get("type") == "on_spell_cast_buff_all_health":
+                mult = 2 if m.golden else 1
+                hp = m.passive.get("health", 3) * mult
+                for ally in self.board:
+                    ally.health += hp; ally.max_health += hp
+                break
+
+        # Felboar: after N spells, consume a shop minion for its stats
+        for m in self.board:
+            if m.passive and m.passive.get("type") == "on_spell_threshold_consume_shop":
+                mult = 2 if m.golden else 1
+                threshold = m.passive.get("threshold", 3)
+                if m.golden:
+                    threshold = max(1, threshold - 1)
+                m._felboar_spell_count = getattr(m, "_felboar_spell_count", 0) + 1
+                if m._felboar_spell_count >= threshold:
+                    m._felboar_spell_count = 0
+                    shop_minions = [(i, s) for i, s in enumerate(self.shop)
+                                    if s is not None and isinstance(s, Minion)]
+                    if shop_minions:
+                        idx2, consumed = random.choice(shop_minions)
+                        self.shop[idx2] = None
+                        m.attack += consumed.attack * mult
+                        m.health += consumed.health * mult
+                        m.max_health += consumed.health * mult
+                break
+
         # Tidecaller Prophet: spells give extra +X/+X to all board minions this turn
         for m in self.board:
             if m.passive and m.passive.get("type") == "tavern_spell_bonus_scaling":
@@ -1519,6 +1548,25 @@ class Player:
                     for s in picks
                 ]}
 
+        if effect == "buff_token_permanent":
+            # Forest Rover: permanently buff all matching tokens on board/hand
+            token_id = bc.get("token")
+            mult = 2 if minion.golden else 1
+            atk = bc.get("attack", 0) * mult
+            hp = bc.get("health", 0) * mult
+            for ally in self.board:
+                if ally.id == token_id:
+                    ally.attack += atk; ally.health += hp; ally.max_health += hp
+            for item in self.hand:
+                if isinstance(item, Minion) and item.id == token_id:
+                    item.attack += atk; item.health += hp; item.max_health += hp
+            # Store permanent buff for newly summoned tokens
+            key = f"_token_buff_{token_id}"
+            existing = getattr(self, key, {"attack": 0, "health": 0})
+            setattr(self, key, {"attack": existing["attack"] + atk,
+                                "health": existing["health"] + hp})
+            return {"buffed_token": token_id}
+
         if effect == "buff_tribe_improved_mrrglton":
             tribe = bc.get("tribe")
             mult = 3 if minion.golden else 1
@@ -1819,6 +1867,37 @@ class Player:
                             ally.attack += atk
                             ally.health += hp
                             ally.max_health += hp
+                    events.append({"type": "play_passive", "uid": m.uid})
+
+        # Tier-based passives: Greymane's Champion (even), Mooneater's Champion (odd)
+        for m in self.board:
+            if not m.passive or m is played:
+                continue
+            ptype = m.passive.get("type")
+            mult = 2 if m.golden else 1
+            if ptype == "on_even_tier_played_buff_even" and played.tier % 2 == 0:
+                atk = m.passive.get("attack", 2) * mult
+                hp = m.passive.get("health", 2) * mult
+                for ally in self.board:
+                    if ally.tier % 2 == 0:
+                        ally.attack += atk; ally.health += hp; ally.max_health += hp
+                events.append({"type": "play_passive", "uid": m.uid})
+            elif ptype == "on_odd_tier_played_buff_odd" and played.tier % 2 == 1:
+                atk = m.passive.get("attack", 1) * mult
+                hp = m.passive.get("health", 1) * mult
+                for ally in self.board:
+                    if ally.tier % 2 == 1:
+                        ally.attack += atk; ally.health += hp; ally.max_health += hp
+                events.append({"type": "play_passive", "uid": m.uid})
+
+        # Sand Swirler: each Elemental played boosts spell_attack_bonus permanently
+        if "Elemental" in played.types:
+            for m in self.board:
+                if not m.passive or m is played:
+                    continue
+                if m.passive.get("type") == "spell_attack_bonus_per_elemental_played":
+                    mult = 2 if m.golden else 1
+                    self.spell_attack_bonus += m.passive.get("amount", 1) * mult
                     events.append({"type": "play_passive", "uid": m.uid})
 
         # Tidecaller Prophet: track Murloc plays, improve after every N Murlocs
@@ -2139,6 +2218,35 @@ class Player:
                     self.hand.append(Minion.from_id(satellite_id))
                 buff = eot.get("self_buff", 2) * mult
                 m.attack += buff; m.health += buff; m.max_health += buff
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "resummon_left_undead":
+                # Archlich Kel'Thuzad: destroy left Undead and resummon exact copy
+                idx = self.board.index(m) if m in self.board else -1
+                if idx > 0:
+                    left = self.board[idx - 1]
+                    if "Undead" in left.types and not getattr(left, '_kel_thuzad_exempt', False):
+                        copy_m = left.clone()
+                        self.board[idx - 1] = copy_m
+                        if m.golden:  # golden: also destroy/resummon right neighbor
+                            if idx + 1 < len(self.board) and "Undead" in self.board[idx + 1].types:
+                                self.board[idx + 1] = self.board[idx + 1].clone()
+                events.append({"type": "eot", "uid": m.uid})
+
+            elif etype == "copy_left_minion_periodic":
+                # Upbeat Duo: every N turns, get a plain copy of the minion to the left
+                every = eot.get("turns", 2)
+                if m.golden:
+                    every = 1
+                m._upbeat_counter = getattr(m, "_upbeat_counter", 0) + 1
+                if m._upbeat_counter >= every:
+                    m._upbeat_counter = 0
+                    idx = self.board.index(m) if m in self.board else -1
+                    if idx > 0:
+                        from game.data.minions import ALL_MINIONS as _AM
+                        left = self.board[idx - 1]
+                        plain = Minion.from_id(left.id)
+                        self.hand.append(plain)
                 events.append({"type": "eot", "uid": m.uid})
 
         # Drakkari Enchanter: EOT effecten extra keer triggeren

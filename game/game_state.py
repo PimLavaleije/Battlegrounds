@@ -193,6 +193,38 @@ def _apply_post_combat_rewards(player: Player, rewards: list):
                     slot.health += hp
                     slot.max_health += hp
 
+        elif rtype == "add_random_tier_spell_post_combat":
+            from game.data.spells import SPELLS_BY_TIER as _SBT
+            tier = reward.get("tier", 1)
+            pool = _SBT.get(tier, [])
+            if pool:
+                spell = random.choice(pool)
+                player.hand.append({**spell, "type": "spell", "cost": spell.get("cost", tier)})
+
+        elif rtype == "get_random_battlecry_post_combat":
+            from game.data.minions import MINIONS as _MINS
+            pool = [m for m in _MINS.values()
+                    if m.get("battlecry") and not m.get("removed") and not m.get("duo_only")]
+            if pool:
+                data = random.choice(pool)
+                player.hand.append(Minion.from_id(data["id"]))
+
+        elif rtype == "buff_token_post_combat":
+            token_id = reward.get("token")
+            atk = reward.get("attack", 0)
+            hp = reward.get("health", 0)
+            for m in player.board:
+                if m.id == token_id:
+                    m.attack += atk; m.health += hp; m.max_health += hp
+            for item in player.hand:
+                if isinstance(item, Minion) and item.id == token_id:
+                    item.attack += atk; item.health += hp; item.max_health += hp
+            # Store permanent bonus for future tokens
+            key = f"_token_buff_{token_id}"
+            existing = getattr(player, key, {"attack": 0, "health": 0})
+            setattr(player, key, {"attack": existing["attack"] + atk,
+                                  "health": existing["health"] + hp})
+
         elif rtype == "spread_stegodon_rally":
             tribe = reward.get("tribe")
             atk = reward.get("attack", 0)

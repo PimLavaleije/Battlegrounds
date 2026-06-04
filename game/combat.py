@@ -258,6 +258,24 @@ def _do_attack(attacker: Minion, target: Minion, target_idx: int,
         if attacker.passive and attacker.passive.get("type") == "on_self_damaged":
             _trigger_self_damaged_passive(attacker, attacker_board_ref, step)
 
+    # Demon deals damage passives (Devout Hellcaller, Lord of the Ruins)
+    if "Demon" in attacker.types and step.get("target_damage", 0) > 0:
+        for ally in attacker_board_ref:
+            if ally.dead or ally is attacker or not ally.passive:
+                continue
+            ptype = ally.passive.get("type")
+            mult = 2 if ally.golden else 1
+            if ptype == "on_friendly_demon_damage_buff_self":
+                atk = ally.passive.get("attack", 1) * mult
+                hp = ally.passive.get("health", 2) * mult
+                ally.attack += atk; ally.health += hp; ally.max_health += hp
+            elif ptype == "on_friendly_demon_damage_buff_all":
+                atk = ally.passive.get("attack", 2) * mult
+                hp = ally.passive.get("health", 1) * mult
+                for a in attacker_board_ref:
+                    if not a.dead:
+                        a.attack += atk; a.health += hp; a.max_health += hp
+
     # Bolvar / Drakonid: schild doorbroken passief
     defender_board = e_board if current_side == 0 else p_board
     attacker_board = p_board if current_side == 0 else e_board
@@ -687,6 +705,47 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
             if pool and _alive_count(friendly_board) < 7:
                 _summon_token(random.choice(pool))
 
+    elif dtype == "get_random_battlecry_minion":
+        # Barrens Conjurer: get a random Battlecry minion post-combat
+        mult = 2 if dead.golden else 1
+        for _ in range(mult):
+            post_rewards.append({"type": "get_random_battlecry_post_combat"})
+
+    elif dtype == "deal_damage_non_tribe":
+        # Silent Enforcer: deal N damage to all non-[tribe] minions on both boards
+        tribe = dr.get("tribe")
+        dmg = dr.get("damage", 2) * (2 if dead.golden else 1)
+        for board in (friendly_board, enemy_board):
+            for m in board:
+                if not m.dead and (tribe is None or tribe not in m.types):
+                    m.health -= dmg
+                    if m.health <= 0:
+                        m.dead = True
+        step["events"].append({"type": "deathrattle", "uid": dead.uid, "effect": "aoe_non_tribe"})
+
+    elif dtype == "buff_token_and_summon":
+        # Turquoise Skitterer: give tokens a permanent buff then summon one
+        token_id = dr.get("token", "beetle")
+        atk = dr.get("attack", 5) * (2 if dead.golden else 1)
+        hp  = dr.get("health", 5) * (2 if dead.golden else 1)
+        # Buff existing tokens on the board
+        for m in friendly_board:
+            if not m.dead and m.id == token_id:
+                m.attack += atk; m.health += hp; m.max_health += hp
+        post_rewards.append({"type": "buff_token_post_combat", "token": token_id,
+                              "attack": atk, "health": hp})
+        # Summon the token
+        count = 2 if dead.golden else 1
+        for _ in range(count):
+            _summon_token(token_id)
+
+    elif dtype == "buff_tribe_post_combat":
+        # Glowing Cinder: buff tribe stats permanently
+        mult = 2 if dead.golden else 1
+        post_rewards.append({"type": "rally_buff_tribe_permanent",
+                              "tribe": dr.get("tribe"), "attack": 0,
+                              "health": dr.get("health", 1) * mult})
+
     elif dtype == "cast_shifting_tide_adjacent":
         # Tide Raiser: pick a random adjacent minion and move it to a random position
         idx = next((i for i, m in enumerate(friendly_board) if m is dead), -1)
@@ -726,11 +785,15 @@ def _apply_deathrattle(dead: Minion, dr: dict, friendly_board: list, enemy_board
                               "health": dr.get("health", 8) * mult})
 
     elif dtype == "give_spell_post_combat":
-        # Razorfen Flapper: get spell after combat
-        spell_id = dr.get("spell", "blood_gem_barrage")
+        # Razorfen Flapper / Coldlight Diver: get spell after combat
+        spell_id = dr.get("spell")
+        spell_tier = dr.get("spell_tier")
         mult = 2 if dead.golden else 1
         for _ in range(mult):
-            post_rewards.append({"type": "add_spell_post_combat", "spell": spell_id})
+            if spell_id:
+                post_rewards.append({"type": "add_spell_post_combat", "spell": spell_id})
+            elif spell_tier:
+                post_rewards.append({"type": "add_random_tier_spell_post_combat", "tier": spell_tier})
 
     elif dtype == "waveling_refresh_hook":
         # Waveling: register persistent refresh buff hook
@@ -887,6 +950,16 @@ def _apply_rally_effects(board: list[Minion], enemy_board: list[Minion], post_re
                 t = random.choice(targets)
                 t.reborn = False; t.taunt = False
                 t.abilities = [a for a in t.abilities if a not in ("reborn", "taunt")]
+
+        elif rtype == "give_dragons_self_hp":
+            # Charmwing: give N friendly Dragons this minion's max HP
+            count = m.rally.get("count", 2) * multiplier
+            eligible = [a for a in board if a is not m and not a.dead and "Dragon" in a.types]
+            targets = eligible[:count] if len(eligible) <= count else random.sample(eligible, count)
+            for t in targets:
+                bonus = m.health - t.health
+                if bonus > 0:
+                    t.health += bonus; t.max_health += bonus
 
         elif rtype == "give_3_self_attack":
             # Dead Sea Ravager: give 3 other friendly minions this minion's Attack
